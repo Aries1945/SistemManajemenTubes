@@ -1,0 +1,629 @@
+import React, { useState } from 'react';
+
+import { 
+  Plus, Edit, Trash2, Eye, Calendar, Users, 
+  FileText, Clock, CheckCircle, AlertCircle,
+  Download, Upload, Settings
+} from 'lucide-react';
+
+const DosenTaskManagement = ({ courseId, courseName }) => {
+  const [activeView, setActiveView] = useState('list'); // 'list', 'create', 'edit', 'detail'
+  const [selectedTask, setSelectedTask] = useState(null);
+
+  // Sample data - akan diganti dengan data dari API
+  const tasks = [
+    {
+      id: 1,
+      title: 'Sistem E-Commerce',
+      description: 'Membuat aplikasi e-commerce menggunakan framework modern dengan fitur lengkap',
+      course: courseName,
+      courseId: courseId,
+      startDate: '2024-10-01',
+      endDate: '2024-12-15',
+      status: 'active',
+      groupFormation: 'manual', // 'manual', 'auto', 'student-choice'
+      minGroupSize: 3,
+      maxGroupSize: 5,
+      totalGroups: 8,
+      components: [
+        { id: 1, name: 'Proposal', weight: 20, deadline: '2024-10-15' },
+        { id: 2, name: 'Progress 1', weight: 25, deadline: '2024-11-15' },
+        { id: 3, name: 'Progress 2', weight: 25, deadline: '2024-12-01' },
+        { id: 4, name: 'Final Presentation', weight: 30, deadline: '2024-12-15' }
+      ],
+      deliverables: [
+        'Source code lengkap',
+        'Dokumentasi teknis',
+        'User manual',
+        'Presentation slides'
+      ],
+      createdAt: '2024-09-15',
+      updatedAt: '2024-09-20'
+    },
+    {
+      id: 2,
+      title: 'Database Design Project',
+      description: 'Merancang dan mengimplementasikan database untuk sistem informasi',
+      course: courseName,
+      courseId: courseId,
+      startDate: '2024-09-15',
+      endDate: '2024-11-30',
+      status: 'completed',
+      groupFormation: 'auto',
+      minGroupSize: 2,
+      maxGroupSize: 4,
+      totalGroups: 7,
+      components: [
+        { id: 1, name: 'ERD Design', weight: 30, deadline: '2024-10-01' },
+        { id: 2, name: 'Implementation', weight: 40, deadline: '2024-11-15' },
+        { id: 3, name: 'Testing & Documentation', weight: 30, deadline: '2024-11-30' }
+      ],
+      deliverables: [
+        'ERD Diagram',
+        'SQL Scripts',
+        'Database documentation'
+      ],
+      createdAt: '2024-09-01',
+      updatedAt: '2024-11-30'
+    }
+  ];
+
+  const TaskList = () => (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Tugas Besar</h2>
+          <p className="text-gray-600">{courseName}</p>
+        </div>
+        <button 
+          onClick={() => setActiveView('create')}
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition-colors"
+        >
+          <Plus size={20} />
+          Buat Tugas Besar
+        </button>
+      </div>
+
+      <div className="grid gap-6">
+        {tasks.map(task => (
+          <TaskCard 
+            key={task.id} 
+            task={task} 
+            onView={() => {
+              setSelectedTask(task);
+              setActiveView('detail');
+            }}
+            onEdit={() => {
+              setSelectedTask(task);
+              setActiveView('edit');
+            }}
+            onDelete={(id) => {
+              // Handle delete
+              console.log('Delete task:', id);
+            }}
+          />
+        ))}
+      </div>
+
+      {tasks.length === 0 && (
+        <div className="text-center py-12">
+          <FileText size={64} className="mx-auto mb-4 text-gray-400" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Belum ada tugas besar</h3>
+          <p className="text-gray-600 mb-4">
+            Mulai dengan membuat tugas besar pertama untuk mata kuliah ini.
+          </p>
+          <button 
+            onClick={() => setActiveView('create')}
+            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Buat Tugas Besar
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
+  const TaskCard = ({ task, onView, onEdit, onDelete }) => (
+    <div className="bg-white p-6 rounded-lg shadow border hover:shadow-lg transition-shadow">
+      <div className="flex justify-between items-start mb-4">
+        <div className="flex-1">
+          <div className="flex items-center gap-3 mb-2">
+            <h3 className="text-xl font-semibold">{task.title}</h3>
+            <StatusBadge status={task.status} />
+          </div>
+          <p className="text-gray-600 mb-4 line-clamp-2">{task.description}</p>
+          
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            <div className="flex items-center gap-2">
+              <Calendar className="text-gray-400" size={16} />
+              <div>
+                <p className="text-sm text-gray-600">Deadline</p>
+                <p className="font-medium">{task.endDate}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Users className="text-gray-400" size={16} />
+              <div>
+                <p className="text-sm text-gray-600">Kelompok</p>
+                <p className="font-medium">{task.totalGroups}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <FileText className="text-gray-400" size={16} />
+              <div>
+                <p className="text-sm text-gray-600">Komponen</p>
+                <p className="font-medium">{task.components.length}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Settings className="text-gray-400" size={16} />
+              <div>
+                <p className="text-sm text-gray-600">Formasi</p>
+                <p className="font-medium capitalize">{task.groupFormation}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div className="flex justify-between items-center">
+        <div className="text-sm text-gray-500">
+          Dibuat: {task.createdAt} • Diupdate: {task.updatedAt}
+        </div>
+        <div className="flex gap-2">
+          <button 
+            onClick={onView}
+            className="text-blue-600 hover:text-blue-800 p-2 rounded transition-colors"
+            title="Lihat Detail"
+          >
+            <Eye size={16} />
+          </button>
+          <button 
+            onClick={onEdit}
+            className="text-green-600 hover:text-green-800 p-2 rounded transition-colors"
+            title="Edit"
+          >
+            <Edit size={16} />
+          </button>
+          <button 
+            onClick={() => onDelete(task.id)}
+            className="text-red-600 hover:text-red-800 p-2 rounded transition-colors"
+            title="Hapus"
+          >
+            <Trash2 size={16} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const StatusBadge = ({ status }) => {
+    const statusConfig = {
+      active: { color: 'bg-green-100 text-green-800', label: 'Aktif', icon: CheckCircle },
+      draft: { color: 'bg-yellow-100 text-yellow-800', label: 'Draft', icon: Clock },
+      completed: { color: 'bg-gray-100 text-gray-800', label: 'Selesai', icon: CheckCircle },
+      cancelled: { color: 'bg-red-100 text-red-800', label: 'Dibatalkan', icon: AlertCircle }
+    };
+
+    const config = statusConfig[status] || statusConfig.draft;
+    const Icon = config.icon;
+
+    return (
+      <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${config.color}`}>
+        <Icon size={14} />
+        {config.label}
+      </span>
+    );
+  };
+
+  const TaskForm = ({ isEdit = false }) => {
+    const [formData, setFormData] = useState(
+      isEdit && selectedTask ? selectedTask : {
+        title: '',
+        description: '',
+        startDate: '',
+        endDate: '',
+        groupFormation: 'manual',
+        minGroupSize: 3,
+        maxGroupSize: 5,
+        components: [
+          { name: 'Proposal', weight: 20, deadline: '' }
+        ],
+        deliverables: ['']
+      }
+    );
+
+    const handleSubmit = (e) => {
+      e.preventDefault();
+      // Handle form submission
+      console.log('Form data:', formData);
+      setActiveView('list');
+    };
+
+    const addComponent = () => {
+      setFormData({
+        ...formData,
+        components: [...formData.components, { name: '', weight: 0, deadline: '' }]
+      });
+    };
+
+    const removeComponent = (index) => {
+      const newComponents = formData.components.filter((_, i) => i !== index);
+      setFormData({ ...formData, components: newComponents });
+    };
+
+    const updateComponent = (index, field, value) => {
+      const newComponents = [...formData.components];
+      newComponents[index] = { ...newComponents[index], [field]: value };
+      setFormData({ ...formData, components: newComponents });
+    };
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => setActiveView('list')}
+            className="text-blue-600 hover:text-blue-800"
+          >
+            ← Kembali
+          </button>
+          <h2 className="text-2xl font-bold text-gray-900">
+            {isEdit ? 'Edit Tugas Besar' : 'Buat Tugas Besar Baru'}
+          </h2>
+        </div>
+
+        <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow border space-y-6">
+          {/* Basic Information */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Informasi Dasar</h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Judul Tugas Besar *
+                </label>
+                <input
+                  type="text"
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Masukkan judul tugas besar"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Mata Kuliah
+                </label>
+                <input
+                  type="text"
+                  value={courseName}
+                  disabled
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Deskripsi *
+              </label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                rows={4}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Jelaskan detail tugas besar yang akan dikerjakan mahasiswa"
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tanggal Mulai *
+                </label>
+                <input
+                  type="date"
+                  value={formData.startDate}
+                  onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tanggal Selesai *
+                </label>
+                <input
+                  type="date"
+                  value={formData.endDate}
+                  onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Group Settings */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Pengaturan Kelompok</h3>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Metode Pembentukan Kelompok
+              </label>
+              <select
+                value={formData.groupFormation}
+                onChange={(e) => setFormData({ ...formData, groupFormation: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="manual">Manual (Dosen yang menentukan)</option>
+                <option value="auto">Otomatis (Sistem yang menentukan)</option>
+                <option value="student-choice">Pilihan Mahasiswa</option>
+              </select>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Minimal Anggota per Kelompok
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="10"
+                  value={formData.minGroupSize}
+                  onChange={(e) => setFormData({ ...formData, minGroupSize: parseInt(e.target.value) })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Maksimal Anggota per Kelompok
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="10"
+                  value={formData.maxGroupSize}
+                  onChange={(e) => setFormData({ ...formData, maxGroupSize: parseInt(e.target.value) })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Assessment Components */}
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-semibold">Komponen Penilaian</h3>
+              <button
+                type="button"
+                onClick={addComponent}
+                className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 transition-colors"
+              >
+                + Tambah Komponen
+              </button>
+            </div>
+            
+            {formData.components.map((component, index) => (
+              <div key={index} className="border border-gray-200 rounded-lg p-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Nama Komponen
+                    </label>
+                    <input
+                      type="text"
+                      value={component.name}
+                      onChange={(e) => updateComponent(index, 'name', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="e.g., Proposal, Progress 1"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Bobot (%)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={component.weight}
+                      onChange={(e) => updateComponent(index, 'weight', parseInt(e.target.value))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Deadline
+                    </label>
+                    <input
+                      type="date"
+                      value={component.deadline}
+                      onChange={(e) => updateComponent(index, 'deadline', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  
+                  <div>
+                    {formData.components.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeComponent(index)}
+                        className="text-red-600 hover:text-red-800 p-2"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+            
+            <div className="text-sm text-gray-600">
+              Total bobot: {formData.components.reduce((sum, comp) => sum + (comp.weight || 0), 0)}%
+            </div>
+          </div>
+
+          {/* Form Actions */}
+          <div className="flex justify-end gap-4 pt-6 border-t">
+            <button
+              type="button"
+              onClick={() => setActiveView('list')}
+              className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              {isEdit ? 'Update Tugas' : 'Buat Tugas'}
+            </button>
+          </div>
+        </form>
+      </div>
+    );
+  };
+
+  const TaskDetail = () => {
+    if (!selectedTask) return null;
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => setActiveView('list')}
+            className="text-blue-600 hover:text-blue-800"
+          >
+            ← Kembali
+          </button>
+          <h2 className="text-2xl font-bold text-gray-900">{selectedTask.title}</h2>
+          <StatusBadge status={selectedTask.status} />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main Content */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Description */}
+            <div className="bg-white p-6 rounded-lg shadow border">
+              <h3 className="text-lg font-semibold mb-4">Deskripsi</h3>
+              <p className="text-gray-700 leading-relaxed">{selectedTask.description}</p>
+            </div>
+
+            {/* Components */}
+            <div className="bg-white p-6 rounded-lg shadow border">
+              <h3 className="text-lg font-semibold mb-4">Komponen Penilaian</h3>
+              <div className="space-y-3">
+                {selectedTask.components.map((component, index) => (
+                  <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                    <div>
+                      <p className="font-medium">{component.name}</p>
+                      <p className="text-sm text-gray-600">Deadline: {component.deadline}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-blue-600">{component.weight}%</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Deliverables */}
+            <div className="bg-white p-6 rounded-lg shadow border">
+              <h3 className="text-lg font-semibold mb-4">Deliverables</h3>
+              <ul className="space-y-2">
+                {selectedTask.deliverables.map((item, index) => (
+                  <li key={index} className="flex items-center gap-2">
+                    <CheckCircle className="text-green-600" size={16} />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Task Info */}
+            <div className="bg-white p-6 rounded-lg shadow border">
+              <h3 className="text-lg font-semibold mb-4">Informasi Tugas</h3>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm text-gray-600">Mata Kuliah</p>
+                  <p className="font-medium">{selectedTask.course}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Periode</p>
+                  <p className="font-medium">{selectedTask.startDate} - {selectedTask.endDate}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Formasi Kelompok</p>
+                  <p className="font-medium capitalize">{selectedTask.groupFormation}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Ukuran Kelompok</p>
+                  <p className="font-medium">{selectedTask.minGroupSize} - {selectedTask.maxGroupSize} orang</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Total Kelompok</p>
+                  <p className="font-medium">{selectedTask.totalGroups}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="bg-white p-6 rounded-lg shadow border">
+              <h3 className="text-lg font-semibold mb-4">Aksi</h3>
+              <div className="space-y-2">
+                <button 
+                  onClick={() => {
+                    setActiveView('edit');
+                  }}
+                  className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                >
+                  <Edit size={16} />
+                  Edit Tugas
+                </button>
+                <button className="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2">
+                  <Users size={16} />
+                  Kelola Kelompok
+                </button>
+                <button className="w-full bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2">
+                  <FileText size={16} />
+                  Lihat Penilaian
+                </button>
+                <button className="w-full bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2">
+                  <Download size={16} />
+                  Export Data
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Render based on active view
+  switch (activeView) {
+    case 'create':
+      return <TaskForm />;
+    case 'edit':
+      return <TaskForm isEdit={true} />;
+    case 'detail':
+      return <TaskDetail />;
+    default:
+      return <TaskList />;
+  }
+};
+
+export default DosenTaskManagement;
