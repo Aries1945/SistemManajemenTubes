@@ -1,17 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Routes, Route, Navigate } from 'react-router-dom';
 import { 
   BookOpen, Users, FileText, Clock, CheckCircle, AlertTriangle, 
   TrendingUp, Calendar, Award, Bell, ChevronRight, Plus, Activity,
   BarChart3, User, MessageSquare, Filter, Search
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import Layout from '../../components/Layout';
+import DosenSidebar from '../../components/dosen/DosenSidebar';
+import DosenCourses from './DosenCourses';
+import CourseDetail from './CourseDetail';
 import api, { getCurrentUser, getDosenCourses } from '../../utils/api';
 
 const DosenDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   
   // Debug: Log user data
   console.log('DosenDashboard - User data:', user);
@@ -33,6 +36,10 @@ const DosenDashboard = () => {
   const [quickActions, setQuickActions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedFilter, setSelectedFilter] = useState('all');
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed(!sidebarCollapsed);
+  };
 
   useEffect(() => {
     const initializeDashboard = async () => {
@@ -98,384 +105,288 @@ const DosenDashboard = () => {
           code: course.course_code,
           semester: `${course.semester} ${course.tahun_ajaran}`,
           students: parseInt(course.total_students) || 0,
-          classes: course.class_names ? course.class_names.split(', ') : [],
-          classDetails: course.class_details || '',
-          activeTasks: 0, // TODO: Add from tugas_besar table when implemented
-          pendingSubmissions: 0, // TODO: Add from submissions when implemented
-          lastActivity: 'Baru saja', // TODO: Add real activity tracking
-          progress: 75, // TODO: Calculate real progress
-          status: 'active',
-          sks: course.sks,
-          totalClasses: parseInt(course.total_classes) || 0
+          tasks: 0, // Will be updated when tasks API is available
+          activeGroups: parseInt(course.total_groups) || 0
         }));
-        
-        // Calculate stats from real data
-        const totalStudents = assignedCourses.reduce((sum, course) => sum + (parseInt(course.total_students) || 0), 0);
-        const totalCourses = assignedCourses.length;
-        
-        setStats({
-          totalCourses,
-          totalStudents,
-          activeTasks: 0, // TODO: Count from tugas_besar table
-          pendingGrading: 0 // TODO: Count from submissions
-        });
-        
+
         setCourses(transformedCourses);
         
-        console.log('DosenDashboard - Dashboard data loaded:', {
-          totalCourses,
-          totalStudents,
-          assignedCourses: transformedCourses.length,
-          transformedCourses,
-          stats: {
-            totalCourses,
-            totalStudents,
-            activeTasks: 0,
-            pendingGrading: 0
-          }
-        });
+        // Calculate stats from real data
+        const totalStudents = transformedCourses.reduce((sum, course) => sum + course.students, 0);
+        
+        setStats(prevStats => ({
+          ...prevStats,
+          totalCourses: transformedCourses.length,
+          totalStudents: totalStudents,
+          activeTasks: 0, // Will be updated when tasks API is available
+          pendingGrading: 0 // Will be updated when grading API is available
+        }));
+
+        // Generate sample recent activities based on real courses
+        const activities = transformedCourses.slice(0, 3).map((course, index) => ({
+          id: index + 1,
+          title: `Mahasiswa bergabung ke ${course.name}`,
+          description: `${course.students} mahasiswa terdaftar`,
+          timestamp: `${index + 1} jam yang lalu`,
+          icon: <Users className="h-4 w-4" />,
+          iconBg: 'bg-green-100'
+        }));
+        
+        setRecentActivities(activities);
       } else {
-        // No courses assigned
+        console.warn('DosenDashboard - Failed to fetch courses:', coursesResponse.data.message);
+        // Use fallback data if API fails
         setCourses([]);
-        setStats({
+        setStats(prevStats => ({
+          ...prevStats,
           totalCourses: 0,
-          totalStudents: 0,
-          activeTasks: 0,
-          pendingGrading: 0
-        });
+          totalStudents: 0
+        }));
       }
-      
-      // Mock data for activities and deadlines (TODO: replace with real data)
-      setRecentActivities([
-        {
-          id: 1,
-          type: 'info',
-          message: 'Selamat datang di dashboard dosen',
-          time: 'Baru saja',
-          urgent: false
-        }
-      ]);
-      
-      setUpcomingDeadlines([]);
       
     } catch (error) {
       console.error('DosenDashboard - Error fetching dashboard data:', error);
-      
-      // Fallback to empty state
+      // Set fallback data
       setCourses([]);
-      setStats({
+      setStats(prevStats => ({
+        ...prevStats,
         totalCourses: 0,
-        totalStudents: 0,
-        activeTasks: 0,
-        pendingGrading: 0
-      });
-      setRecentActivities([
-        {
-          id: 1,
-          type: 'error',
-          message: 'Gagal memuat data mata kuliah',
-          time: 'Baru saja',
-          urgent: true
-        }
-      ]);
-      setUpcomingDeadlines([]);
+        totalStudents: 0
+      }));
     } finally {
       setIsLoading(false);
     }
   };
 
-  const StatsCard = ({ title, value, icon, description, trend, color = 'blue' }) => (
-    <div className={`bg-white p-6 rounded-xl shadow-lg border-l-4 border-${color}-500 hover:shadow-xl transition-shadow`}>
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-gray-600">{title}</p>
-          <p className="text-3xl font-bold text-gray-900">{value}</p>
-          {description && <p className="text-sm text-gray-500 mt-1">{description}</p>}
-        </div>
-        <div className={`p-3 bg-${color}-100 rounded-lg`}>
-          {icon}
-        </div>
-      </div>
-      {trend && (
-        <div className="mt-3 flex items-center">
-          <TrendingUp className={`h-4 w-4 text-${trend > 0 ? 'green' : 'red'}-500 mr-1`} />
-          <span className={`text-sm font-medium text-${trend > 0 ? 'green' : 'red'}-600`}>
-            {trend > 0 ? '+' : ''}{trend}% dari minggu lalu
-          </span>
-        </div>
-      )}
-    </div>
-  );
-
-  const CourseCard = ({ course }) => (
-    <div className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all p-6 border border-gray-100">
-      <div className="flex justify-between items-start mb-4">
-        <div className="flex-1">
-          <h3 className="text-lg font-semibold text-gray-900 mb-1">{course.name}</h3>
-          <p className="text-gray-600 text-sm">{course.code} • {course.sks} SKS • {course.semester}</p>
-          <div className="flex items-center mt-2 space-x-4 text-sm text-gray-500">
-            <span className="flex items-center">
-              <Users className="h-4 w-4 mr-1" />
-              {course.students} mahasiswa
-            </span>
-            {course.totalClasses > 0 && (
-              <span className="flex items-center">
-                <BookOpen className="h-4 w-4 mr-1" />
-                {course.totalClasses} kelas
-              </span>
-            )}
-          </div>
-          {course.classes.length > 0 && (
-            <div className="mt-2 text-xs text-gray-500">
-              Kelas: {course.classes.join(', ')}
-            </div>
-          )}
-          {course.classDetails && (
-            <div className="mt-1 text-xs text-gray-400">
-              {course.classDetails}
-            </div>
-          )}
-        </div>
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-          course.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-        }`}>
-          {course.status === 'active' ? 'Aktif' : 'Tidak Aktif'}
-        </span>
-      </div>
-
-      <div className="mb-4">
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-sm font-medium text-gray-700">Progress Semester</span>
-          <span className="text-sm text-gray-600">{course.progress}%</span>
-        </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
-          <div 
-            className="bg-blue-600 h-2 rounded-full transition-all" 
-            style={{ width: `${course.progress}%` }}
-          ></div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        <div className="text-center p-3 bg-blue-50 rounded-lg">
-          <FileText className="h-5 w-5 text-blue-600 mx-auto mb-1" />
-          <p className="text-sm font-medium text-blue-900">{course.activeTasks}</p>
-          <p className="text-xs text-blue-600">Tugas Aktif</p>
-        </div>
-        <div className="text-center p-3 bg-orange-50 rounded-lg">
-          <Clock className="h-5 w-5 text-orange-600 mx-auto mb-1" />
-          <p className="text-sm font-medium text-orange-900">{course.pendingSubmissions}</p>
-          <p className="text-xs text-orange-600">Perlu Dinilai</p>
-        </div>
-      </div>
-
-      <div className="flex justify-between items-center pt-4 border-t border-gray-100">
-        <span className="text-xs text-gray-500">Update terakhir: {course.lastActivity}</span>
-        <button 
-          onClick={() => navigate(`/dosen/courses/${course.id}`)}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center"
-        >
-          Kelola
-          <ChevronRight className="h-4 w-4 ml-1" />
-        </button>
-      </div>
-    </div>
-  );
-
-  if (isLoading) {
-    return (
-      <Layout>
-        <div className="p-6 flex items-center justify-center min-h-96">
-          <div className="text-center">
-            <div className="w-16 h-16 border-4 border-t-blue-600 border-b-blue-600 border-r-transparent border-l-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-gray-600">Memuat dashboard...</p>
-          </div>
-        </div>
-      </Layout>
-    );
-  }
-
   return (
-    <Layout>
-      <div className="p-6 space-y-6">
-        {/* Header Section */}
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-6 rounded-xl shadow-lg">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold mb-2">
-                {getGreeting()}, {getUserDisplayName()}!
-              </h1>
-              <p className="text-blue-100">
-                Kelola mata kuliah dan mahasiswa Anda dengan efektif
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-blue-100 text-sm">Semester Aktif</p>
-              <p className="text-xl font-semibold">Ganjil 2024/2025</p>
-            </div>
-          </div>
-        </div>
+    <div className="flex min-h-screen bg-gray-50">
+      <DosenSidebar 
+        isCollapsed={sidebarCollapsed} 
+        onToggle={toggleSidebar} 
+      />
+      
+      <div className={`flex-1 transition-all duration-300`}>
+        <div className="p-6">
+          <Routes>
+            {/* Dashboard route - default content */}
+            <Route path="/" element={
+              <div className="space-y-6">
+                {/* Header */}
+                <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h1 className="text-3xl font-bold text-gray-900">
+                        {getGreeting()}, {getUserDisplayName()}
+                      </h1>
+                      <p className="text-gray-600 mt-1">
+                        Selamat datang di dashboard dosen
+                      </p>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <div className="relative">
+                        <Bell className="h-6 w-6 text-gray-600 hover:text-blue-600 cursor-pointer" />
+                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                          3
+                        </span>
+                      </div>
+                      <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                        <span className="text-white text-sm font-medium">
+                          {getUserDisplayName().charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatsCard
-            title="Total Mata Kuliah"
-            value={stats.totalCourses}
-            icon={<BookOpen className="h-6 w-6 text-blue-600" />}
-            description="Mata kuliah aktif"
-            trend={5}
-            color="blue"
-          />
-          <StatsCard
-            title="Total Mahasiswa"
-            value={stats.totalStudents}
-            icon={<Users className="h-6 w-6 text-green-600" />}
-            description="Mahasiswa terdaftar"
-            trend={8}
-            color="green"
-          />
-          <StatsCard
-            title="Tugas Aktif"
-            value={stats.activeTasks}
-            icon={<FileText className="h-6 w-6 text-purple-600" />}
-            description="Tugas yang sedang berjalan"
-            trend={-2}
-            color="purple"
-          />
-          <StatsCard
-            title="Perlu Dinilai"
-            value={stats.pendingGrading}
-            icon={<Clock className="h-6 w-6 text-orange-600" />}
-            description="Tugas menunggu penilaian"
-            trend={12}
-            color="orange"
-          />
-        </div>
+                {/* Stats Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                    <div className="flex items-center">
+                      <div className="p-3 bg-blue-100 rounded-lg">
+                        <BookOpen className="h-6 w-6 text-blue-600" />
+                      </div>
+                      <div className="ml-4">
+                        <p className="text-sm font-medium text-gray-600">Total Mata Kuliah</p>
+                        <p className="text-2xl font-bold text-gray-900">{stats.totalCourses}</p>
+                      </div>
+                    </div>
+                  </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Content - Courses */}
-          <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold text-gray-900">Mata Kuliah Saya</h2>
-                <div className="flex items-center space-x-3">
-                  <select 
-                    value={selectedFilter}
-                    onChange={(e) => setSelectedFilter(e.target.value)}
-                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                  >
-                    <option value="all">Semua</option>
-                    <option value="active">Aktif</option>
-                    <option value="completed">Selesai</option>
-                  </select>
-                  <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Buat Tugas
-                  </button>
+                  <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                    <div className="flex items-center">
+                      <div className="p-3 bg-green-100 rounded-lg">
+                        <Users className="h-6 w-6 text-green-600" />
+                      </div>
+                      <div className="ml-4">
+                        <p className="text-sm font-medium text-gray-600">Total Mahasiswa</p>
+                        <p className="text-2xl font-bold text-gray-900">{stats.totalStudents}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                    <div className="flex items-center">
+                      <div className="p-3 bg-yellow-100 rounded-lg">
+                        <FileText className="h-6 w-6 text-yellow-600" />
+                      </div>
+                      <div className="ml-4">
+                        <p className="text-sm font-medium text-gray-600">Tugas Aktif</p>
+                        <p className="text-2xl font-bold text-gray-900">{stats.activeTasks}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                    <div className="flex items-center">
+                      <div className="p-3 bg-red-100 rounded-lg">
+                        <Clock className="h-6 w-6 text-red-600" />
+                      </div>
+                      <div className="ml-4">
+                        <p className="text-sm font-medium text-gray-600">Menunggu Penilaian</p>
+                        <p className="text-2xl font-bold text-gray-900">{stats.pendingGrading}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Content Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Mata Kuliah */}
+                  <div className="lg:col-span-2">
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                      <div className="p-6 border-b border-gray-200">
+                        <div className="flex items-center justify-between">
+                          <h2 className="text-lg font-semibold text-gray-900">Mata Kuliah Anda</h2>
+                          <button 
+                            onClick={() => navigate('/dosen/dashboard/courses')}
+                            className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center"
+                          >
+                            Lihat Semua
+                            <ChevronRight className="h-4 w-4 ml-1" />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="p-6">
+                        {isLoading ? (
+                          <div className="space-y-4">
+                            {[...Array(3)].map((_, i) => (
+                              <div key={i} className="animate-pulse">
+                                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : courses.length > 0 ? (
+                          <div className="space-y-4">
+                            {courses.slice(0, 3).map((course) => (
+                              <div key={course.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <h3 className="font-medium text-gray-900">{course.name}</h3>
+                                    <p className="text-sm text-gray-600">{course.code} • {course.semester}</p>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="text-sm font-medium text-gray-900">{course.students} mahasiswa</p>
+                                    <p className="text-xs text-gray-500">{course.tasks} tugas</p>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-gray-500 text-center py-8">Belum ada mata kuliah yang ditugaskan</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Quick Actions */}
+                  <div>
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                      <div className="p-6 border-b border-gray-200">
+                        <h2 className="text-lg font-semibold text-gray-900">Aksi Cepat</h2>
+                      </div>
+                      <div className="p-6">
+                        <div className="space-y-3">
+                          <button className="w-full text-left p-3 rounded-lg hover:bg-gray-50 transition-colors flex items-center">
+                            <Plus className="h-4 w-4 text-blue-600 mr-3" />
+                            <span className="text-sm font-medium">Buat Tugas Baru</span>
+                          </button>
+                          <button 
+                            onClick={() => navigate('/dosen/dashboard/assignments')}
+                            className="w-full text-left p-3 rounded-lg hover:bg-gray-50 transition-colors flex items-center"
+                          >
+                            <FileText className="h-4 w-4 text-green-600 mr-3" />
+                            <span className="text-sm font-medium">Lihat Semua Tugas</span>
+                          </button>
+                          <button 
+                            onClick={() => navigate('/dosen/dashboard/students')}
+                            className="w-full text-left p-3 rounded-lg hover:bg-gray-50 transition-colors flex items-center"
+                          >
+                            <Users className="h-4 w-4 text-purple-600 mr-3" />
+                            <span className="text-sm font-medium">Kelola Mahasiswa</span>
+                          </button>
+                          <button 
+                            onClick={() => navigate('/dosen/dashboard/grading')}
+                            className="w-full text-left p-3 rounded-lg hover:bg-gray-50 transition-colors flex items-center"
+                          >
+                            <BarChart3 className="h-4 w-4 text-orange-600 mr-3" />
+                            <span className="text-sm font-medium">Lihat Statistik</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
-              
-              <div className="space-y-4">
-                {courses.length > 0 ? (
-                  courses.map(course => (
-                    <CourseCard key={course.id} course={course} />
-                  ))
-                ) : (
-                  <div className="text-center py-12">
-                    <BookOpen className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">Belum Ada Mata Kuliah</h3>
-                    <p className="text-gray-500 mb-4">
-                      Anda belum di-assign ke mata kuliah manapun.<br />
-                      Silakan hubungi administrator untuk mendapatkan assignment.
-                    </p>
-                    <div className="bg-blue-50 p-4 rounded-lg text-left max-w-md mx-auto">
-                      <h4 className="font-medium text-blue-900 mb-2">Cara mendapatkan assignment:</h4>
-                      <ul className="text-sm text-blue-700 space-y-1">
-                        <li>• Hubungi administrator sistem</li>
-                        <li>• Administrator akan membuat kelas dan meng-assign Anda</li>
-                        <li>• Mata kuliah akan muncul di dashboard setelah di-assign</li>
-                      </ul>
-                    </div>
-                  </div>
-                )}
+            } />
+            
+            {/* Existing routes */}
+            <Route path="/courses" element={<DosenCourses />} />
+            <Route path="/courses/:courseId" element={<CourseDetail />} />
+            
+            {/* Placeholder routes untuk menu sidebar lainnya */}
+            <Route path="/students" element={
+              <div className="bg-white rounded-lg shadow p-6">
+                <h1 className="text-2xl font-bold text-gray-800 mb-4">Daftar Mahasiswa</h1>
+                <p className="text-gray-600">Halaman daftar mahasiswa sedang dalam pengembangan.</p>
               </div>
-            </div>
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Recent Activities */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Aktivitas Terbaru</h3>
-                <Bell className="h-5 w-5 text-gray-400" />
+            } />
+            
+            <Route path="/assignments" element={
+              <div className="bg-white rounded-lg shadow p-6">
+                <h1 className="text-2xl font-bold text-gray-800 mb-4">Tugas & Proyek</h1>
+                <p className="text-gray-600">Halaman tugas dan proyek sedang dalam pengembangan.</p>
               </div>
-              <div className="space-y-3">
-                {recentActivities.map(activity => (
-                  <div key={activity.id} className={`p-3 rounded-lg border-l-4 ${
-                    activity.urgent 
-                      ? 'border-red-500 bg-red-50' 
-                      : 'border-blue-500 bg-blue-50'
-                  }`}>
-                    <p className="text-sm font-medium text-gray-900">{activity.message}</p>
-                    <p className="text-xs text-gray-600 mt-1">{activity.time}</p>
-                  </div>
-                ))}
+            } />
+            
+            <Route path="/grading" element={
+              <div className="bg-white rounded-lg shadow p-6">
+                <h1 className="text-2xl font-bold text-gray-800 mb-4">Penilaian</h1>
+                <p className="text-gray-600">Halaman penilaian sedang dalam pengembangan.</p>
               </div>
-            </div>
-
-            {/* Upcoming Deadlines */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Deadline Mendatang</h3>
-              <div className="space-y-3">
-                {upcomingDeadlines.map(deadline => (
-                  <div key={deadline.id} className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                    <div className="flex justify-between items-start mb-2">
-                      <h4 className="font-medium text-gray-900 text-sm">{deadline.task}</h4>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        deadline.daysLeft <= 3 
-                          ? 'bg-red-100 text-red-800' 
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {deadline.daysLeft} hari
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-600 mb-2">{deadline.course}</p>
-                    <div className="flex justify-between items-center text-xs text-gray-500">
-                      <span>{deadline.submissions}/{deadline.totalStudents} terkumpul</span>
-                      <span>{new Date(deadline.deadline).toLocaleDateString('id-ID')}</span>
-                    </div>
-                  </div>
-                ))}
+            } />
+            
+            <Route path="/schedule" element={
+              <div className="bg-white rounded-lg shadow p-6">
+                <h1 className="text-2xl font-bold text-gray-800 mb-4">Jadwal</h1>
+                <p className="text-gray-600">Halaman jadwal sedang dalam pengembangan.</p>
               </div>
-            </div>
-
-            {/* Quick Actions */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Aksi Cepat</h3>
-              <div className="space-y-2">
-                <button className="w-full text-left p-3 rounded-lg hover:bg-gray-50 transition-colors flex items-center">
-                  <Plus className="h-4 w-4 text-blue-600 mr-3" />
-                  <span className="text-sm font-medium">Buat Tugas Baru</span>
-                </button>
-                <button className="w-full text-left p-3 rounded-lg hover:bg-gray-50 transition-colors flex items-center">
-                  <FileText className="h-4 w-4 text-green-600 mr-3" />
-                  <span className="text-sm font-medium">Lihat Semua Tugas</span>
-                </button>
-                <button className="w-full text-left p-3 rounded-lg hover:bg-gray-50 transition-colors flex items-center">
-                  <Users className="h-4 w-4 text-purple-600 mr-3" />
-                  <span className="text-sm font-medium">Kelola Mahasiswa</span>
-                </button>
-                <button className="w-full text-left p-3 rounded-lg hover:bg-gray-50 transition-colors flex items-center">
-                  <BarChart3 className="h-4 w-4 text-orange-600 mr-3" />
-                  <span className="text-sm font-medium">Lihat Statistik</span>
-                </button>
+            } />
+            
+            <Route path="/settings" element={
+              <div className="bg-white rounded-lg shadow p-6">
+                <h1 className="text-2xl font-bold text-gray-800 mb-4">Pengaturan</h1>
+                <p className="text-gray-600">Halaman pengaturan sedang dalam pengembangan.</p>
               </div>
-            </div>
-          </div>
+            } />
+            
+            {/* Default redirect */}
+            <Route path="*" element={<Navigate to="/dosen/dashboard" replace />} />
+          </Routes>
         </div>
       </div>
-    </Layout>
+    </div>
   );
 };
 
