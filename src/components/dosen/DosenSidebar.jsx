@@ -66,9 +66,9 @@ const DosenSidebar = ({ isCollapsed, onToggle }) => {
   return (
     <div className={`bg-white shadow-lg transition-all duration-300 ${
       isCollapsed ? 'w-16' : 'w-64'
-    } min-h-screen flex flex-col`}>
+    } h-screen flex flex-col fixed left-0 top-0 z-40 overflow-y-auto`}>
       {/* Header */}
-      <div className="p-4 border-b border-gray-200">
+      <div className="p-4 border-b border-gray-200 flex-shrink-0">
         <div className="flex items-center justify-between">
           {!isCollapsed && (
             <div>
@@ -78,7 +78,7 @@ const DosenSidebar = ({ isCollapsed, onToggle }) => {
           )}
           <button
             onClick={onToggle}
-            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            className="p-2 rounded-lg hover:bg-gray-100 transition-colors flex-shrink-0"
           >
             {isCollapsed ? (
               <ChevronRight className="w-5 h-5 text-gray-600" />
@@ -90,7 +90,7 @@ const DosenSidebar = ({ isCollapsed, onToggle }) => {
       </div>
 
       {/* Navigation Menu */}
-      <nav className="flex-1 p-4">
+      <nav className="flex-1 p-4 overflow-y-auto">
         <ul className="space-y-2">
           {menuItems.map((item) => {
             const Icon = item.icon;
@@ -119,7 +119,7 @@ const DosenSidebar = ({ isCollapsed, onToggle }) => {
       </nav>
 
       {/* Settings & Logout */}
-      <div className="p-4 border-t border-gray-200">
+      <div className="p-4 border-t border-gray-200 flex-shrink-0">
         <ul className="space-y-2">
           <li>
             <NavLink

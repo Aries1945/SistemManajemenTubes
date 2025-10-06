@@ -159,13 +159,15 @@ const DosenDashboard = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50">
       <DosenSidebar 
         isCollapsed={sidebarCollapsed} 
         onToggle={toggleSidebar} 
       />
       
-      <div className={`flex-1 transition-all duration-300`}>
+      <div className={`transition-all duration-300 ${
+        sidebarCollapsed ? 'ml-16' : 'ml-64'
+      }`}>
         <div className="p-6">
           <Routes>
             {/* Dashboard route - default content */}
