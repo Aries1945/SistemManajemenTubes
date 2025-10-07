@@ -6,7 +6,7 @@ import {
   BarChart3, User, MessageSquare, Filter, Search, Target, Trophy
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
-import Layout from "../../components/Layout";
+import MahasiswaLayout from "../../components/MahasiswaLayout";
 import api, { getCurrentUser, getMahasiswaClasses } from "../../utils/api";
 
 const MahasiswaDashboard = () => {
@@ -414,19 +414,19 @@ const MahasiswaDashboard = () => {
 
   if (isLoading || !currentUser) {
     return (
-      <Layout>
+      <MahasiswaLayout>
         <div className="p-6 flex items-center justify-center min-h-96">
           <div className="text-center">
             <div className="w-16 h-16 border-4 border-t-blue-600 border-b-blue-600 border-r-transparent border-l-transparent rounded-full animate-spin mx-auto mb-4"></div>
             <p className="text-gray-600">Memuat dashboard...</p>
           </div>
         </div>
-      </Layout>
+      </MahasiswaLayout>
     );
   }
 
   return (
-    <Layout>
+    <MahasiswaLayout>
       <div className="p-6 space-y-6">
         {/* Header Section */}
         <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white p-6 rounded-xl shadow-lg">
@@ -635,7 +635,7 @@ const MahasiswaDashboard = () => {
           </div>
         </div>
       </div>
-    </Layout>
+    </MahasiswaLayout>
   );
 };
 

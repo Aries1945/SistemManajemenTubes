@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Users, FileText, TrendingUp } from 'lucide-react';
+import { BookOpen, Users, FileText, TrendingUp, ChevronRight } from 'lucide-react';
 
 const DosenCourses = () => {
   const navigate = useNavigate();
@@ -46,14 +46,20 @@ const DosenCourses = () => {
           <h1 className="text-2xl font-bold text-gray-900">Mata Kuliah</h1>
           <p className="text-gray-600">Daftar mata kuliah yang Anda ampu</p>
         </div>
+        {courses.length > 0 && (
+          <div className="flex items-center text-sm text-gray-500">
+            <span>Geser untuk melihat semua</span>
+            <ChevronRight size={16} className="ml-1" />
+          </div>
+        )}
       </div>
       
-      <div className="space-y-6">
+      <div className="flex gap-6 overflow-x-auto pb-4">
         {courses.map(course => (
           <CourseCard 
             key={course.id} 
             course={course} 
-            onSelect={() => navigate(`/courses/${course.id}`)}
+            onSelect={() => navigate(`/dosen/dashboard/courses/${course.id}`)}
           />
         ))}
       </div>
@@ -70,64 +76,56 @@ const DosenCourses = () => {
 };
 
 const CourseCard = ({ course, onSelect }) => (
-  <div className="bg-white rounded-lg shadow border overflow-hidden">
-    {/* Header */}
-    <div className="p-6 border-b border-gray-200">
-      <div className="flex justify-between items-start">
-        <div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-1">{course.name}</h3>
-          <p className="text-gray-600">{course.code} • {course.sks} SKS • {course.semester}</p>
-        </div>
-        <button 
-          onClick={onSelect}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-        >
-          Kelola Mata Kuliah
-        </button>
-      </div>
+  <div 
+    onClick={onSelect}
+    className="bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg p-6 cursor-pointer hover:from-blue-500 hover:to-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl relative overflow-hidden flex-shrink-0 w-80"
+  >
+    {/* Background Pattern */}
+    <div className="absolute inset-0 opacity-10">
+      <div className="absolute top-4 right-4 w-8 h-8 border-2 border-white rounded-sm"></div>
+      <div className="absolute top-8 right-8 w-6 h-6 border-2 border-white rounded-sm"></div>
+      <div className="absolute bottom-4 left-4 w-10 h-10 border-2 border-white rounded-sm"></div>
+      <div className="absolute bottom-8 left-8 w-4 h-4 border-2 border-white rounded-sm"></div>
     </div>
-
-    {/* Stats Grid */}
-    <div className="p-6">
-      <div className="grid grid-cols-3 gap-6">
-        {/* Mahasiswa */}
-        <div className="text-center">
-          <div className="bg-blue-50 rounded-lg p-4">
-            <div className="flex items-center justify-center mb-2">
-              <Users className="text-blue-600" size={24} />
-            </div>
-            <p className="text-3xl font-bold text-blue-600 mb-1">{course.students}</p>
-            <p className="text-sm text-gray-600">Mahasiswa</p>
-          </div>
+    
+    {/* Content */}
+    <div className="relative z-10">
+      {/* Semester Badge */}
+      <div className="inline-block bg-white bg-opacity-20 text-white text-xs px-2 py-1 rounded-full mb-3">
+        {course.semester}
+      </div>
+      
+      {/* Course Title */}
+      <h3 className="text-white font-semibold text-lg mb-2 leading-tight">
+        {course.name}
+      </h3>
+      
+      {/* Course Details */}
+      <div className="flex items-center justify-between text-white text-opacity-90">
+        <div className="text-sm">
+          <span className="font-medium">{course.code}</span>
+          <span className="mx-2">•</span>
+          <span>{course.sks} SKS</span>
         </div>
-
-        {/* Tugas Besar */}
-        <div className="text-center">
-          <div className="bg-green-50 rounded-lg p-4">
-            <div className="flex items-center justify-center mb-2">
-              <FileText className="text-green-600" size={24} />
-            </div>
-            <p className="text-3xl font-bold text-green-600 mb-1">{course.tasks}</p>
-            <p className="text-sm text-gray-600">Tugas Besar</p>
+        
+        {/* Stats */}
+        <div className="flex items-center space-x-4 text-sm">
+          <div className="flex items-center space-x-1">
+            <Users size={16} />
+            <span>{course.students}</span>
           </div>
-        </div>
-
-        {/* Kelompok Aktif */}
-        <div className="text-center">
-          <div className="bg-purple-50 rounded-lg p-4">
-            <div className="flex items-center justify-center mb-2">
-              <TrendingUp className="text-purple-600" size={24} />
-            </div>
-            <p className="text-3xl font-bold text-purple-600 mb-1">{course.activeGroups}</p>
-            <p className="text-sm text-gray-600">Kelompok Aktif</p>
+          <div className="flex items-center space-x-1">
+            <FileText size={16} />
+            <span>{course.tasks}</span>
+          </div>
+          <div className="flex items-center space-x-1">
+            <TrendingUp size={16} />
+            <span>{course.activeGroups}</span>
           </div>
         </div>
       </div>
     </div>
   </div>
 );
-
-
-
 
 export default DosenCourses;

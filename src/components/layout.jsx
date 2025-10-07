@@ -1,150 +1,193 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
-  BookOpen, Settings, Bell, User, LogOut, Users, 
-  FileText, UserPlus
+  BookOpen, 
+  Users, 
+  FileText, 
+  BarChart3, 
+  Settings, 
+  LogOut,
+  Menu,
+  X,
+  Home,
+  Bell,
+  User
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const Layout = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuth(); // Get user and logout from AuthContext
+  const { user, logout } = useAuth();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Menu items untuk dosen
+  const menuItems = [
+    {
+      title: 'Dashboard',
+      icon: Home,
+      path: '/dosen/dashboard',
+      active: location.pathname === '/dosen/dashboard'
+    },
+    {
+      title: 'Mata Kuliah',
+      icon: BookOpen,
+      path: '/dosen/dashboard/mata-kuliah',
+      active: location.pathname.includes('/dosen/dashboard/mata-kuliah') || 
+              location.pathname.includes('/dosen/dashboard/courses')
+    },
+ 
+
+  ];
+
+  const handleNavigation = (path) => {
+    navigate(path);
+    setIsMobileMenuOpen(false);
+  };
 
   const handleLogout = () => {
     logout();
-    // The navigate to login is handled by the logout function in AuthContext
+    navigate('/login');
   };
 
-  const getMenuItems = () => {
-    // Use the role from auth context
-    switch (user?.role) {
-      case 'mahasiswa':
-        return [
-          { path: '/mahasiswa/dashboard', label: 'Dashboard', icon: BookOpen },
-          { path: '/mahasiswa/courses', label: 'Mata Kuliah Saya', icon: BookOpen },
-          { path: '/mahasiswa/groups', label: 'Kelompok Saya', icon: Users },
-          { path: '/mahasiswa/assignments', label: 'Tugas & Nilai', icon: FileText }
-        ];
-      case 'admin':
-        return [
-          { path: '/admin/dashboard', label: 'Dashboard', icon: BookOpen },
-          { path: '/admin/users', label: 'Kelola User', icon: UserPlus }
-        ];
-      case 'dosen':
-        return [
-          { path: '/dosen/dashboard', label: 'Dashboard', icon: BookOpen },
-          { path: '/dosen/courses', label: 'Mata Kuliah', icon: BookOpen }
-        ];
-      default:
-        return []; // No menu items if no valid role
+  // Get user display name
+  const getUserDisplayName = () => {
+    if (user?.nama_lengkap) return user.nama_lengkap;
+    if (user?.name) return user.name;
+    if (user?.email) {
+      const name = user.email.split('@')[0];
+      return name.charAt(0).toUpperCase() + name.slice(1);
     }
+    return 'User';
   };
-
-  const Sidebar = () => (
-    <div className="w-64 bg-slate-900 text-white h-screen flex flex-col">
-      <div className="p-6 border-b border-slate-700">
-        <h1 className="text-xl font-bold">UNPAR TugBes</h1>
-        <p className="text-slate-400 text-sm">Manajemen Tugas Besar</p>
-      </div>
-      
-      <nav className="flex-1 p-4">
-        <ul className="space-y-2">
-          {getMenuItems().map((item) => {
-            const Icon = item.icon;
-            const isActive = location.pathname === item.path || 
-                           (item.path !== `/${user?.role}/dashboard` && location.pathname.startsWith(item.path));
-            
-            return (
-              <li key={item.path}>
-                <button 
-                  onClick={() => navigate(item.path)}
-                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                    isActive ? 'bg-blue-600' : 'hover:bg-slate-800'
-                  }`}
-                >
-                  <Icon size={20} />
-                  {item.label}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
-      
-      <div className="p-4 border-t border-slate-700">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="bg-slate-700 rounded-full h-10 w-10 flex items-center justify-center">
-            <User size={20} className="text-slate-300" />
-          </div>
-          <div>
-            <p className="font-medium">{user?.email}</p>
-            <p className="text-sm text-slate-400 capitalize">{user?.role}</p>
-          </div>
-        </div>
-        
-        <button 
-          onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg bg-red-600 hover:bg-red-700 transition-colors"
-        >
-          <LogOut size={20} />
-          Logout
-        </button>
-      </div>
-    </div>
-  );
-
-  const Header = () => {
-    const getPageTitle = () => {
-      // Mahasiswa routes
-      if (location.pathname === '/mahasiswa/dashboard') return 'Dashboard Mahasiswa';
-      if (location.pathname === '/mahasiswa/courses') return 'Mata Kuliah Saya';
-      if (location.pathname.startsWith('/mahasiswa/courses/')) return 'Detail Mata Kuliah';
-      if (location.pathname === '/mahasiswa/groups') return 'Kelompok Saya';
-      if (location.pathname === '/mahasiswa/assignments') return 'Tugas & Nilai';
-      
-      // Admin routes
-      if (location.pathname === '/admin/dashboard') return 'Dashboard Admin';
-      if (location.pathname === '/admin/users') return 'Kelola User';
-      
-      // Dosen routes
-      if (location.pathname === '/dosen/dashboard') return 'Dashboard Dosen';
-      if (location.pathname === '/dosen/courses') return 'Mata Kuliah';
-      if (location.pathname.startsWith('/dosen/courses/')) return 'Detail Mata Kuliah';
-      
-      return 'Dashboard';
-    };
-
-    return (
-      <div className="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">{getPageTitle()}</h2>
-          <p className="text-gray-600">Semester Ganjil 2024/2025</p>
-        </div>
-        <div className="flex items-center gap-4">
-          <Bell className="text-gray-600 cursor-pointer hover:text-gray-800" size={20} />
-          <Settings className="text-gray-600 cursor-pointer hover:text-gray-800" size={20} />
-          <div className="flex items-center gap-2 p-2 rounded-lg">
-            <User size={20} className="text-gray-600" />
-            <span className="text-sm font-medium">{user?.email}</span>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // Only render the layout if we have a user, otherwise could show loading
-  if (!user) return null;
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      <Sidebar />
-      <div className="flex-1 overflow-auto">
-        <Header />
-        <main>
+    <div className="min-h-screen bg-gray-50">
+      {/* Top Header */}
+      <header className="bg-white shadow-sm border-b border-gray-200 fixed top-0 left-0 right-0 z-30">
+        <div className="flex items-center justify-between px-4 py-3">
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="p-2 rounded-lg hover:bg-gray-100 lg:block hidden"
+            >
+              <Menu className="h-6 w-6 text-gray-600" />
+            </button>
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="p-2 rounded-lg hover:bg-gray-100 lg:hidden"
+            >
+              {isMobileMenuOpen ? (
+                <X className="h-6 w-6 text-gray-600" />
+              ) : (
+                <Menu className="h-6 w-6 text-gray-600" />
+              )}
+            </button>
+            <div className="flex items-center space-x-2">
+              <div className="bg-blue-600 p-2 rounded-lg">
+                <BookOpen className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">Portal Dosen</h1>
+                <p className="text-xs text-gray-500">Universitas XYZ</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-3">
+            <button className="p-2 rounded-lg hover:bg-gray-100 relative">
+              <Bell className="h-5 w-5 text-gray-600" />
+              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+            </button>
+            <div className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-gray-100 cursor-pointer">
+              <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                <User className="h-5 w-5 text-white" />
+              </div>
+              <div className="hidden md:block">
+                <p className="text-sm font-medium text-gray-900">{getUserDisplayName()}</p>
+                <p className="text-xs text-gray-500">{user?.role || 'Dosen'}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Mobile Menu Overlay */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside className={`
+        fixed top-16 left-0 h-[calc(100vh-4rem)] bg-white border-r border-gray-200 z-40
+        transition-all duration-300 ease-in-out
+        ${isSidebarOpen ? 'w-64' : 'w-20'}
+        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+      `}>
+        <nav className="p-4 space-y-2">
+          {menuItems.map((item) => (
+            <button
+              key={item.path}
+              onClick={() => handleNavigation(item.path)}
+              className={`
+                w-full flex items-center space-x-3 px-4 py-3 rounded-lg
+                transition-all duration-200
+                ${item.active 
+                  ? 'bg-blue-600 text-white shadow-lg' 
+                  : 'text-gray-700 hover:bg-gray-100'
+                }
+              `}
+            >
+              <item.icon className={`h-5 w-5 flex-shrink-0 ${item.active ? 'text-white' : 'text-gray-600'}`} />
+              {isSidebarOpen && (
+                <span className="font-medium">{item.title}</span>
+              )}
+            </button>
+          ))}
+
+          <div className="pt-4 mt-4 border-t border-gray-200">
+            <button
+              onClick={() => handleNavigation('/dosen/dashboard/pengaturan')}
+              className={`
+                w-full flex items-center space-x-3 px-4 py-3 rounded-lg
+                text-gray-700 hover:bg-gray-100 transition-all duration-200
+              `}
+            >
+              <Settings className="h-5 w-5 flex-shrink-0 text-gray-600" />
+              {isSidebarOpen && (
+                <span className="font-medium">Pengaturan</span>
+              )}
+            </button>
+            
+            <button
+              onClick={handleLogout}
+              className={`
+                w-full flex items-center space-x-3 px-4 py-3 rounded-lg
+                text-red-600 hover:bg-red-50 transition-all duration-200
+              `}
+            >
+              <LogOut className="h-5 w-5 flex-shrink-0" />
+              {isSidebarOpen && (
+                <span className="font-medium">Logout</span>
+              )}
+            </button>
+          </div>
+        </nav>
+      </aside>
+
+      {/* Main Content */}
+      <main className={`
+        pt-16 transition-all duration-300 ease-in-out
+        ${isSidebarOpen ? 'lg:ml-64' : 'lg:ml-20'}
+      `}>
+        <div className="min-h-[calc(100vh-4rem)]">
           {children}
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   );
 };
