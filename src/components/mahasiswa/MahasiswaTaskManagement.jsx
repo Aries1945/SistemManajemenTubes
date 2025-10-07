@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
 import { 
   FileText, Calendar, Clock, CheckCircle, Upload, Download, 
-  Eye, AlertCircle, Star, User, Users, Play, Paperclip
+  Eye, AlertCircle, Star, User, Users, Play, Paperclip, X, ArrowLeft
 } from 'lucide-react';
 
 const MahasiswaTaskManagement = ({ courseId, courseName }) => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [sortBy, setSortBy] = useState('dueDate');
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [showPreview, setShowPreview] = useState(false);
+  const [submissionFiles, setSubmissionFiles] = useState([]);
+  const [submissionNote, setSubmissionNote] = useState('');
 
   // Sample tasks data
   const tasks = [
@@ -14,6 +18,32 @@ const MahasiswaTaskManagement = ({ courseId, courseName }) => {
       id: 1,
       title: 'Tugas 1: HTML & CSS Fundamentals',
       description: 'Membuat website portfolio menggunakan HTML dan CSS. Pastikan responsive design dan validasi W3C.',
+      detailedDescription: `
+## Deskripsi Tugas
+Buatlah sebuah website portfolio pribadi yang menampilkan informasi tentang diri Anda, keahlian, dan proyek-proyek yang pernah dikerjakan.
+
+## Requirements:
+1. Menggunakan HTML5 semantic tags
+2. Styling dengan CSS3 (tanpa framework)
+3. Responsive design untuk mobile dan desktop
+4. Minimal 3 halaman (Home, About, Portfolio)
+5. Validasi W3C untuk HTML dan CSS
+6. Cross-browser compatible
+
+## Penilaian:
+- HTML Structure (20%)
+- CSS Styling (30%)
+- Responsive Design (25%)
+- Kreativitas (15%)
+- W3C Validation (10%)
+
+## Submission Format:
+Upload file .zip yang berisi:
+- index.html dan file HTML lainnya
+- folder css/ dengan file stylesheet
+- folder img/ dengan gambar yang digunakan
+- README.md dengan instruksi
+      `,
       dueDate: '2024-10-15',
       submittedDate: '2024-10-14',
       status: 'submitted',
@@ -23,12 +53,34 @@ const MahasiswaTaskManagement = ({ courseId, courseName }) => {
       maxGrade: 100,
       attachments: ['portfolio-website.zip'],
       submissionCount: 1,
-      lateSubmission: false
+      lateSubmission: false,
+      taskFiles: ['tugas1-requirements.pdf', 'template-portfolio.zip']
     },
     {
       id: 2,
       title: 'Tugas 2: JavaScript Interactive Features',
       description: 'Menambahkan fitur interaktif menggunakan JavaScript vanilla. Implementasikan minimal 3 fitur interaktif.',
+      detailedDescription: `
+## Deskripsi Tugas
+Tambahkan fitur-fitur interaktif pada website yang telah dibuat sebelumnya menggunakan JavaScript vanilla (tanpa library).
+
+## Requirements:
+1. Form validation
+2. Dynamic content loading
+3. Image slider/carousel
+4. Modal/popup windows
+5. Smooth scrolling navigation
+6. Dark mode toggle
+
+## Implementasi Minimal:
+Pilih dan implementasikan minimal 3 dari 6 fitur di atas
+
+## Penilaian:
+- Code Quality (30%)
+- Functionality (40%)
+- User Experience (20%)
+- Documentation (10%)
+      `,
       dueDate: '2024-10-25',
       submittedDate: '2024-10-24',
       status: 'submitted',
@@ -38,12 +90,39 @@ const MahasiswaTaskManagement = ({ courseId, courseName }) => {
       maxGrade: 100,
       attachments: ['interactive-features.zip', 'documentation.pdf'],
       submissionCount: 2,
-      lateSubmission: false
+      lateSubmission: false,
+      taskFiles: ['tugas2-instructions.pdf', 'example-code.js']
     },
     {
       id: 3,
       title: 'Tugas 3: React.js Application',
       description: 'Membuat aplikasi web menggunakan React.js dengan state management dan routing.',
+      detailedDescription: `
+## Deskripsi Tugas
+Buatlah sebuah aplikasi web menggunakan React.js yang menerapkan konsep component-based architecture.
+
+## Requirements:
+1. Gunakan Create React App atau Vite
+2. Minimal 5 components
+3. State management dengan useState/useReducer
+4. Routing dengan React Router
+5. API Integration (gunakan public API)
+6. Responsive design
+
+## Contoh Aplikasi:
+- Todo List App
+- Weather App
+- Movie Database
+- News Reader
+- Recipe Finder
+
+## Penilaian:
+- Component Structure (25%)
+- State Management (25%)
+- Routing Implementation (20%)
+- API Integration (20%)
+- UI/UX (10%)
+      `,
       dueDate: '2024-11-05',
       submittedDate: '2024-11-03',
       status: 'submitted',
@@ -53,12 +132,49 @@ const MahasiswaTaskManagement = ({ courseId, courseName }) => {
       maxGrade: 100,
       attachments: ['react-app.zip'],
       submissionCount: 1,
-      lateSubmission: false
+      lateSubmission: false,
+      taskFiles: ['tugas3-guidelines.pdf', 'starter-template.zip']
     },
     {
       id: 4,
       title: 'Project: E-Commerce Website',
       description: 'Membuat website e-commerce lengkap dengan fitur keranjang, pembayaran, dan admin panel. Tugas kelompok 4-5 orang.',
+      detailedDescription: `
+## Deskripsi Project
+Buatlah sebuah website e-commerce sederhana yang memiliki fitur lengkap untuk customer dan admin.
+
+## Requirements:
+### Customer Features:
+1. Product listing dan detail
+2. Shopping cart
+3. Checkout process
+4. User authentication
+5. Order history
+
+### Admin Features:
+1. Product management (CRUD)
+2. Order management
+3. User management
+4. Dashboard analytics
+
+## Tech Stack:
+- Frontend: React.js / Vue.js / Angular
+- Backend: Node.js / PHP / Python
+- Database: MySQL / MongoDB / PostgreSQL
+
+## Deliverables:
+1. Source code (GitHub repository)
+2. Documentation
+3. Demo video (5-10 menit)
+4. Presentation slides
+
+## Penilaian:
+- Functionality (40%)
+- Code Quality (20%)
+- UI/UX Design (15%)
+- Documentation (15%)
+- Presentation (10%)
+      `,
       dueDate: '2024-11-20',
       submittedDate: null,
       status: 'in_progress',
@@ -69,12 +185,39 @@ const MahasiswaTaskManagement = ({ courseId, courseName }) => {
       attachments: [],
       submissionCount: 0,
       lateSubmission: false,
-      groupMembers: ['John Doe', 'Jane Smith', 'Bob Wilson', 'Alice Brown']
+      groupMembers: ['John Doe', 'Jane Smith', 'Bob Wilson', 'Alice Brown'],
+      taskFiles: ['project-requirements.pdf', 'database-schema.sql', 'api-documentation.pdf']
     },
     {
       id: 5,
       title: 'Final Project: Full-Stack Web Application',
       description: 'Membuat aplikasi web full-stack dengan database, authentication, dan deployment.',
+      detailedDescription: `
+## Deskripsi Final Project
+Buatlah sebuah aplikasi web full-stack sesuai dengan topik yang Anda pilih dan disetujui oleh dosen.
+
+## Requirements:
+1. Frontend framework (React/Vue/Angular)
+2. Backend API (REST/GraphQL)
+3. Database integration
+4. User authentication & authorization
+5. Deployment (hosting)
+6. Documentation lengkap
+
+## Tahapan:
+1. Proposal (Week 1-2)
+2. Development Sprint 1 (Week 3-4)
+3. Development Sprint 2 (Week 5-6)
+4. Testing & Bug Fixing (Week 7-8)
+5. Final Presentation (Week 9)
+
+## Penilaian:
+- Proposal (10%)
+- Progress Report 1 (15%)
+- Progress Report 2 (15%)
+- Final Product (40%)
+- Presentation (20%)
+      `,
       dueDate: '2024-12-15',
       submittedDate: null,
       status: 'not_started',
@@ -84,22 +227,8 @@ const MahasiswaTaskManagement = ({ courseId, courseName }) => {
       maxGrade: 100,
       attachments: [],
       submissionCount: 0,
-      lateSubmission: false
-    },
-    {
-      id: 6,
-      title: 'Quiz: JavaScript Fundamentals',
-      description: 'Quiz online tentang dasar-dasar JavaScript. Durasi 60 menit.',
-      dueDate: '2024-10-10',
-      submittedDate: '2024-10-10',
-      status: 'submitted',
-      grade: 78,
-      feedback: 'Perlu lebih memahami konsep closure dan async/await.',
-      type: 'quiz',
-      maxGrade: 100,
-      attachments: [],
-      submissionCount: 1,
-      lateSubmission: false
+      lateSubmission: false,
+      taskFiles: ['final-project-guidelines.pdf', 'proposal-template.docx']
     }
   ];
 
@@ -189,6 +318,262 @@ const MahasiswaTaskManagement = ({ courseId, courseName }) => {
     return diffDays;
   };
 
+  const handlePreview = (task) => {
+    setSelectedTask(task);
+    setShowPreview(true);
+    setSubmissionFiles([]);
+    setSubmissionNote('');
+  };
+
+  const handleClosePreview = () => {
+    setShowPreview(false);
+    setSelectedTask(null);
+    setSubmissionFiles([]);
+    setSubmissionNote('');
+  };
+
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files);
+    setSubmissionFiles(files);
+  };
+
+  const handleSubmitTask = () => {
+    console.log('Submitting task:', {
+      taskId: selectedTask.id,
+      files: submissionFiles,
+      note: submissionNote
+    });
+    alert('Tugas berhasil dikumpulkan!');
+    handleClosePreview();
+  };
+
+  const TaskPreview = () => {
+    if (!selectedTask) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-green-500 to-green-600 text-white p-6">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2">
+                  {getTypeIcon(selectedTask.type)}
+                  <span className="text-sm opacity-90">{getTypeText(selectedTask.type)}</span>
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusBadge(selectedTask.status)} bg-white bg-opacity-20 text-white`}>
+                    {getStatusText(selectedTask.status)}
+                  </span>
+                </div>
+                <h2 className="text-2xl font-bold mb-2">{selectedTask.title}</h2>
+                <div className="flex items-center gap-4 text-sm opacity-90">
+                  <span className="flex items-center">
+                    <Calendar className="h-4 w-4 mr-1" />
+                    Deadline: {new Date(selectedTask.dueDate).toLocaleDateString('id-ID', { 
+                      weekday: 'long', 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric' 
+                    })}
+                  </span>
+                  {selectedTask.grade !== null && (
+                    <span className="flex items-center">
+                      <Star className="h-4 w-4 mr-1" />
+                      Nilai: {selectedTask.grade}/{selectedTask.maxGrade}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <button 
+                onClick={handleClosePreview}
+                className="text-white hover:bg-white hover:bg-opacity-20 p-2 rounded-lg transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            {/* Description */}
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+              <h3 className="font-semibold text-blue-900 mb-2">Deskripsi Singkat</h3>
+              <p className="text-blue-800">{selectedTask.description}</p>
+            </div>
+
+            {/* Detailed Description */}
+            {selectedTask.detailedDescription && (
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-3">Detail Tugas</h3>
+                <div className="prose prose-sm max-w-none bg-gray-50 p-4 rounded-lg border">
+                  <pre className="whitespace-pre-wrap font-sans text-gray-700">
+                    {selectedTask.detailedDescription}
+                  </pre>
+                </div>
+              </div>
+            )}
+
+            {/* Group Members */}
+            {selectedTask.type === 'group' && selectedTask.groupMembers && (
+              <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                <h3 className="font-semibold text-purple-900 mb-3">Anggota Kelompok</h3>
+                <div className="flex flex-wrap gap-2">
+                  {selectedTask.groupMembers.map((member, index) => (
+                    <span key={index} className="inline-flex items-center px-3 py-1 bg-purple-100 text-purple-700 rounded-full">
+                      <User className="h-3 w-3 mr-1" />
+                      {member}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Task Files */}
+            {selectedTask.taskFiles && selectedTask.taskFiles.length > 0 && (
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-3">File Tugas</h3>
+                <div className="space-y-2">
+                  {selectedTask.taskFiles.map((file, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border hover:bg-gray-100 transition-colors">
+                      <div className="flex items-center">
+                        <Paperclip className="h-4 w-4 mr-2 text-gray-500" />
+                        <span className="text-sm text-gray-700">{file}</span>
+                      </div>
+                      <button className="text-green-600 hover:text-green-700 text-sm font-medium">
+                        Download
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Previous Submission */}
+            {selectedTask.status === 'submitted' && (
+              <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                <h3 className="font-semibold text-green-900 mb-3">Submission Anda</h3>
+                <div className="space-y-2">
+                  <div className="flex items-center text-sm text-green-800">
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Dikumpulkan: {new Date(selectedTask.submittedDate).toLocaleDateString('id-ID')}
+                  </div>
+                  {selectedTask.attachments && selectedTask.attachments.length > 0 && (
+                    <div className="mt-2">
+                      <p className="text-sm text-green-800 mb-2">File yang dikumpulkan:</p>
+                      {selectedTask.attachments.map((file, index) => (
+                        <div key={index} className="flex items-center p-2 bg-green-100 rounded text-sm">
+                          <Paperclip className="h-3 w-3 mr-2 text-green-600" />
+                          <span className="text-green-700">{file}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                
+                {selectedTask.feedback && (
+                  <div className="mt-3 pt-3 border-t border-green-200">
+                    <p className="text-sm font-medium text-green-900 mb-1">Feedback Dosen:</p>
+                    <p className="text-sm text-green-700">{selectedTask.feedback}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Submission Form */}
+            {selectedTask.status !== 'submitted' && (
+              <div className="bg-white border-2 border-gray-200 rounded-lg p-6">
+                <h3 className="font-semibold text-gray-900 mb-4 flex items-center">
+                  <Upload className="h-5 w-5 mr-2 text-green-600" />
+                  Kumpulkan Tugas
+                </h3>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Upload File *
+                    </label>
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-green-500 transition-colors">
+                      <input
+                        type="file"
+                        multiple
+                        onChange={handleFileChange}
+                        className="hidden"
+                        id="file-upload"
+                      />
+                      <label htmlFor="file-upload" className="cursor-pointer">
+                        <Upload className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                        <p className="text-sm text-gray-600">
+                          Click untuk upload atau drag & drop
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          ZIP, PDF, DOC, atau file lainnya (Max 50MB)
+                        </p>
+                      </label>
+                    </div>
+                    
+                    {submissionFiles.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        <p className="text-sm font-medium text-gray-700">File terpilih:</p>
+                        {submissionFiles.map((file, index) => (
+                          <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                            <span className="text-sm text-gray-700">{file.name}</span>
+                            <button 
+                              onClick={() => setSubmissionFiles(submissionFiles.filter((_, i) => i !== index))}
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Catatan (Opsional)
+                    </label>
+                    <textarea
+                      value={submissionNote}
+                      onChange={(e) => setSubmissionNote(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                      rows={3}
+                      placeholder="Tambahkan catatan atau komentar untuk submission Anda..."
+                    />
+                  </div>
+
+                  {isOverdue(selectedTask.dueDate, selectedTask.status) && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start">
+                      <AlertCircle className="h-5 w-5 text-red-600 mr-2 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-red-800">Peringatan: Terlambat</p>
+                        <p className="text-xs text-red-600 mt-1">
+                          Deadline sudah terlewat. Submission ini akan ditandai sebagai terlambat.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={handleSubmitTask}
+                    disabled={submissionFiles.length === 0}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 rounded-lg transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center"
+                  >
+                    <Upload className="h-5 w-5 mr-2" />
+                    Kumpulkan Tugas
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  if (showPreview) {
+    return <TaskPreview />;
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -277,7 +662,11 @@ const MahasiswaTaskManagement = ({ courseId, courseName }) => {
       {/* Tasks List */}
       <div className="space-y-4">
         {sortedTasks.map(task => (
-          <div key={task.id} className="bg-white border rounded-lg p-6 hover:shadow-md transition-shadow">
+          <div 
+            key={task.id} 
+            onClick={() => handlePreview(task)}
+            className="bg-white border rounded-lg p-6 hover:shadow-lg hover:border-green-300 transition-all cursor-pointer"
+          >
             <div className="flex justify-between items-start mb-4">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-2">
@@ -300,13 +689,6 @@ const MahasiswaTaskManagement = ({ courseId, courseName }) => {
                     <span className="flex items-center">
                       <Users className="h-3 w-3 mr-1" />
                       {task.groupMembers.length} anggota
-                    </span>
-                  )}
-                  
-                  {task.submittedDate && (
-                    <span className="flex items-center text-green-600">
-                      <CheckCircle className="h-3 w-3 mr-1" />
-                      Dikumpulkan: {new Date(task.submittedDate).toLocaleDateString('id-ID')}
                     </span>
                   )}
                   
@@ -339,75 +721,12 @@ const MahasiswaTaskManagement = ({ courseId, courseName }) => {
               </div>
             </div>
 
-            {/* Group Members (for group tasks) */}
-            {task.type === 'group' && task.groupMembers && (
-              <div className="mb-3 p-3 bg-blue-50 rounded border-l-4 border-blue-500">
-                <p className="text-sm font-medium text-blue-800 mb-1">Anggota Kelompok:</p>
-                <div className="flex flex-wrap gap-2">
-                  {task.groupMembers.map((member, index) => (
-                    <span key={index} className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">
-                      <User className="h-3 w-3 mr-1" />
-                      {member}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Feedback */}
-            {task.feedback && (
-              <div className="mb-3 p-3 bg-green-50 rounded border-l-4 border-green-500">
-                <p className="text-sm font-medium text-green-800 mb-1">Feedback Dosen:</p>
-                <p className="text-sm text-green-700">{task.feedback}</p>
-              </div>
-            )}
-
-            {/* Attachments */}
-            {task.attachments && task.attachments.length > 0 && (
-              <div className="mb-3">
-                <p className="text-sm font-medium text-gray-700 mb-2">File Submission:</p>
-                <div className="flex flex-wrap gap-2">
-                  {task.attachments.map((file, index) => (
-                    <div key={index} className="flex items-center px-3 py-1 bg-gray-100 rounded text-sm">
-                      <Paperclip className="h-3 w-3 mr-1 text-gray-500" />
-                      <span className="text-gray-700">{file}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Actions */}
-            <div className="flex justify-between items-center pt-3 border-t border-gray-100">
-              <div className="flex space-x-3">
-                <button className="flex items-center text-sm text-green-600 hover:text-green-800 transition-colors">
-                  <Download className="h-4 w-4 mr-1" />
-                  Download Soal
-                </button>
-                
-                {task.status === 'submitted' && (
-                  <button className="flex items-center text-sm text-blue-600 hover:text-blue-800 transition-colors">
-                    <Eye className="h-4 w-4 mr-1" />
-                    Lihat Submission
-                  </button>
-                )}
-              </div>
-              
-              <div className="flex space-x-2">
-                {task.status !== 'submitted' && (
-                  <button className="flex items-center text-sm bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors">
-                    <Upload className="h-4 w-4 mr-1" />
-                    {task.status === 'in_progress' ? 'Update Submission' : 'Mulai Mengerjakan'}
-                  </button>
-                )}
-                
-                {task.type === 'group' && (
-                  <button className="flex items-center text-sm text-purple-600 hover:text-purple-800 border border-purple-600 hover:bg-purple-50 px-4 py-2 rounded-lg transition-colors">
-                    <Users className="h-4 w-4 mr-1" />
-                    Kelompok
-                  </button>
-                )}
-              </div>
+            {/* Click to view indicator */}
+            <div className="flex items-center justify-center pt-3 border-t border-gray-100">
+              <span className="flex items-center text-sm text-green-600 font-medium">
+                <Eye className="h-4 w-4 mr-1" />
+                Klik untuk melihat detail dan mengumpulkan tugas
+              </span>
             </div>
           </div>
         ))}

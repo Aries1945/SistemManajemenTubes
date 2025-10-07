@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Users, Plus, Edit, Trash2, Eye, UserPlus, UserMinus,
   Shuffle, Save, X, Search, Filter, Download,
-  CheckCircle, AlertCircle, Clock
+  CheckCircle, AlertCircle, Clock, RefreshCw, List
 } from 'lucide-react';
 
-const DosenGroupManagement = ({ courseId, courseName, taskId = null }) => {
-  const [activeView, setActiveView] = useState('list'); // 'list', 'create-manual', 'create-auto', 'edit'
+const DosenGroupManagement = ({ courseId, courseName = 'Pemrograman Web', taskId = null }) => {
+  const [activeView, setActiveView] = useState('list');
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTask, setFilterTask] = useState(taskId || 'all');
@@ -34,7 +34,7 @@ const DosenGroupManagement = ({ courseId, courseName, taskId = null }) => {
   const groups = [
     {
       id: 1,
-      name: 'Kelompok Alpha',
+      name: 'Kelompok A',
       taskId: 1,
       taskTitle: 'Sistem E-Commerce',
       members: [
@@ -55,7 +55,7 @@ const DosenGroupManagement = ({ courseId, courseName, taskId = null }) => {
     },
     {
       id: 2,
-      name: 'Kelompok Beta',
+      name: 'Kelompok B',
       taskId: 1,
       taskTitle: 'Sistem E-Commerce',
       members: [
@@ -77,7 +77,7 @@ const DosenGroupManagement = ({ courseId, courseName, taskId = null }) => {
     },
     {
       id: 3,
-      name: 'Kelompok Gamma',
+      name: 'Kelompok A',
       taskId: 2,
       taskTitle: 'Database Design Project',
       members: [
@@ -98,6 +98,31 @@ const DosenGroupManagement = ({ courseId, courseName, taskId = null }) => {
     }
   ];
 
+  // Function to get next group letter for a specific task
+  const getNextGroupLetter = (taskId) => {
+    const existingGroups = groups.filter(group => group.taskId.toString() === taskId);
+    const usedLetters = existingGroups.map(group => {
+      const match = group.name.match(/Kelompok ([A-Z])/);
+      return match ? match[1] : null;
+    }).filter(Boolean);
+    
+    // Find the next available letter
+    for (let i = 0; i < 26; i++) {
+      const letter = String.fromCharCode(65 + i); // A, B, C, etc.
+      if (!usedLetters.includes(letter)) {
+        return letter;
+      }
+    }
+    return 'Z'; // Fallback
+  };
+
+  // Function to randomly select a leader from members
+  const randomSelectLeader = (members) => {
+    if (members.length === 0) return null;
+    const randomIndex = Math.floor(Math.random() * members.length);
+    return members[randomIndex].id;
+  };
+
   const filteredGroups = groups.filter(group => {
     const matchesSearch = group.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          group.members.some(member => 
@@ -116,7 +141,7 @@ const DosenGroupManagement = ({ courseId, courseName, taskId = null }) => {
           <h2 className="text-2xl font-bold text-gray-900">Manajemen Kelompok</h2>
           <p className="text-gray-600">{courseName}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button 
             onClick={() => setActiveView('create-manual')}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition-colors"
@@ -130,6 +155,20 @@ const DosenGroupManagement = ({ courseId, courseName, taskId = null }) => {
           >
             <Shuffle size={20} />
             Buat Otomatis
+          </button>
+          <button 
+            onClick={() => setActiveView('create-student-form')}
+            className="bg-purple-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-purple-700 transition-colors"
+          >
+            <Users size={20} />
+            Form Mahasiswa
+          </button>
+          <button 
+            onClick={() => setActiveView('create-choice')}
+            className="bg-orange-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-orange-700 transition-colors"
+          >
+            <List size={20} />
+            Buat dari Pilihan
           </button>
         </div>
       </div>
@@ -202,7 +241,7 @@ const DosenGroupManagement = ({ courseId, courseName, taskId = null }) => {
             }
           </p>
           {!searchTerm && filterTask === 'all' && (
-            <div className="flex justify-center gap-2">
+            <div className="flex flex-wrap justify-center gap-2">
               <button 
                 onClick={() => setActiveView('create-manual')}
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
@@ -214,6 +253,18 @@ const DosenGroupManagement = ({ courseId, courseName, taskId = null }) => {
                 className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
               >
                 Buat Otomatis
+              </button>
+              <button 
+                onClick={() => setActiveView('create-student-form')}
+                className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                Form Mahasiswa
+              </button>
+              <button 
+                onClick={() => setActiveView('create-choice')}
+                className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors"
+              >
+                Buat dari Pilihan
               </button>
             </div>
           )}
@@ -364,6 +415,28 @@ const DosenGroupManagement = ({ courseId, courseName, taskId = null }) => {
 
     const [availableStudents, setAvailableStudents] = useState(students);
 
+    // Auto-generate group name when task is selected
+    useEffect(() => {
+      if (formData.taskId) {
+        const nextLetter = getNextGroupLetter(formData.taskId);
+        setFormData(prev => ({
+          ...prev,
+          name: `Kelompok ${nextLetter}`
+        }));
+      }
+    }, [formData.taskId]);
+
+    // Auto-select random leader when members change
+    useEffect(() => {
+      if (formData.selectedMembers.length > 0 && !formData.leader) {
+        const randomLeaderId = randomSelectLeader(formData.selectedMembers);
+        setFormData(prev => ({
+          ...prev,
+          leader: randomLeaderId
+        }));
+      }
+    }, [formData.selectedMembers]);
+
     const handleSubmit = (e) => {
       e.preventDefault();
       console.log('Manual group form data:', formData);
@@ -382,13 +455,23 @@ const DosenGroupManagement = ({ courseId, courseName, taskId = null }) => {
 
     const removeMember = (studentId) => {
       const member = formData.selectedMembers.find(m => m.id === studentId);
+      const newMembers = formData.selectedMembers.filter(m => m.id !== studentId);
+      
       setFormData({
         ...formData,
-        selectedMembers: formData.selectedMembers.filter(m => m.id !== studentId),
-        leader: formData.leader === studentId ? null : formData.leader
+        selectedMembers: newMembers,
+        leader: formData.leader === studentId ? (newMembers.length > 0 ? randomSelectLeader(newMembers) : null) : formData.leader
       });
+      
       if (member) {
         setAvailableStudents([...availableStudents, member]);
+      }
+    };
+
+    const shuffleLeader = () => {
+      if (formData.selectedMembers.length > 0) {
+        const newLeader = randomSelectLeader(formData.selectedMembers);
+        setFormData({ ...formData, leader: newLeader });
       }
     };
 
@@ -404,7 +487,7 @@ const DosenGroupManagement = ({ courseId, courseName, taskId = null }) => {
           <h2 className="text-2xl font-bold text-gray-900">Buat Kelompok Manual</h2>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow border space-y-6">
+        <div className="bg-white p-6 rounded-lg shadow border space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -415,9 +498,10 @@ const DosenGroupManagement = ({ courseId, courseName, taskId = null }) => {
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="e.g., Kelompok Alpha"
+                placeholder="Akan terisi otomatis setelah pilih tugas"
                 required
               />
+              <p className="text-xs text-gray-500 mt-1">Nama akan di-generate otomatis berdasarkan alfabet per tugas</p>
             </div>
             
             <div>
@@ -466,9 +550,22 @@ const DosenGroupManagement = ({ courseId, courseName, taskId = null }) => {
 
             {/* Selected Members */}
             <div>
-              <h3 className="text-lg font-semibold mb-4">
-                Anggota Kelompok ({formData.selectedMembers.length})
-              </h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">
+                  Anggota Kelompok ({formData.selectedMembers.length})
+                </h3>
+                {formData.selectedMembers.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={shuffleLeader}
+                    className="text-sm bg-purple-100 text-purple-700 px-3 py-1 rounded-lg hover:bg-purple-200 transition-colors flex items-center gap-1"
+                    title="Acak Ketua"
+                  >
+                    <RefreshCw size={12} />
+                    Acak Ketua
+                  </button>
+                )}
+              </div>
               <div className="border border-gray-200 rounded-lg p-4 h-80 overflow-y-auto">
                 {formData.selectedMembers.map(member => (
                   <div key={member.id} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
@@ -508,6 +605,17 @@ const DosenGroupManagement = ({ courseId, courseName, taskId = null }) => {
             </div>
           </div>
 
+          {formData.selectedMembers.length > 0 && (
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <h4 className="font-medium text-blue-900 mb-2">Info Kelompok</h4>
+              <ul className="text-sm text-blue-800 space-y-1">
+                <li>• Nama: {formData.name}</li>
+                <li>• Anggota: {formData.selectedMembers.length} orang</li>
+                <li>• Ketua: {formData.leader ? formData.selectedMembers.find(m => m.id === formData.leader)?.name : 'Belum dipilih'}</li>
+              </ul>
+            </div>
+          )}
+
           <div className="flex justify-end gap-4 pt-6 border-t">
             <button
               type="button"
@@ -517,14 +625,15 @@ const DosenGroupManagement = ({ courseId, courseName, taskId = null }) => {
               Batal
             </button>
             <button
-              type="submit"
+              type="button"
+              onClick={handleSubmit}
               disabled={formData.selectedMembers.length === 0 || !formData.leader}
               className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               Buat Kelompok
             </button>
           </div>
-        </form>
+        </div>
       </div>
     );
   };
@@ -534,7 +643,7 @@ const DosenGroupManagement = ({ courseId, courseName, taskId = null }) => {
       taskId: '',
       groupSize: 4,
       groupCount: 0,
-      distribution: 'equal' // 'equal', 'random'
+      distribution: 'equal'
     });
 
     const [previewGroups, setPreviewGroups] = useState([]);
@@ -542,29 +651,43 @@ const DosenGroupManagement = ({ courseId, courseName, taskId = null }) => {
 
     const calculateGroups = () => {
       const totalStudents = students.length;
-      const estimatedGroups = Math.ceil(totalStudents / formData.groupSize);
-      setFormData({ ...formData, groupCount: estimatedGroups });
+      const baseGroups = Math.floor(totalStudents / formData.groupSize);
+      setFormData({ ...formData, groupCount: baseGroups });
     };
 
     const generatePreview = () => {
-      // Simple random distribution for preview
+      if (!formData.taskId) return;
+      
       const shuffledStudents = [...students].sort(() => Math.random() - 0.5);
       const groups = [];
+      const totalStudents = shuffledStudents.length;
+      const baseGroupSize = formData.groupSize;
+      const remainder = totalStudents % baseGroupSize;
+      const baseGroupCount = Math.floor(totalStudents / baseGroupSize);
       
-      for (let i = 0; i < formData.groupCount; i++) {
-        const startIndex = i * formData.groupSize;
-        const endIndex = Math.min(startIndex + formData.groupSize, shuffledStudents.length);
+      for (let i = 0; i < baseGroupCount; i++) {
+        const startIndex = i * baseGroupSize;
+        const endIndex = startIndex + baseGroupSize;
         const groupMembers = shuffledStudents.slice(startIndex, endIndex);
         
-        if (groupMembers.length > 0) {
-          groups.push({
-            name: `Kelompok ${String.fromCharCode(65 + i)}`, // A, B, C, etc.
-            members: groupMembers,
-            leader: groupMembers[0] // First member as leader
-          });
-        }
+        const nextLetter = String.fromCharCode(65 + i);
+        groups.push({
+          name: `Kelompok ${nextLetter}`,
+          members: groupMembers,
+          leader: groupMembers[Math.floor(Math.random() * groupMembers.length)]
+        });
       }
       
+      if (remainder > 0) {
+        const remainingStudents = shuffledStudents.slice(baseGroupCount * baseGroupSize);
+        
+        remainingStudents.forEach((student, index) => {
+          const targetGroupIndex = index % groups.length;
+          groups[targetGroupIndex].members.push(student);
+        });
+      }
+      
+      setFormData(prev => ({ ...prev, groupCount: groups.length }));
       setPreviewGroups(groups);
       setShowPreview(true);
     };
@@ -587,7 +710,7 @@ const DosenGroupManagement = ({ courseId, courseName, taskId = null }) => {
           <h2 className="text-2xl font-bold text-gray-900">Buat Kelompok Otomatis</h2>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow border space-y-6">
+        <div className="bg-white p-6 rounded-lg shadow border space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -608,7 +731,7 @@ const DosenGroupManagement = ({ courseId, courseName, taskId = null }) => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Ukuran Kelompok
+                Jumlah Anggota
               </label>
               <input
                 type="number"
@@ -666,8 +789,14 @@ const DosenGroupManagement = ({ courseId, courseName, taskId = null }) => {
             <ul className="text-sm text-blue-800 space-y-1">
               <li>• Total mahasiswa: {students.length} orang</li>
               <li>• Ukuran kelompok: {formData.groupSize} orang per kelompok</li>
-              <li>• Estimasi kelompok: {formData.groupCount} kelompok</li>
-              <li>• Sisa mahasiswa: {students.length % formData.groupSize} orang (akan didistribusikan ke kelompok terakhir)</li>
+              <li>• Jumlah kelompok: {Math.floor(students.length / formData.groupSize)} kelompok</li>
+              <li>• Nama kelompok: A, B, C, dst. (auto-generate)</li>
+              <li>• Ketua: Dipilih secara acak dari setiap kelompok</li>
+              <li>• Sisa mahasiswa: {students.length % formData.groupSize} orang 
+                {students.length % formData.groupSize > 0 && 
+                  ` (akan didistribusikan ke ${Math.min(students.length % formData.groupSize, Math.floor(students.length / formData.groupSize))} kelompok pertama)`
+                }
+              </li>
             </ul>
           </div>
 
@@ -719,14 +848,355 @@ const DosenGroupManagement = ({ courseId, courseName, taskId = null }) => {
               Batal
             </button>
             <button
-              type="submit"
+              type="button"
+              onClick={handleSubmit}
               disabled={!showPreview || previewGroups.length === 0}
               className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               Buat Kelompok
             </button>
           </div>
-        </form>
+        </div>
+      </div>
+    );
+  };
+
+  const StudentFormCreation = () => {
+    const [formData, setFormData] = useState({
+      taskId: '',
+      minMembers: 3,
+      maxMembers: 5,
+      deadline: ''
+    });
+
+    const handleSubmit = () => {
+      console.log('Student form creation:', formData);
+      alert('Form berhasil dibuat! Link form akan dikirim ke semua mahasiswa di mata kuliah ini.');
+      setActiveView('list');
+    };
+
+    return (
+      <div className="space-y-6 max-w-4xl mx-auto">
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => setActiveView('list')}
+            className="text-blue-600 hover:text-blue-800 font-medium"
+          >
+            ← Kembali
+          </button>
+          <h2 className="text-2xl font-bold text-gray-900">Buat Form Kelompok untuk Mahasiswa</h2>
+        </div>
+
+        <div className="bg-white p-6 rounded-lg shadow border space-y-6">
+          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="text-blue-600 mt-0.5" size={20} />
+              <div>
+                <h4 className="font-medium text-blue-900 mb-1">Info</h4>
+                <p className="text-sm text-blue-800">
+                  Form ini akan dikirim ke <strong>semua mahasiswa</strong> yang terdaftar di mata kuliah ini ({students.length} mahasiswa). 
+                  Mahasiswa dapat membentuk kelompok sendiri sesuai konfigurasi yang Anda tentukan.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Tugas Besar *
+              </label>
+              <select
+                value={formData.taskId}
+                onChange={(e) => setFormData({ ...formData, taskId: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                required
+              >
+                <option value="">Pilih Tugas Besar</option>
+                {tasks.filter(task => task.status === 'active').map(task => (
+                  <option key={task.id} value={task.id}>{task.title}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Deadline Pengisian *
+              </label>
+              <input
+                type="datetime-local"
+                value={formData.deadline}
+                onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Minimal Anggota *
+              </label>
+              <input
+                type="number"
+                min="2"
+                max={formData.maxMembers}
+                value={formData.minMembers}
+                onChange={(e) => setFormData({ ...formData, minMembers: parseInt(e.target.value) })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Maksimal Anggota *
+              </label>
+              <input
+                type="number"
+                min={formData.minMembers}
+                max="10"
+                value={formData.maxMembers}
+                onChange={(e) => setFormData({ ...formData, maxMembers: parseInt(e.target.value) })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+            <h4 className="font-medium text-purple-900 mb-2">Ringkasan</h4>
+            <ul className="text-sm text-purple-800 space-y-1">
+              <li>• Total mahasiswa: <strong>{students.length} orang</strong></li>
+              <li>• Ukuran kelompok: <strong>{formData.minMembers} - {formData.maxMembers} anggota</strong></li>
+              <li>• Deadline: <strong>{formData.deadline ? new Date(formData.deadline).toLocaleString('id-ID') : '-'}</strong></li>
+            </ul>
+          </div>
+
+          <div className="flex justify-end gap-4 pt-6 border-t">
+            <button
+              type="button"
+              onClick={() => setActiveView('list')}
+              className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={!formData.taskId || !formData.deadline}
+              className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              <Save size={20} />
+              Buat Form & Kirim ke Semua Mahasiswa
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const GroupChoiceForm = () => {
+    const [formData, setFormData] = useState({
+      taskId: '',
+      groupCount: 5,
+      minCapacity: 7,
+      maxCapacity: 8,
+      deadline: '',
+      allowMove: false
+    });
+
+    const [generatedGroups, setGeneratedGroups] = useState([]);
+
+    const generateGroups = () => {
+      const groups = [];
+      for (let i = 0; i < formData.groupCount; i++) {
+        const letter = String.fromCharCode(65 + i);
+        groups.push({
+          name: `Kelompok ${letter}`,
+          capacity: `${formData.minCapacity}-${formData.maxCapacity}`,
+          currentMembers: 0,
+          members: []
+        });
+      }
+      setGeneratedGroups(groups);
+    };
+
+    useEffect(() => {
+      if (formData.groupCount > 0) {
+        generateGroups();
+      }
+    }, [formData.groupCount, formData.minCapacity, formData.maxCapacity]);
+
+    const handleSubmit = () => {
+      console.log('Group choice form:', formData, generatedGroups);
+      alert('Pilihan kelompok berhasil dibuat! Mahasiswa sekarang dapat memilih kelompok mereka.');
+      setActiveView('list');
+    };
+
+    return (
+      <div className="space-y-6 max-w-5xl mx-auto">
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => setActiveView('list')}
+            className="text-blue-600 hover:text-blue-800 font-medium"
+          >
+            ← Kembali
+          </button>
+          <h2 className="text-2xl font-bold text-gray-900">Buat Kelompok dari Pilihan</h2>
+        </div>
+
+        <div className="bg-white p-6 rounded-lg shadow border space-y-6">
+          <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="text-orange-600 mt-0.5" size={20} />
+              <div>
+                <h4 className="font-medium text-orange-900 mb-1">Sistem Pilihan Kelompok</h4>
+                <p className="text-sm text-orange-800">
+                  Anda akan membuat beberapa slot kelompok kosong. Mahasiswa dapat memilih sendiri kelompok mana yang ingin mereka masuki (seperti polling/voting).
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Tugas Besar *
+              </label>
+              <select
+                value={formData.taskId}
+                onChange={(e) => setFormData({ ...formData, taskId: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                required
+              >
+                <option value="">Pilih Tugas Besar</option>
+                {tasks.filter(task => task.status === 'active').map(task => (
+                  <option key={task.id} value={task.id}>{task.title}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Jumlah Kelompok *
+              </label>
+              <input
+                type="number"
+                min="2"
+                max="26"
+                value={formData.groupCount}
+                onChange={(e) => setFormData({ ...formData, groupCount: parseInt(e.target.value) })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                required
+              />
+              <p className="text-xs text-gray-500 mt-1">Kelompok akan diberi nama A, B, C, dst.</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Kapasitas Minimal *
+              </label>
+              <input
+                type="number"
+                min="2"
+                max={formData.maxCapacity}
+                value={formData.minCapacity}
+                onChange={(e) => setFormData({ ...formData, minCapacity: parseInt(e.target.value) })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Kapasitas Maksimal *
+              </label>
+              <input
+                type="number"
+                min={formData.minCapacity}
+                max="15"
+                value={formData.maxCapacity}
+                onChange={(e) => setFormData({ ...formData, maxCapacity: parseInt(e.target.value) })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                required
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Deadline Pemilihan *
+              </label>
+              <input
+                type="datetime-local"
+                value={formData.deadline}
+                onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                required
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.allowMove}
+                onChange={(e) => setFormData({ ...formData, allowMove: e.target.checked })}
+                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <span className="text-sm text-gray-700">Izinkan mahasiswa pindah kelompok sebelum deadline</span>
+            </label>
+          </div>
+
+          {generatedGroups.length > 0 && (
+            <div className="border-t pt-6">
+              <h3 className="font-semibold text-gray-900 mb-4">Preview Kelompok yang Akan Dibuat</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {generatedGroups.map((group, index) => (
+                  <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                    <h4 className="font-medium text-gray-900 mb-2">{group.name}</h4>
+                    <p className="text-sm text-gray-600">
+                      Kapasitas: {group.capacity} anggota
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Mahasiswa: 0/{formData.maxCapacity}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+            <h4 className="font-medium text-blue-900 mb-2">Ringkasan</h4>
+            <ul className="text-sm text-blue-800 space-y-1">
+              <li>• Total mahasiswa: {students.length} orang</li>
+              <li>• Jumlah kelompok: {formData.groupCount} kelompok</li>
+              <li>• Kapasitas per kelompok: {formData.minCapacity}-{formData.maxCapacity} anggota</li>
+              <li>• Total kapasitas: {formData.groupCount * formData.maxCapacity} tempat</li>
+              <li>• Deadline: {formData.deadline ? new Date(formData.deadline).toLocaleString('id-ID') : '-'}</li>
+            </ul>
+          </div>
+
+          <div className="flex justify-end gap-4 pt-6 border-t">
+            <button
+              type="button"
+              onClick={() => setActiveView('list')}
+              className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={!formData.taskId || !formData.deadline}
+              className="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              <Save size={20} />
+              Buat & Aktifkan Pilihan
+            </button>
+          </div>
+        </div>
       </div>
     );
   };
@@ -737,6 +1207,10 @@ const DosenGroupManagement = ({ courseId, courseName, taskId = null }) => {
       return <ManualGroupForm />;
     case 'create-auto':
       return <AutoGroupForm />;
+    case 'create-student-form':
+      return <StudentFormCreation />;
+    case 'create-choice':
+      return <GroupChoiceForm />;
     default:
       return <GroupList />;
   }

@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { 
   Star, TrendingUp, TrendingDown, Award, Target, 
-  FileText, Calendar, BarChart3, Eye, Download
+  FileText, Calendar, BarChart3, Eye, Download, X, Users, User
 } from 'lucide-react';
 
-const MahasiswaGradeView = ({ courseId, courseName, myGrade, averageGrade }) => {
+const MahasiswaGradeView = ({ courseId, courseName, myGrade = 85.5, averageGrade = 80 }) => {
   const [selectedPeriod, setSelectedPeriod] = useState('all');
+  const [showPreview, setShowPreview] = useState(false);
+  const [selectedGrade, setSelectedGrade] = useState(null);
 
   // Sample grades data
   const gradesData = [
@@ -18,7 +20,16 @@ const MahasiswaGradeView = ({ courseId, courseName, myGrade, averageGrade }) => 
       myScore: 78,
       classAverage: 75,
       weight: 10,
-      feedback: 'Perlu lebih memahami konsep closure dan async/await.'
+      feedback: 'Perlu lebih memahami konsep closure dan async/await.',
+      isGroupTask: false,
+      detailedScores: {
+        criteria: [
+          { name: 'Pemahaman Konsep', maxScore: 30, score: 24, notes: 'Konsep dasar sudah dipahami' },
+          { name: 'Implementasi Code', maxScore: 40, score: 30, notes: 'Perlu perbaikan pada async/await' },
+          { name: 'Best Practices', maxScore: 20, score: 16, notes: 'Code structure cukup baik' },
+          { name: 'Testing', maxScore: 10, score: 8, notes: 'Test coverage bisa ditingkatkan' }
+        ]
+      }
     },
     {
       id: 2,
@@ -29,29 +40,68 @@ const MahasiswaGradeView = ({ courseId, courseName, myGrade, averageGrade }) => 
       myScore: 88,
       classAverage: 82,
       weight: 15,
-      feedback: 'Bagus! Tapi perlu perbaikan pada responsive design untuk mobile.'
-    },
-    {
-      id: 3,
-      title: 'Tugas 2: JavaScript Interactive Features',
-      type: 'assignment',
-      date: '2024-10-25',
-      maxScore: 100,
-      myScore: 92,
-      classAverage: 85,
-      weight: 15,
-      feedback: 'Excellent work! Implementasi yang sangat baik dan kode yang clean.'
+      feedback: 'Bagus! Tapi perlu perbaikan pada responsive design untuk mobile.',
+      isGroupTask: false,
+      detailedScores: {
+        criteria: [
+          { name: 'HTML Structure', maxScore: 20, score: 18, notes: 'Semantic HTML sudah baik' },
+          { name: 'CSS Styling', maxScore: 30, score: 27, notes: 'Design menarik dan konsisten' },
+          { name: 'Responsive Design', maxScore: 25, score: 20, notes: 'Mobile view perlu diperbaiki' },
+          { name: 'Kreativitas', maxScore: 15, score: 13, notes: 'Layout cukup kreatif' },
+          { name: 'W3C Validation', maxScore: 10, score: 10, notes: 'Perfect validation' }
+        ]
+      }
     },
     {
       id: 4,
-      title: 'UTS: Mid-term Examination',
-      type: 'exam',
-      date: '2024-11-01',
+      title: 'Project: E-Commerce Website',
+      type: 'assignment',
+      date: '2024-11-20',
       maxScore: 100,
-      myScore: 85,
-      classAverage: 78,
+      myScore: 90,
+      classAverage: 85,
       weight: 25,
-      feedback: 'Pemahaman konsep sudah baik, namun perlu latihan lebih untuk implementasi.'
+      feedback: 'Excellent teamwork! Implementasi fitur lengkap dan UI/UX sangat baik.',
+      isGroupTask: true,
+      groupMembers: [
+        { 
+          id: 1, 
+          name: 'John Doe', 
+          npm: '2023001',
+          score: 90,
+          individualFeedback: 'Leadership sangat baik, koordinasi tim excellent. Code quality tinggi pada backend implementation.'
+        },
+        { 
+          id: 2, 
+          name: 'Jane Smith', 
+          npm: '2023002',
+          score: 92,
+          individualFeedback: 'Frontend implementation luar biasa. UI/UX design sangat menarik dan user-friendly.'
+        },
+        { 
+          id: 3, 
+          name: 'Bob Wilson', 
+          npm: '2023003',
+          score: 88,
+          individualFeedback: 'Database design solid. API integration berjalan dengan baik, perlu lebih fokus pada error handling.'
+        },
+        { 
+          id: 4, 
+          name: 'Alice Brown', 
+          npm: '2023004',
+          score: 89,
+          individualFeedback: 'Testing coverage baik. Documentation lengkap dan mudah dipahami. Deployment process smooth.'
+        }
+      ],
+      detailedScores: {
+        criteria: [
+          { name: 'Functionality', maxScore: 40, score: 37, notes: 'Semua fitur berjalan dengan baik' },
+          { name: 'Code Quality', maxScore: 20, score: 18, notes: 'Clean code, good structure' },
+          { name: 'UI/UX Design', maxScore: 15, score: 14, notes: 'Design modern dan responsive' },
+          { name: 'Documentation', maxScore: 15, score: 13, notes: 'Documentation cukup lengkap' },
+          { name: 'Presentation', maxScore: 10, score: 8, notes: 'Presentasi jelas dan terstruktur' }
+        ]
+      }
     },
     {
       id: 5,
@@ -62,7 +112,17 @@ const MahasiswaGradeView = ({ courseId, courseName, myGrade, averageGrade }) => 
       myScore: 85,
       classAverage: 80,
       weight: 15,
-      feedback: 'Good job! Component structure bisa diperbaiki. Perhatikan best practices React.'
+      feedback: 'Good job! Component structure bisa diperbaiki. Perhatikan best practices React.',
+      isGroupTask: false,
+      detailedScores: {
+        criteria: [
+          { name: 'Component Structure', maxScore: 25, score: 20, notes: 'Structure bisa lebih modular' },
+          { name: 'State Management', maxScore: 25, score: 22, notes: 'State handling sudah baik' },
+          { name: 'Routing', maxScore: 20, score: 17, notes: 'Routing implementation correct' },
+          { name: 'API Integration', maxScore: 20, score: 18, notes: 'API calls handled properly' },
+          { name: 'UI/UX', maxScore: 10, score: 8, notes: 'User interface cukup baik' }
+        ]
+      }
     }
   ];
 
@@ -83,7 +143,7 @@ const MahasiswaGradeView = ({ courseId, courseName, myGrade, averageGrade }) => 
   ];
 
   // My position in class
-  const myPosition = 12; // out of 45 students
+  const myPosition = 12;
   const totalStudents = 45;
 
   const getGradeColor = (score) => {
@@ -136,6 +196,242 @@ const MahasiswaGradeView = ({ courseId, courseName, myGrade, averageGrade }) => 
     if (diff > -5) return { icon: TrendingDown, color: 'text-orange-600', text: 'Di Bawah Rata-rata' };
     return { icon: TrendingDown, color: 'text-red-600', text: 'Perlu Perbaikan' };
   };
+
+  const handlePreview = (grade) => {
+    setSelectedGrade(grade);
+    setShowPreview(true);
+  };
+
+  const handleClosePreview = () => {
+    setShowPreview(false);
+    setSelectedGrade(null);
+  };
+
+  const GradePreview = () => {
+    if (!selectedGrade) return null;
+
+    const gradeBadge = getGradeBadge(selectedGrade.myScore);
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-lg max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-6">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2">
+                  {getTypeIcon(selectedGrade.type)}
+                  <span className="text-sm opacity-90">{getTypeText(selectedGrade.type)}</span>
+                  {selectedGrade.isGroupTask && (
+                    <span className="flex items-center gap-1 bg-white bg-opacity-20 px-2 py-1 rounded text-xs">
+                      <Users size={12} />
+                      Tugas Kelompok
+                    </span>
+                  )}
+                </div>
+                <h2 className="text-2xl font-bold mb-2">{selectedGrade.title}</h2>
+                <div className="flex items-center gap-4 text-sm opacity-90">
+                  <span className="flex items-center">
+                    <Calendar className="h-4 w-4 mr-1" />
+                    {new Date(selectedGrade.date).toLocaleDateString('id-ID', { 
+                      weekday: 'long', 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric' 
+                    })}
+                  </span>
+                  <span>Bobot: {selectedGrade.weight}%</span>
+                </div>
+              </div>
+              <button 
+                onClick={handleClosePreview}
+                className="text-white hover:bg-white hover:bg-opacity-20 p-2 rounded-lg transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            {/* Score Overview */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
+                <p className="text-sm text-green-700 mb-1">Nilai Anda</p>
+                <p className="text-3xl font-bold text-green-600">{selectedGrade.myScore}</p>
+                <span className={`inline-block mt-2 px-3 py-1 rounded-full text-xs font-medium ${gradeBadge.color}`}>
+                  Grade {gradeBadge.grade}
+                </span>
+              </div>
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
+                <p className="text-sm text-blue-700 mb-1">Rata-rata Kelas</p>
+                <p className="text-3xl font-bold text-blue-600">{selectedGrade.classAverage}</p>
+                <p className="text-xs text-blue-600 mt-2">
+                  {selectedGrade.myScore > selectedGrade.classAverage ? '+' : ''}{selectedGrade.myScore - selectedGrade.classAverage} dari rata-rata
+                </p>
+              </div>
+              <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
+                <p className="text-sm text-purple-700 mb-1">Skor Maksimal</p>
+                <p className="text-3xl font-bold text-purple-600">{selectedGrade.maxScore}</p>
+                <p className="text-xs text-purple-600 mt-2">
+                  {Math.round((selectedGrade.myScore / selectedGrade.maxScore) * 100)}% tercapai
+                </p>
+              </div>
+            </div>
+
+            {/* Detailed Scores Table */}
+            <div className="bg-white border rounded-lg overflow-hidden">
+              <div className="bg-gray-50 px-6 py-3 border-b">
+                <h3 className="font-semibold text-gray-900">Rincian Penilaian</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Kriteria
+                      </th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Skor Maksimal
+                      </th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Skor Anda
+                      </th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Persentase
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Catatan
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {selectedGrade.detailedScores.criteria.map((criterion, index) => (
+                      <tr key={index} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {criterion.name}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">
+                          {criterion.maxScore}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <span className={`text-sm font-semibold ${getGradeColor(criterion.score / criterion.maxScore * 100)}`}>
+                            {criterion.score}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <div className="flex items-center justify-center">
+                            <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
+                              <div 
+                                className={`h-2 rounded-full ${
+                                  (criterion.score / criterion.maxScore) >= 0.9 ? 'bg-green-500' :
+                                  (criterion.score / criterion.maxScore) >= 0.8 ? 'bg-blue-500' :
+                                  (criterion.score / criterion.maxScore) >= 0.7 ? 'bg-yellow-500' :
+                                  'bg-orange-500'
+                                }`}
+                                style={{ width: `${(criterion.score / criterion.maxScore) * 100}%` }}
+                              ></div>
+                            </div>
+                            <span className="text-xs text-gray-600">
+                              {Math.round((criterion.score / criterion.maxScore) * 100)}%
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600">
+                          {criterion.notes}
+                        </td>
+                      </tr>
+                    ))}
+                    <tr className="bg-gray-50 font-semibold">
+                      <td className="px-6 py-4 text-sm text-gray-900">
+                        TOTAL
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900 text-center">
+                        {selectedGrade.maxScore}
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <span className={`text-sm font-bold ${getGradeColor(selectedGrade.myScore)}`}>
+                          {selectedGrade.myScore}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900 text-center">
+                        {Math.round((selectedGrade.myScore / selectedGrade.maxScore) * 100)}%
+                      </td>
+                      <td className="px-6 py-4"></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Feedback */}
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+              <h3 className="font-semibold text-blue-900 mb-2">Feedback Dosen</h3>
+              <p className="text-sm text-blue-800">{selectedGrade.feedback}</p>
+            </div>
+
+            {/* Group Members Scores (for group tasks) */}
+            {selectedGrade.isGroupTask && selectedGrade.groupMembers && (
+              <div className="bg-white border rounded-lg overflow-hidden">
+                <div className="bg-purple-50 px-6 py-3 border-b border-purple-200">
+                  <h3 className="font-semibold text-purple-900 flex items-center">
+                    <Users className="h-5 w-5 mr-2" />
+                    Nilai & Feedback Anggota Kelompok
+                  </h3>
+                </div>
+                <div className="divide-y divide-gray-200">
+                  {selectedGrade.groupMembers.map((member, index) => (
+                    <div key={member.id} className="p-4 hover:bg-gray-50">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <div className="bg-purple-100 p-2 rounded-full">
+                            <User className="h-5 w-5 text-purple-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">{member.name}</p>
+                            <p className="text-sm text-gray-600">NPM: {member.npm}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className={`text-2xl font-bold ${getGradeColor(member.score)}`}>
+                            {member.score}
+                          </p>
+                          <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getGradeBadge(member.score).color}`}>
+                            Grade {getGradeBadge(member.score).grade}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="bg-gray-50 p-3 rounded border-l-4 border-purple-500">
+                        <p className="text-sm text-gray-700 italic">"{member.individualFeedback}"</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Footer Actions */}
+          <div className="bg-gray-50 px-6 py-4 border-t flex justify-end gap-3">
+            <button
+              onClick={handleClosePreview}
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              Tutup
+            </button>
+            <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2">
+              <Download size={16} />
+              Export PDF
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  if (showPreview) {
+    return <GradePreview />;
+  }
 
   return (
     <div className="space-y-6">
@@ -195,7 +491,11 @@ const MahasiswaGradeView = ({ courseId, courseName, myGrade, averageGrade }) => 
           const gradeBadge = getGradeBadge(grade.myScore);
           
           return (
-            <div key={grade.id} className="bg-white border rounded-lg p-6 hover:shadow-md transition-shadow">
+            <div 
+              key={grade.id} 
+              onClick={() => handlePreview(grade)}
+              className="bg-white border rounded-lg p-6 hover:shadow-lg hover:border-blue-300 transition-all cursor-pointer"
+            >
               <div className="flex justify-between items-start mb-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
@@ -203,6 +503,12 @@ const MahasiswaGradeView = ({ courseId, courseName, myGrade, averageGrade }) => 
                       {getTypeIcon(grade.type)}
                       <span className="ml-1 text-xs">{getTypeText(grade.type)}</span>
                     </div>
+                    {grade.isGroupTask && (
+                      <span className="flex items-center gap-1 bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs">
+                        <Users size={12} />
+                        Kelompok
+                      </span>
+                    )}
                     <span className="text-xs text-gray-500">•</span>
                     <span className="text-xs text-gray-500">Bobot: {grade.weight}%</span>
                   </div>
@@ -217,21 +523,14 @@ const MahasiswaGradeView = ({ courseId, courseName, myGrade, averageGrade }) => 
                   </div>
 
                   {/* Score Comparison */}
-                  <div className="flex items-center space-x-6 mb-3">
+                  <div className="flex items-center space-x-6">
                     <div className="flex items-center">
-                      <span className="text-sm text-gray-600 mr-2">Nilai Saya:</span>
+                      <span className="text-sm text-gray-600 mr-2">Nilai:</span>
                       <span className={`text-lg font-bold ${getGradeColor(grade.myScore)}`}>
                         {grade.myScore}/{grade.maxScore}
                       </span>
                       <span className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${gradeBadge.color}`}>
                         {gradeBadge.grade}
-                      </span>
-                    </div>
-                    
-                    <div className="flex items-center">
-                      <span className="text-sm text-gray-600 mr-2">Rata-rata:</span>
-                      <span className="text-lg font-medium text-gray-700">
-                        {grade.classAverage}/{grade.maxScore}
                       </span>
                     </div>
                     
@@ -242,62 +541,15 @@ const MahasiswaGradeView = ({ courseId, courseName, myGrade, averageGrade }) => 
                       </span>
                     </div>
                   </div>
-
-                  {/* Progress Bar */}
-                  <div className="mb-3">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-xs text-gray-600">Performa vs Kelas</span>
-                      <span className="text-xs text-gray-600">
-                        {grade.myScore > grade.classAverage ? '+' : ''}{grade.myScore - grade.classAverage} poin
-                      </span>
-                    </div>
-                    <div className="relative">
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-gray-400 h-2 rounded-full" 
-                          style={{ width: `${(grade.classAverage / grade.maxScore) * 100}%` }}
-                        ></div>
-                      </div>
-                      <div 
-                        className="absolute top-0 bg-green-600 h-2 rounded-full" 
-                        style={{ width: `${(grade.myScore / grade.maxScore) * 100}%` }}
-                      ></div>
-                    </div>
-                    <div className="flex justify-between text-xs text-gray-500 mt-1">
-                      <span>0</span>
-                      <span>Saya: {grade.myScore}</span>
-                      <span>Avg: {grade.classAverage}</span>
-                      <span>{grade.maxScore}</span>
-                    </div>
-                  </div>
                 </div>
               </div>
 
-              {/* Feedback */}
-              {grade.feedback && (
-                <div className="p-3 bg-blue-50 rounded border-l-4 border-blue-500 mb-3">
-                  <p className="text-sm font-medium text-blue-800 mb-1">Feedback Dosen:</p>
-                  <p className="text-sm text-blue-700">{grade.feedback}</p>
-                </div>
-              )}
-
-              {/* Actions */}
-              <div className="flex justify-between items-center pt-3 border-t border-gray-100">
-                <div className="flex items-center text-xs text-gray-500">
-                  <Star className="h-3 w-3 mr-1" />
-                  <span>Kontribusi: {grade.weight}% dari nilai akhir</span>
-                </div>
-                
-                <div className="flex space-x-2">
-                  <button className="flex items-center text-sm text-blue-600 hover:text-blue-800 transition-colors">
-                    <Eye className="h-4 w-4 mr-1" />
-                    Detail
-                  </button>
-                  <button className="flex items-center text-sm text-green-600 hover:text-green-800 transition-colors">
-                    <Download className="h-4 w-4 mr-1" />
-                    Export
-                  </button>
-                </div>
+              {/* Click indicator */}
+              <div className="flex items-center justify-center pt-3 border-t border-gray-100">
+                <span className="flex items-center text-sm text-blue-600 font-medium">
+                  <Eye className="h-4 w-4 mr-1" />
+                  Klik untuk melihat detail nilai dan feedback
+                </span>
               </div>
             </div>
           );
@@ -333,41 +585,6 @@ const MahasiswaGradeView = ({ courseId, courseName, myGrade, averageGrade }) => 
             <span className="text-sm font-medium text-green-800">
               Posisi Anda: Ranking {myPosition} dari {totalStudents} mahasiswa
             </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Study Recommendations */}
-      <div className="bg-white border rounded-lg p-6">
-        <h4 className="text-lg font-semibold mb-4">Rekomendasi Belajar</h4>
-        <div className="space-y-3">
-          {calculateWeightedGrade() < averageGrade ? (
-            <div className="p-3 bg-yellow-50 rounded border-l-4 border-yellow-500">
-              <p className="text-sm font-medium text-yellow-800 mb-1">Perlu Peningkatan</p>
-              <p className="text-sm text-yellow-700">
-                Nilai Anda saat ini di bawah rata-rata kelas. Fokus pada pemahaman konsep dasar dan latihan soal.
-              </p>
-            </div>
-          ) : (
-            <div className="p-3 bg-green-50 rounded border-l-4 border-green-500">
-              <p className="text-sm font-medium text-green-800 mb-1">Performa Baik</p>
-              <p className="text-sm text-green-700">
-                Pertahankan konsistensi belajar dan fokus pada topik yang masih challenging.
-              </p>
-            </div>
-          )}
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-            <div className="p-3 border border-gray-200 rounded">
-              <h5 className="font-medium text-gray-900 mb-2">Target Nilai Akhir</h5>
-              <p className="text-2xl font-bold text-blue-600">A</p>
-              <p className="text-xs text-gray-500">Butuh rata-rata 90+ untuk sisa assessment</p>
-            </div>
-            <div className="p-3 border border-gray-200 rounded">
-              <h5 className="font-medium text-gray-900 mb-2">Area Perbaikan</h5>
-              <p className="text-sm text-gray-700">JavaScript Advanced Concepts</p>
-              <p className="text-xs text-gray-500">Berdasarkan feedback dosen</p>
-            </div>
           </div>
         </div>
       </div>
