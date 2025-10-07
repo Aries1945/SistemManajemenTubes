@@ -82,6 +82,17 @@ export const createMahasiswa = (mahasiswaData) => {
   return api.post('/admin/mahasiswa', mahasiswaData);
 };
 
+// Tambahkan ke /src/utils/api.js
+export const getMahasiswaCourses = async () => {
+  try {
+    const response = await api.get('/mahasiswa/courses');
+    return response;
+  } catch (error) {
+    console.error('Error fetching mahasiswa courses:', error);
+    throw error;
+  }
+};
+
 // Dosen API calls can be added here
 
 // Mahasiswa API calls can be added here

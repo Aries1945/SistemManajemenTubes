@@ -1,123 +1,252 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
-  ChevronRight, Clock, CheckCircle, FileText, Calendar,
-  AlertTriangle, Users, Star, Download, Upload
+  ChevronRight, User, FileText, Star, Calendar, Clock, 
+  CheckCircle, Download, Upload, MessageSquare, Users,
+  BookOpen, Target, Award, AlertCircle, Play, Eye
 } from 'lucide-react';
+import MahasiswaTaskManagement from '../../components/mahasiswa/MahasiswaTaskManagement';
+import MahasiswaGroupView from '../../components/mahasiswa/MahasiswaGroupView';
+import MahasiswaGradeView from '../../components/mahasiswa/MahasiswaGradeView';
 
 const MahasiswaCourseDetail = () => {
   const { courseId } = useParams();
   const navigate = useNavigate();
-  const [selectedFile, setSelectedFile] = useState(null);
+  const [activeTab, setActiveTab] = useState('overview');
 
-  // Sample data - akan diganti dengan API call berdasarkan courseId
+  // Sample course data - akan diganti dengan API call berdasarkan courseId
   const course = {
     id: parseInt(courseId),
     name: 'Pemrograman Web',
     code: 'IF123',
-    sks: 3,
-    lecturer: 'Dr. John Doe',
+    lecturer: 'Dr. Ahmad Fauzi',
+    class: 'A',
+    schedule: 'Senin, 08:00-10:00 | Kamis, 13:00-15:00',
     semester: 'Ganjil 2024/2025',
-    groupStatus: 'joined', // 'joined', 'not_joined'
-    groupName: 'Kelompok Alpha',
-    groupMembers: ['Alice Johnson', 'Bob Smith', 'Charlie Brown'],
-    schedule: [
-      { day: 'Senin', time: '08:00-10:00', room: 'Lab A' },
-      { day: 'Rabu', time: '10:00-12:00', room: 'Lab A' }
-    ],
-    assignments: [
-      {
-        id: 1,
-        title: 'Proposal Sistem E-Commerce',
-        description: 'Membuat proposal lengkap untuk sistem e-commerce',
-        deadline: '2024-10-15',
-        status: 'graded',
-        grade: 88,
-        weight: 20,
-        submittedAt: '2024-10-14T10:30:00',
-        feedback: 'Proposal yang baik, perlu perbaikan di metodologi'
-      },
-      {
-        id: 2,
-        title: 'Progress Report 1',
-        description: 'Laporan kemajuan development tahap pertama',
-        deadline: '2024-11-15',
-        status: 'pending',
-        grade: null,
-        weight: 25,
-        submittedAt: null,
-        feedback: null
-      }
-    ],
-    averageGrade: 88.5,
-    activeTasks: 2,
-    completedTasks: 1,
-    nextDeadline: '2024-11-15'
+    sks: 3,
+    room: 'Lab Komputer 1',
+    totalStudents: 45,
+    averageGrade: 85.5,
+    myGrade: 87.2,
+    attendance: 95,
+    totalTasks: 5,
+    completedTasks: 3,
+    pendingTasks: 2,
+    taskProgress: 60,
+    myGroup: 'Kelompok 5',
+    groupMembers: ['John Doe', 'Jane Smith', 'Bob Wilson']
   };
 
-  const getGroupStatusBadge = (status) => {
-    if (status === 'joined') {
-      return (
-        <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
-          <CheckCircle size={14} />
-          Bergabung
-        </span>
-      );
-    } else {
-      return (
-        <span className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-medium">
-          <AlertTriangle size={14} />
-          Belum Bergabung
-        </span>
-      );
-    }
-  };
+  const CourseOverview = () => (
+    <div className="space-y-6">
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-green-50 p-4 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-green-600 text-sm font-medium">Nilai Saya</p>
+              <p className="text-2xl font-bold text-green-700">{course.myGrade}</p>
+            </div>
+            <Star className="text-green-600" size={32} />
+          </div>
+        </div>
+        
+        <div className="bg-blue-50 p-4 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-blue-600 text-sm font-medium">Kehadiran</p>
+              <p className="text-2xl font-bold text-blue-700">{course.attendance}%</p>
+            </div>
+            <CheckCircle className="text-blue-600" size={32} />
+          </div>
+        </div>
+        
+        <div className="bg-purple-50 p-4 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-purple-600 text-sm font-medium">Tugas Selesai</p>
+              <p className="text-2xl font-bold text-purple-700">{course.completedTasks}/{course.totalTasks}</p>
+            </div>
+            <FileText className="text-purple-600" size={32} />
+          </div>
+        </div>
 
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case 'pending':
+        <div className="bg-orange-50 p-4 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-orange-600 text-sm font-medium">Rata-rata Kelas</p>
+              <p className="text-2xl font-bold text-orange-700">{course.averageGrade}</p>
+            </div>
+            <Target className="text-orange-600" size={32} />
+          </div>
+        </div>
+      </div>
+
+      {/* Course Information */}
+      <div className="bg-gray-50 p-6 rounded-lg">
+        <h4 className="text-lg font-semibold mb-4">Informasi Mata Kuliah</h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <p className="text-sm text-gray-600 mb-1">Dosen Pengampu</p>
+            <p className="font-medium flex items-center">
+              <User className="h-4 w-4 mr-2 text-gray-500" />
+              {course.lecturer}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-600 mb-1">Kelas</p>
+            <p className="font-medium">{course.class}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-600 mb-1">Jadwal</p>
+            <p className="font-medium flex items-center">
+              <Calendar className="h-4 w-4 mr-2 text-gray-500" />
+              {course.schedule}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-600 mb-1">Ruangan</p>
+            <p className="font-medium">{course.room}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-600 mb-1">Kelompok Saya</p>
+            <p className="font-medium flex items-center">
+              <Users className="h-4 w-4 mr-2 text-gray-500" />
+              {course.myGroup}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-600 mb-1">SKS</p>
+            <p className="font-medium">{course.sks}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Progress Chart */}
+      <div className="bg-white border rounded-lg p-6">
+        <h4 className="text-lg font-semibold mb-4">Progress Pembelajaran</h4>
+        <div className="space-y-4">
+          <div>
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm font-medium text-gray-700">Penyelesaian Tugas</span>
+              <span className="text-sm text-gray-600">{course.taskProgress}%</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-3">
+              <div 
+                className="bg-green-600 h-3 rounded-full transition-all" 
+                style={{ width: `${course.taskProgress}%` }}
+              ></div>
+            </div>
+          </div>
+          
+          <div>
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm font-medium text-gray-700">Kehadiran</span>
+              <span className="text-sm text-gray-600">{course.attendance}%</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-3">
+              <div 
+                className="bg-blue-600 h-3 rounded-full transition-all" 
+                style={{ width: `${course.attendance}%` }}
+              ></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Recent Activity */}
+      <div className="bg-white border rounded-lg p-6">
+        <h4 className="text-lg font-semibold mb-4">Aktivitas Terbaru</h4>
+        <div className="space-y-3">
+          <div className="flex items-start gap-3 p-3 bg-green-50 rounded">
+            <div className="w-2 h-2 bg-green-600 rounded-full mt-2"></div>
+            <div>
+              <p className="font-medium">Tugas "React Components" berhasil dikumpulkan</p>
+              <p className="text-sm text-gray-600">2 hari yang lalu</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3 p-3 bg-blue-50 rounded">
+            <div className="w-2 h-2 bg-blue-600 rounded-full mt-2"></div>
+            <div>
+              <p className="font-medium">Nilai UTS telah diumumkan: 88</p>
+              <p className="text-sm text-gray-600">5 hari yang lalu</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3 p-3 bg-purple-50 rounded">
+            <div className="w-2 h-2 bg-purple-600 rounded-full mt-2"></div>
+            <div>
+              <p className="font-medium">Bergabung dengan Kelompok 5</p>
+              <p className="text-sm text-gray-600">1 minggu yang lalu</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="bg-white border rounded-lg p-6">
+        <h4 className="text-lg font-semibold mb-4">Aksi Cepat</h4>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <button 
+            onClick={() => setActiveTab('tasks')}
+            className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left"
+          >
+            <FileText className="text-green-600 mb-2" size={24} />
+            <p className="font-medium">Lihat Tugas</p>
+            <p className="text-sm text-gray-600">Kelola tugas dan pengumpulan</p>
+          </button>
+          <button 
+            onClick={() => setActiveTab('group')}
+            className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left"
+          >
+            <Users className="text-blue-600 mb-2" size={24} />
+            <p className="font-medium">Kelompok Saya</p>
+            <p className="text-sm text-gray-600">Lihat anggota dan aktivitas</p>
+          </button>
+          <button 
+            onClick={() => setActiveTab('grades')}
+            className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left"
+          >
+            <Star className="text-purple-600 mb-2" size={24} />
+            <p className="font-medium">Lihat Nilai</p>
+            <p className="text-sm text-gray-600">Cek nilai dan feedback</p>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'overview':
+        return <CourseOverview />;
+      case 'tasks':
         return (
-          <span className="inline-flex items-center gap-1 px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium">
-            <Clock size={14} />
-            Tugas Aktif
-          </span>
+          <MahasiswaTaskManagement 
+            courseId={course.id}
+            courseName={course.name}
+          />
         );
-      case 'submitted':
+      case 'group':
         return (
-          <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
-            <CheckCircle size={14} />
-            Submitted
-          </span>
+          <MahasiswaGroupView 
+            courseId={course.id}
+            courseName={course.name}
+            myGroup={course.myGroup}
+            groupMembers={course.groupMembers}
+          />
         );
-      case 'graded':
+      case 'grades':
         return (
-          <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
-            <Star size={14} />
-            Selesai
-          </span>
+          <MahasiswaGradeView 
+            courseId={course.id}
+            courseName={course.name}
+            myGrade={course.myGrade}
+            averageGrade={course.averageGrade}
+          />
         );
       default:
-        return null;
+        return <CourseOverview />;
     }
-  };
-
-  const getUrgencyColor = (deadline) => {
-    const today = new Date();
-    const deadlineDate = new Date(deadline);
-    const diffTime = deadlineDate - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays < 0) return 'text-red-600';
-    if (diffDays <= 3) return 'text-red-600';
-    if (diffDays <= 7) return 'text-yellow-600';
-    return 'text-green-600';
-  };
-
-  const handleFileUpload = (assignmentId) => {
-    if (!selectedFile) return;
-    console.log('Upload file for assignment:', assignmentId, selectedFile.name);
-    // Handle upload logic
-    setSelectedFile(null);
   };
 
   return (
@@ -125,8 +254,8 @@ const MahasiswaCourseDetail = () => {
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 mb-6">
         <button 
-          onClick={() => navigate('/student/courses')}
-          className="text-blue-600 hover:text-blue-800 font-medium"
+          onClick={() => navigate('/mahasiswa/dashboard/mata-kuliah')}
+          className="text-green-600 hover:text-green-800 font-medium"
         >
           Mata Kuliah Saya
         </button>
@@ -136,195 +265,76 @@ const MahasiswaCourseDetail = () => {
 
       {/* Course Header */}
       <div className="bg-white p-6 rounded-lg shadow border mb-6">
-        <div className="flex justify-between items-start mb-4">
+        <div className="flex justify-between items-start">
           <div>
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-2xl font-bold text-gray-900">{course.name}</h1>
-              {getGroupStatusBadge(course.groupStatus)}
-            </div>
-            <p className="text-gray-600 mb-2">{course.code} • {course.sks} SKS • {course.lecturer}</p>
+            <h1 className="text-2xl font-bold text-gray-900">{course.name}</h1>
+            <p className="text-gray-600">{course.code} • {course.sks} SKS • Kelas {course.class}</p>
             <p className="text-sm text-gray-500">{course.semester}</p>
-          </div>
-        </div>
-
-        {/* Schedule */}
-        <div className="mb-4">
-          <h3 className="font-medium text-gray-700 mb-2">Jadwal Kuliah:</h3>
-          <div className="flex flex-wrap gap-2">
-            {course.schedule.map((schedule, index) => (
-              <span key={index} className="bg-blue-50 text-blue-700 px-3 py-1 rounded text-sm">
-                {schedule.day} {schedule.time} ({schedule.room})
-              </span>
-            ))}
-          </div>
-        </div>
-
-        {/* Group Info */}
-        {course.groupName && (
-          <div>
-            <h3 className="font-medium text-gray-700 mb-2">Kelompok: {course.groupName}</h3>
-            <div className="flex flex-wrap gap-2">
-              {course.groupMembers.map((member, index) => (
-                <span key={index} className="bg-gray-100 text-gray-700 px-3 py-1 rounded text-sm">
-                  {member}
-                </span>
-              ))}
+            <div className="flex items-center mt-2 text-sm text-gray-600">
+              <User className="h-4 w-4 mr-1" />
+              <span>{course.lecturer}</span>
             </div>
           </div>
-        )}
-      </div>
-
-      {/* Statistics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
-        <div className="bg-white p-6 rounded-lg shadow border text-center">
-          <div className="bg-yellow-50 rounded-lg p-4">
-            <Clock className="text-yellow-600 mx-auto mb-2" size={32} />
-            <p className="text-3xl font-bold text-yellow-600 mb-1">{course.activeTasks}</p>
-            <p className="text-sm text-gray-600">Tugas Aktif</p>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-lg shadow border text-center">
-          <div className="bg-green-50 rounded-lg p-4">
-            <CheckCircle className="text-green-600 mx-auto mb-2" size={32} />
-            <p className="text-3xl font-bold text-green-600 mb-1">{course.completedTasks}</p>
-            <p className="text-sm text-gray-600">Selesai</p>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-lg shadow border text-center">
-          <div className="bg-blue-50 rounded-lg p-4">
-            <Calendar className="text-blue-600 mx-auto mb-2" size={32} />
-            <p className={`text-lg font-bold mb-1 ${getUrgencyColor(course.nextDeadline)}`}>
-              {course.nextDeadline}
-            </p>
-            <p className="text-sm text-gray-600">Deadline Terdekat</p>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-lg shadow border text-center">
-          <div className="bg-purple-50 rounded-lg p-4">
-            <Star className="text-purple-600 mx-auto mb-2" size={32} />
-            <p className="text-3xl font-bold text-purple-600 mb-1">{course.averageGrade}</p>
-            <p className="text-sm text-gray-600">Rata-rata Nilai</p>
+          <div className="text-right">
+            <p className="text-sm text-gray-600">Nilai Saya</p>
+            <span className="text-2xl font-bold text-green-600">{course.myGrade}</span>
+            <div className="flex items-center mt-1">
+              <Star className="h-4 w-4 text-yellow-500 mr-1" />
+              <span className="text-sm text-gray-600">Grade: A-</span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Warning for not joined group */}
-      {course.groupStatus === 'not_joined' && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="text-yellow-600 mt-1" size={20} />
-            <div className="flex-1">
-              <p className="text-yellow-800 font-medium">Belum bergabung kelompok</p>
-              <p className="text-yellow-700 text-sm mt-1">
-                Anda perlu bergabung dengan kelompok untuk mengerjakan tugas besar.
-              </p>
-            </div>
-            <button 
-              onClick={() => navigate('/student/groups')}
-              className="bg-yellow-600 text-white px-4 py-2 rounded text-sm hover:bg-yellow-700 transition-colors"
-            >
-              Cari Kelompok
-            </button>
-          </div>
+      {/* Tab Navigation */}
+      <div className="bg-white rounded-lg shadow border mb-6">
+        <div className="flex border-b">
+          <button 
+            onClick={() => setActiveTab('overview')}
+            className={`px-6 py-3 font-medium transition-colors ${
+              activeTab === 'overview' 
+                ? 'border-b-2 border-green-600 text-green-600' 
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Overview
+          </button>
+          <button 
+            onClick={() => setActiveTab('tasks')}
+            className={`px-6 py-3 font-medium transition-colors ${
+              activeTab === 'tasks' 
+                ? 'border-b-2 border-green-600 text-green-600' 
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Tugas
+          </button>
+          <button 
+            onClick={() => setActiveTab('group')}
+            className={`px-6 py-3 font-medium transition-colors ${
+              activeTab === 'group' 
+                ? 'border-b-2 border-green-600 text-green-600' 
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Kelompok
+          </button>
+          <button 
+            onClick={() => setActiveTab('grades')}
+            className={`px-6 py-3 font-medium transition-colors ${
+              activeTab === 'grades' 
+                ? 'border-b-2 border-green-600 text-green-600' 
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Nilai
+          </button>
         </div>
-      )}
 
-      {/* Assignments Section */}
-      <div className="space-y-6">
-        {course.assignments.map(assignment => (
-          <div key={assignment.id} className="bg-white p-6 rounded-lg shadow border">
-            <div className="flex justify-between items-start mb-4">
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
-                  <h3 className="text-xl font-semibold text-gray-900">{assignment.title}</h3>
-                  {getStatusBadge(assignment.status)}
-                </div>
-                <p className="text-gray-700 mb-3">{assignment.description}</p>
-              </div>
-            </div>
-
-            {/* Assignment Details */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-              <div>
-                <p className="text-sm text-gray-600">Deadline</p>
-                <p className={`font-medium ${getUrgencyColor(assignment.deadline)}`}>
-                  {assignment.deadline}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Bobot</p>
-                <p className="font-medium">{assignment.weight}%</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Status</p>
-                <p className="font-medium capitalize">{assignment.status}</p>
-              </div>
-              {assignment.grade && (
-                <div>
-                  <p className="text-sm text-gray-600">Nilai</p>
-                  <p className="font-medium text-green-600">{assignment.grade}</p>
-                </div>
-              )}
-            </div>
-
-            {/* Upload Section */}
-            {assignment.status === 'pending' && (
-              <div className="border-t pt-4">
-                <h4 className="font-medium mb-3">Upload Tugas</h4>
-                <div className="flex items-center gap-4">
-                  <input
-                    type="file"
-                    onChange={(e) => setSelectedFile(e.target.files[0])}
-                    className="flex-1 text-sm"
-                    accept=".pdf,.doc,.docx,.zip,.rar"
-                  />
-                  <button
-                    onClick={() => handleFileUpload(assignment.id)}
-                    disabled={!selectedFile}
-                    className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors disabled:bg-gray-400 flex items-center gap-2"
-                  >
-                    <Upload size={16} />
-                    Upload
-                  </button>
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Format yang didukung: PDF, DOC, DOCX, ZIP, RAR (Max: 50MB)
-                </p>
-              </div>
-            )}
-
-            {/* Submission Info */}
-            {assignment.submittedAt && (
-              <div className="border-t pt-4">
-                <p className="text-sm text-gray-600">
-                  Dikumpulkan pada: {new Date(assignment.submittedAt).toLocaleString('id-ID')}
-                </p>
-              </div>
-            )}
-
-            {/* Feedback Section */}
-            {assignment.feedback && (
-              <div className="border-t pt-4">
-                <h4 className="font-medium mb-2">Feedback Dosen</h4>
-                <div className="bg-blue-50 p-3 rounded">
-                  <p className="text-blue-800">{assignment.feedback}</p>
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
+        <div className="p-6">
+          {renderTabContent()}
+        </div>
       </div>
-
-      {course.assignments.length === 0 && (
-        <div className="text-center py-12">
-          <FileText size={64} className="mx-auto mb-4 text-gray-400" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Belum ada tugas</h3>
-          <p className="text-gray-600">Tugas besar untuk mata kuliah ini belum tersedia.</p>
-        </div>
-      )}
     </div>
   );
 };
