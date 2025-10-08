@@ -208,6 +208,175 @@ router.post('/mahasiswa', async (req, res) => {
   }
 });
 
+// POST bulk create mahasiswa accounts
+router.post('/mahasiswa/bulk', async (req, res) => {
+  const { students } = req.body;
+  
+  if (!students || !Array.isArray(students) || students.length === 0) {
+    return res.status(400).json({ error: 'Students array is required and cannot be empty' });
+  }
+
+  const successfulUsers = [];
+  const errors = [];
+
+  // Process each student individually to avoid transaction conflicts
+  for (let i = 0; i < students.length; i++) {
+    const student = students[i];
+    const { email, nim, nama_lengkap, angkatan } = student;
+    
+    // Validate required fields for each student
+    if (!email || !nim || !nama_lengkap) {
+      errors.push({
+        row: i + 1,
+        data: student,
+        error: 'Email, NIM, and nama_lengkap are required'
+      });
+      continue;
+    }
+
+    // Validate field lengths
+    if (nim.length > 10) {
+      errors.push({
+        row: i + 1,
+        data: student,
+        error: 'NIM cannot exceed 10 characters'
+      });
+      continue;
+    }
+
+    if (email.length > 255) {
+      errors.push({
+        row: i + 1,
+        data: student,
+        error: 'Email cannot exceed 255 characters'
+      });
+      continue;
+    }
+
+    if (nama_lengkap.length > 255) {
+      errors.push({
+        row: i + 1,
+        data: student,
+        error: 'Nama lengkap cannot exceed 255 characters'
+      });
+      continue;
+    }
+
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      errors.push({
+        row: i + 1,
+        data: student,
+        error: 'Invalid email format'
+      });
+      continue;
+    }
+
+    // Process individual student with separate transaction
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // Check if email or NIM already exists
+      const existingCheck = await client.query(`
+        SELECT 
+          u.email,
+          m.nim
+        FROM users u
+        LEFT JOIN mahasiswa_profiles m ON u.id = m.user_id
+        WHERE u.email = $1 OR m.nim = $2
+      `, [email, nim]);
+
+      if (existingCheck.rows.length > 0) {
+        const existing = existingCheck.rows[0];
+        if (existing.email === email) {
+          errors.push({
+            row: i + 1,
+            data: student,
+            error: 'Email already exists'
+          });
+        } else if (existing.nim === nim) {
+          errors.push({
+            row: i + 1,
+            data: student,
+            error: 'NIM already exists'
+          });
+        }
+        await client.query('ROLLBACK');
+        continue;
+      }
+
+      // Hash password
+      const hashedPassword = await bcrypt.hash('123', 10);
+
+      // Create user account
+      const userResult = await client.query(
+        `INSERT INTO users (email, password_hash, role) 
+         VALUES ($1, $2, 'mahasiswa') 
+         RETURNING id`,
+        [email, hashedPassword]
+      );
+
+      const userId = userResult.rows[0].id;
+
+      // Create mahasiswa profile
+      await client.query(
+        `INSERT INTO mahasiswa_profiles (user_id, nim, nama_lengkap, angkatan, is_active) 
+         VALUES ($1, $2, $3, $4, true)`,
+        [userId, nim, nama_lengkap, angkatan || null]
+      );
+
+      await client.query('COMMIT');
+
+      successfulUsers.push({
+        id: userId,
+        email,
+        role: 'mahasiswa',
+        nim,
+        nama_lengkap,
+        angkatan,
+        is_active: true
+      });
+
+    } catch (error) {
+      await client.query('ROLLBACK');
+      console.error(`Error creating student ${i + 1}:`, error);
+      
+      // Handle specific database errors
+      let errorMessage = 'Failed to create student account';
+      if (error.code === '23505') { // Unique violation
+        if (error.constraint && error.constraint.includes('email')) {
+          errorMessage = 'Email already exists';
+        } else if (error.constraint && error.constraint.includes('nim')) {
+          errorMessage = 'NIM already exists';
+        }
+      } else if (error.code === '22001') { // Character length error
+        errorMessage = 'One of the fields exceeds the maximum allowed length';
+      }
+      
+      errors.push({
+        row: i + 1,
+        data: student,
+        error: errorMessage
+      });
+    } finally {
+      client.release();
+    }
+  }
+
+  res.status(201).json({
+    message: `Bulk import completed. ${successfulUsers.length} students created, ${errors.length} errors`,
+    users: successfulUsers,
+    errors: errors,
+    summary: {
+      total: students.length,
+      successful: successfulUsers.length,
+      failed: errors.length
+    }
+  });
+});
+
 // PATCH update user status (activate/deactivate)
 router.patch('/users/:id/status', async (req, res) => {
   const { id } = req.params;
