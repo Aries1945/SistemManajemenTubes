@@ -74,26 +74,51 @@ export const handleCreateDosen = async (dosenData, setUsers) => {
   }
 };
 
-export const handleCreateMahasiswa = async (userData, setUsers) => {
+export const handleCreateMahasiswa = async (requestData, setUsers) => {
   try {
-    const dataWithPassword = {
-      ...userData,
-      password: userData.password || "123"
-    };
-    
-    const response = await api.post('/admin/mahasiswa', dataWithPassword);
-    const newUser = response.data.user;
-    
-    setUsers(prevUsers => [newUser, ...prevUsers]);
-    toast.success(`Akun mahasiswa untuk ${newUser.nama_lengkap || newUser.email} berhasil dibuat`);
-    
-    return { success: true, user: newUser };
+    if (requestData.type === 'import') {
+      // Handle bulk import
+      const response = await api.post('/admin/mahasiswa/bulk', {
+        students: requestData.data
+      });
+      
+      const newUsers = response.data.users || [];
+      const errors = response.data.errors || [];
+      
+      if (newUsers.length > 0) {
+        setUsers(prevUsers => [...newUsers, ...prevUsers]);
+        toast.success(`${newUsers.length} akun mahasiswa berhasil dibuat`);
+      }
+      
+      if (errors.length > 0) {
+        console.warn('Import errors:', errors);
+        toast.error(`${errors.length} data gagal diimport. Periksa console untuk detail.`);
+      }
+      
+      return { 
+        success: newUsers.length > 0, 
+        users: newUsers,
+        errors: errors,
+        message: `${newUsers.length} berhasil, ${errors.length} gagal`
+      };
+    } else {
+      // Handle single create - no need to send password, backend sets default
+      const response = await api.post('/admin/mahasiswa', requestData.data);
+      const newUser = response.data.user;
+      
+      setUsers(prevUsers => [newUser, ...prevUsers]);
+      toast.success(`Akun mahasiswa untuk ${newUser.nama_lengkap || newUser.email} berhasil dibuat`);
+      
+      return { success: true, user: newUser };
+    }
   } catch (error) {
     console.error('Error creating mahasiswa:', error);
-    toast.error(error.response?.data?.error || 'Gagal membuat akun mahasiswa');
+    const errorMessage = error.response?.data?.error || 
+                        (requestData.type === 'import' ? 'Gagal mengimport data mahasiswa' : 'Gagal membuat akun mahasiswa');
+    toast.error(errorMessage);
     return { 
       success: false, 
-      error: error.response?.data?.error || 'Failed to create mahasiswa'
+      error: errorMessage
     };
   }
 };
