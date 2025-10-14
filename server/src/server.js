@@ -7,8 +7,6 @@ require('dotenv').config();
 // Import routes
 const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
-const dosenRoutes = require('./routes/dosen');
-const kelompokRoutes = require('./routes/kelompok');
 const { authenticateToken } = require('./middleware/auth');
 
 const app = express();
@@ -32,8 +30,6 @@ async function initializeDatabase() {
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', authenticateToken, adminRoutes);
-app.use('/api/auth/dosen', authenticateToken, dosenRoutes);
-app.use('/api/kelompok', authenticateToken, kelompokRoutes);
 
 // Database check endpoint
 app.get('/api/db-check', async (req, res) => {

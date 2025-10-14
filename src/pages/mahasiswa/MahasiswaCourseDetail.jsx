@@ -5,7 +5,7 @@ import {
   CheckCircle, Download, Upload, MessageSquare, Users,
   BookOpen, Target, Award, AlertCircle, Play, Eye
 } from 'lucide-react';
-import MahasiswaTaskManagement from '../../components/mahasiswa/MahasiswaTaskManagement';
+import MahasiswaTaskManagement from '../../components/mahasiswa/TubesMahasiswaManagement';
 import MahasiswaGroupView from '../../components/mahasiswa/MahasiswaGroupView';
 import MahasiswaGradeView from '../../components/mahasiswa/MahasiswaGradeView';
 
@@ -307,7 +307,7 @@ const MahasiswaCourseDetail = () => {
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
-            Tugas
+            Tugas Besar
           </button>
           <button 
             onClick={() => setActiveTab('group')}
@@ -317,16 +317,8 @@ const MahasiswaCourseDetail = () => {
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
-            Kelompok
-          </button>
-          <button 
-            onClick={() => setActiveTab('grades')}
-            className={`px-6 py-3 font-medium transition-colors ${
-              activeTab === 'grades' 
-                ? 'border-b-2 border-green-600 text-green-600' 
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
+          
+          
             Nilai
           </button>
         </div>

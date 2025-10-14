@@ -123,8 +123,8 @@ const UsersSection = ({
                       <div className="ml-4">
                         <div className="text-sm font-medium text-gray-900">{user.nama_lengkap || 'Nama tidak tersedia'}</div>
                         <div className="text-sm text-gray-500">{user.email}</div>
-                        {user.role === 'dosen' && user.nip && <div className="text-xs text-gray-500">NIP: {user.nip}</div>}
-                        {user.role === 'mahasiswa' && user.nim && <div className="text-xs text-gray-500">NIM: {user.nim}</div>}
+                        {user.role === 'dosen' && user.nip && <div className="text-xs text-gray-500">NIK: {user.nip}</div>}
+                        {user.role === 'mahasiswa' && user.nim && <div className="text-xs text-gray-500">NPM: {user.nim}</div>}
                       </div>
                     </div>
                   </td>

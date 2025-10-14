@@ -82,6 +82,7 @@ export const createMahasiswa = (mahasiswaData) => {
   return api.post('/admin/mahasiswa', mahasiswaData);
 };
 
+// Tambahkan ke /src/utils/api.js
 export const getMahasiswaCourses = async () => {
   try {
     const response = await api.get('/mahasiswa/courses');
@@ -92,7 +93,8 @@ export const getMahasiswaCourses = async () => {
   }
 };
 
-// Note: Dosen API endpoints will be added when backend routes are implemented
-// For now, using existing /auth/dosen/courses endpoint
+// Dosen API calls can be added here
+
+// Mahasiswa API calls can be added here
 
 export default api;
