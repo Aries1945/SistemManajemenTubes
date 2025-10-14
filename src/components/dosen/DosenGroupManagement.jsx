@@ -4,99 +4,188 @@ import {
   Shuffle, Save, X, Search, Filter, Download,
   CheckCircle, AlertCircle, Clock, RefreshCw, List
 } from 'lucide-react';
+import { getTugasBesar } from '../../utils/tugasBesarApi';
+import { 
+  getKelompok, 
+  getMahasiswaForGrouping, 
+  createManualGroup, 
+  createAutomaticGroups, 
+  enableStudentChoice, 
+  deleteKelompok 
+} from '../../utils/kelompokApi';
 
 const DosenGroupManagement = ({ courseId, courseName = 'Pemrograman Web', taskId = null }) => {
-  const [activeView, setActiveView] = useState('list');
+  const [activeView, setActiveView] = useState('task-list');
+  const [selectedTask, setSelectedTask] = useState(null);
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTask, setFilterTask] = useState(taskId || 'all');
+  const [tasks, setTasks] = useState([]);
+  const [groups, setGroups] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingGroups, setLoadingGroups] = useState(false);
 
-  // Sample data - akan diganti dengan data dari API
-  const tasks = [
-    { id: 1, title: 'Sistem E-Commerce', status: 'active' },
-    { id: 2, title: 'Database Design Project', status: 'completed' },
-    { id: 3, title: 'Mobile App Development', status: 'draft' }
-  ];
-
-  const students = [
-    { id: 1, npm: '2023001', name: 'Alice Johnson', email: 'alice@student.unpar.ac.id' },
-    { id: 2, npm: '2023002', name: 'Bob Smith', email: 'bob@student.unpar.ac.id' },
-    { id: 3, npm: '2023003', name: 'Charlie Brown', email: 'charlie@student.unpar.ac.id' },
-    { id: 4, npm: '2023004', name: 'Diana Prince', email: 'diana@student.unpar.ac.id' },
-    { id: 5, npm: '2023005', name: 'Edward Norton', email: 'edward@student.unpar.ac.id' },
-    { id: 6, npm: '2023006', name: 'Fiona Green', email: 'fiona@student.unpar.ac.id' },
-    { id: 7, npm: '2023007', name: 'George Wilson', email: 'george@student.unpar.ac.id' },
-    { id: 8, npm: '2023008', name: 'Hannah Davis', email: 'hannah@student.unpar.ac.id' },
-    { id: 9, npm: '2023009', name: 'Ian Murphy', email: 'ian@student.unpar.ac.id' },
-    { id: 10, npm: '2023010', name: 'Julia Roberts', email: 'julia@student.unpar.ac.id' }
-  ];
-
-  const groups = [
-    {
-      id: 1,
-      name: 'Kelompok A',
-      taskId: 1,
-      taskTitle: 'Sistem E-Commerce',
-      members: [
-        { ...students[0], role: 'leader' },
-        { ...students[1], role: 'member' },
-        { ...students[2], role: 'member' }
-      ],
-      status: 'active',
-      createdBy: 'dosen',
-      createdAt: '2024-10-01',
-      scores: {
-        proposal: 88,
-        progress1: 85,
-        progress2: null,
-        final: null,
-        average: 86.5
+  // Load tasks from API
+  useEffect(() => {
+    const loadTasks = async () => {
+      try {
+        setLoading(true);
+        const response = await getTugasBesar(courseId);
+        console.log('Loaded tasks:', response);
+        
+        // Extract the tugasBesar array from the response
+        const tugasBesarArray = response?.tugasBesar || response || [];
+        
+        // Transform API data to match component expectations
+        const transformedTasks = tugasBesarArray.map(task => ({
+          id: task.id,
+          title: task.judul || task.title,
+          status: 'active', // Semua tugas yang ada dianggap aktif
+          description: task.deskripsi || task.description,
+          deadline: task.tanggal_selesai || task.deadline,
+          startDate: task.tanggal_mulai || task.startDate,
+          components: (typeof task.komponen === 'string' ? JSON.parse(task.komponen) : task.komponen) || task.components || [],
+          deliverables: (typeof task.deliverable === 'string' ? JSON.parse(task.deliverable) : task.deliverable) || task.deliverables || [],
+          studentChoiceEnabled: task.student_choice_enabled || false,
+          maxGroupSize: task.max_group_size || 4,
+          minGroupSize: task.min_group_size || 2
+        }));
+        
+        setTasks(transformedTasks);
+      } catch (error) {
+        console.error('Error loading tasks:', error);
+        // Fallback to empty array if API fails
+        setTasks([]);
+      } finally {
+        setLoading(false);
       }
-    },
-    {
-      id: 2,
-      name: 'Kelompok B',
-      taskId: 1,
-      taskTitle: 'Sistem E-Commerce',
-      members: [
-        { ...students[3], role: 'leader' },
-        { ...students[4], role: 'member' },
-        { ...students[5], role: 'member' },
-        { ...students[6], role: 'member' }
-      ],
-      status: 'active',
-      createdBy: 'auto',
-      createdAt: '2024-10-01',
-      scores: {
-        proposal: 92,
-        progress1: 89,
-        progress2: null,
-        final: null,
-        average: 90.5
+    };
+
+    if (courseId) {
+      loadTasks();
+    }
+  }, [courseId]);
+
+  // Load groups and students when a task is selected
+  useEffect(() => {
+    const loadGroupData = async () => {
+      if (selectedTask) {
+        try {
+          setLoadingGroups(true);
+          const [groupsData, studentsData] = await Promise.all([
+            getKelompok(selectedTask.id),
+            getMahasiswaForGrouping(selectedTask.id)
+          ]);
+          setGroups(groupsData);
+          setStudents(studentsData);
+        } catch (error) {
+          console.error('Error loading group data:', error);
+          setGroups([]);
+          setStudents([]);
+        } finally {
+          setLoadingGroups(false);
+        }
       }
-    },
-    {
-      id: 3,
-      name: 'Kelompok A',
-      taskId: 2,
-      taskTitle: 'Database Design Project',
-      members: [
-        { ...students[7], role: 'leader' },
-        { ...students[8], role: 'member' },
-        { ...students[9], role: 'member' }
-      ],
-      status: 'completed',
-      createdBy: 'dosen',
-      createdAt: '2024-09-15',
-      scores: {
-        proposal: 85,
-        progress1: 88,
-        progress2: 92,
-        final: 90,
-        average: 88.75
+    };
+
+    loadGroupData();
+  }, [selectedTask]);
+
+  // Handle manual group creation
+  const handleCreateManualGroup = async (groupData) => {
+    try {
+      setLoadingGroups(true);
+      await createManualGroup(selectedTask.id, groupData);
+      // Reload groups and students
+      const [groupsData, studentsData] = await Promise.all([
+        getKelompok(selectedTask.id),
+        getMahasiswaForGrouping(selectedTask.id)
+      ]);
+      setGroups(groupsData);
+      setStudents(studentsData);
+      setActiveView('list');
+    } catch (error) {
+      console.error('Error creating manual group:', error);
+      alert('Error creating group: ' + error.message);
+    } finally {
+      setLoadingGroups(false);
+    }
+  };
+
+  // Handle automatic group creation
+  const handleCreateAutomaticGroups = async (groupSize) => {
+    try {
+      setLoadingGroups(true);
+      await createAutomaticGroups(selectedTask.id, groupSize);
+      // Reload groups and students
+      const [groupsData, studentsData] = await Promise.all([
+        getKelompok(selectedTask.id),
+        getMahasiswaForGrouping(selectedTask.id)
+      ]);
+      setGroups(groupsData);
+      setStudents(studentsData);
+      setActiveView('list');
+    } catch (error) {
+      console.error('Error creating automatic groups:', error);
+      alert('Error creating groups: ' + error.message);
+    } finally {
+      setLoadingGroups(false);
+    }
+  };
+
+  // Handle enabling student choice mode
+  const handleEnableStudentChoice = async (settings) => {
+    try {
+      setLoadingGroups(true);
+      await enableStudentChoice(selectedTask.id, settings);
+      // Reload task data to reflect the new settings
+      const response = await getTugasBesar(courseId);
+      const tugasBesarArray = response?.tugasBesar || response || [];
+      const transformedTasks = tugasBesarArray.map(task => ({
+        id: task.id,
+        title: task.judul || task.title,
+        status: 'active',
+        description: task.deskripsi || task.description,
+        deadline: task.tanggal_selesai || task.deadline,
+        startDate: task.tanggal_mulai || task.startDate,
+        components: (typeof task.komponen === 'string' ? JSON.parse(task.komponen) : task.komponen) || task.components || [],
+        deliverables: (typeof task.deliverable === 'string' ? JSON.parse(task.deliverable) : task.deliverable) || task.deliverables || [],
+        studentChoiceEnabled: task.student_choice_enabled,
+        maxGroupSize: task.max_group_size,
+        minGroupSize: task.min_group_size
+      }));
+      setTasks(transformedTasks);
+      setActiveView('list');
+    } catch (error) {
+      console.error('Error enabling student choice:', error);
+      alert('Error enabling student choice: ' + error.message);
+    } finally {
+      setLoadingGroups(false);
+    }
+  };
+
+  // Handle group deletion
+  const handleDeleteGroup = async (kelompokId) => {
+    if (confirm('Are you sure you want to delete this group?')) {
+      try {
+        setLoadingGroups(true);
+        await deleteKelompok(kelompokId);
+        // Reload groups and students
+        const [groupsData, studentsData] = await Promise.all([
+          getKelompok(selectedTask.id),
+          getMahasiswaForGrouping(selectedTask.id)
+        ]);
+        setGroups(groupsData);
+        setStudents(studentsData);
+      } catch (error) {
+        console.error('Error deleting group:', error);
+        alert('Error deleting group: ' + error.message);
+      } finally {
+        setLoadingGroups(false);
       }
     }
-  ];
+  };
 
   // Function to get next group letter for a specific task
   const getNextGroupLetter = (taskId) => {
@@ -133,13 +222,143 @@ const DosenGroupManagement = ({ courseId, courseName = 'Pemrograman Web', taskId
     return matchesSearch && matchesTask;
   });
 
-  const GroupList = () => (
+  // Komponen untuk menampilkan daftar tugas aktif
+  const TaskList = () => (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Manajemen Kelompok</h2>
           <p className="text-gray-600">{courseName}</p>
+          <p className="text-sm text-gray-500 mt-1">Pilih tugas untuk mengelola kelompok</p>
+        </div>
+      </div>
+
+      {/* Loading State */}
+      {loading && (
+        <div className="text-center py-12">
+          <RefreshCw className="mx-auto h-8 w-8 text-blue-600 animate-spin mb-4" />
+          <p className="text-gray-600">Memuat tugas...</p>
+        </div>
+      )}
+
+      {/* Grid tugas aktif */}
+      {!loading && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {tasks.map(task => {
+          const taskGroups = groups.filter(group => group.taskId === task.id);
+          return (
+            <div 
+              key={task.id}
+              onClick={() => {
+                setSelectedTask(task);
+                setFilterTask(task.id.toString());
+                setActiveView('list');
+              }}
+              className="bg-white rounded-lg shadow-md border hover:shadow-lg transition-shadow cursor-pointer"
+            >
+              <div className="p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">{task.title}</h3>
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        task.status === 'active' 
+                          ? 'bg-green-100 text-green-800'
+                          : task.status === 'completed' 
+                          ? 'bg-gray-100 text-gray-800'
+                          : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {task.status === 'active' ? 'Aktif' : task.status === 'completed' ? 'Selesai' : 'Draft'}
+                      </span>
+                    </div>
+                  </div>
+                  <Users className="text-gray-400" size={24} />
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Deadline:</span>
+                    <span className="text-sm font-semibold text-gray-900">
+                      {new Date(task.deadline).toLocaleDateString('id-ID', { 
+                        day: 'numeric', 
+                        month: 'short', 
+                        year: 'numeric',
+                        timeZone: 'Asia/Jakarta'
+                      })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Total Kelompok:</span>
+                    <span className="text-sm font-semibold text-gray-900">{taskGroups.length}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Total Mahasiswa:</span>
+                    <span className="text-sm font-semibold text-gray-900">
+                      {taskGroups.reduce((total, group) => total + group.members.length, 0)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Komponen Penilaian:</span>
+                    <span className="text-sm font-semibold text-blue-600">
+                      {task.components ? task.components.length : 0}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Kelola Kelompok</span>
+                    <div className="flex items-center text-blue-600">
+                      <span className="text-sm font-medium mr-1">Pilih</span>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        </div>
+      )}
+
+      {/* Jika tidak ada tugas aktif */}
+      {!loading && tasks.length === 0 && (
+        <div className="text-center py-12">
+          <AlertCircle className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Tidak Ada Tugas</h3>
+          <p className="text-gray-600">Buat tugas besar terlebih dahulu untuk mengelola kelompok.</p>
+        </div>
+      )}
+    </div>
+  );
+
+  const GroupList = () => (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <div className="flex items-center gap-3 mb-2">
+            <button
+              onClick={() => {
+                setActiveView('task-list');
+                setSelectedTask(null);
+                setFilterTask('all');
+              }}
+              className="text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <h2 className="text-2xl font-bold text-gray-900">Manajemen Kelompok</h2>
+          </div>
+          <p className="text-gray-600">{courseName}</p>
+          {selectedTask && (
+            <p className="text-sm text-blue-600 font-medium">Tugas: {selectedTask.title}</p>
+          )}
         </div>
         <div className="flex flex-wrap gap-2">
           <button 
@@ -157,11 +376,20 @@ const DosenGroupManagement = ({ courseId, courseName = 'Pemrograman Web', taskId
             Buat Otomatis
           </button>
           <button 
-            onClick={() => setActiveView('create-student-form')}
+            onClick={() => {
+              const maxSize = prompt('Ukuran maksimal kelompok:', '4');
+              const minSize = prompt('Ukuran minimal kelompok:', '2');
+              if (maxSize && minSize) {
+                handleEnableStudentChoice({
+                  maxGroupSize: parseInt(maxSize),
+                  minGroupSize: parseInt(minSize)
+                });
+              }
+            }}
             className="bg-purple-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-purple-700 transition-colors"
           >
             <Users size={20} />
-            Form Mahasiswa
+            Aktifkan Pilihan Mahasiswa
           </button>
           <button 
             onClick={() => setActiveView('create-choice')}
@@ -253,12 +481,6 @@ const DosenGroupManagement = ({ courseId, courseName = 'Pemrograman Web', taskId
                 className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
               >
                 Buat Otomatis
-              </button>
-              <button 
-                onClick={() => setActiveView('create-student-form')}
-                className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
-              >
-                Form Mahasiswa
               </button>
               <button 
                 onClick={() => setActiveView('create-choice')}
@@ -861,140 +1083,6 @@ const DosenGroupManagement = ({ courseId, courseName = 'Pemrograman Web', taskId
     );
   };
 
-  const StudentFormCreation = () => {
-    const [formData, setFormData] = useState({
-      taskId: '',
-      minMembers: 3,
-      maxMembers: 5,
-      deadline: ''
-    });
-
-    const handleSubmit = () => {
-      console.log('Student form creation:', formData);
-      alert('Form berhasil dibuat! Link form akan dikirim ke semua mahasiswa di mata kuliah ini.');
-      setActiveView('list');
-    };
-
-    return (
-      <div className="space-y-6 max-w-4xl mx-auto">
-        <div className="flex items-center gap-4">
-          <button 
-            onClick={() => setActiveView('list')}
-            className="text-blue-600 hover:text-blue-800 font-medium"
-          >
-            ← Kembali
-          </button>
-          <h2 className="text-2xl font-bold text-gray-900">Buat Form Kelompok untuk Mahasiswa</h2>
-        </div>
-
-        <div className="bg-white p-6 rounded-lg shadow border space-y-6">
-          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="text-blue-600 mt-0.5" size={20} />
-              <div>
-                <h4 className="font-medium text-blue-900 mb-1">Info</h4>
-                <p className="text-sm text-blue-800">
-                  Form ini akan dikirim ke <strong>semua mahasiswa</strong> yang terdaftar di mata kuliah ini ({students.length} mahasiswa). 
-                  Mahasiswa dapat membentuk kelompok sendiri sesuai konfigurasi yang Anda tentukan.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Tugas Besar *
-              </label>
-              <select
-                value={formData.taskId}
-                onChange={(e) => setFormData({ ...formData, taskId: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                required
-              >
-                <option value="">Pilih Tugas Besar</option>
-                {tasks.filter(task => task.status === 'active').map(task => (
-                  <option key={task.id} value={task.id}>{task.title}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Deadline Pengisian *
-              </label>
-              <input
-                type="datetime-local"
-                value={formData.deadline}
-                onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Minimal Anggota *
-              </label>
-              <input
-                type="number"
-                min="2"
-                max={formData.maxMembers}
-                value={formData.minMembers}
-                onChange={(e) => setFormData({ ...formData, minMembers: parseInt(e.target.value) })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Maksimal Anggota *
-              </label>
-              <input
-                type="number"
-                min={formData.minMembers}
-                max="10"
-                value={formData.maxMembers}
-                onChange={(e) => setFormData({ ...formData, maxMembers: parseInt(e.target.value) })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                required
-              />
-            </div>
-          </div>
-
-          <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
-            <h4 className="font-medium text-purple-900 mb-2">Ringkasan</h4>
-            <ul className="text-sm text-purple-800 space-y-1">
-              <li>• Total mahasiswa: <strong>{students.length} orang</strong></li>
-              <li>• Ukuran kelompok: <strong>{formData.minMembers} - {formData.maxMembers} anggota</strong></li>
-              <li>• Deadline: <strong>{formData.deadline ? new Date(formData.deadline).toLocaleString('id-ID') : '-'}</strong></li>
-            </ul>
-          </div>
-
-          <div className="flex justify-end gap-4 pt-6 border-t">
-            <button
-              type="button"
-              onClick={() => setActiveView('list')}
-              className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              Batal
-            </button>
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={!formData.taskId || !formData.deadline}
-              className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              <Save size={20} />
-              Buat Form & Kirim ke Semua Mahasiswa
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   const GroupChoiceForm = () => {
     const [formData, setFormData] = useState({
       taskId: '',
@@ -1203,16 +1291,18 @@ const DosenGroupManagement = ({ courseId, courseName = 'Pemrograman Web', taskId
 
   // Render based on active view
   switch (activeView) {
+    case 'task-list':
+      return <TaskList />;
+    case 'list':
+      return <GroupList />;
     case 'create-manual':
       return <ManualGroupForm />;
     case 'create-auto':
       return <AutoGroupForm />;
-    case 'create-student-form':
-      return <StudentFormCreation />;
     case 'create-choice':
       return <GroupChoiceForm />;
     default:
-      return <GroupList />;
+      return <TaskList />;
   }
 };
 

@@ -1,5 +1,10 @@
     -- Database: unpar_task_management
     -- PostgreSQL Database Structure
+    -- Last Updated: October 14, 2025
+    -- 
+    -- IMPORTANT: This schema includes modifications made via Node.js scripts:
+    -- 1. Added komponen and deliverable columns to tugas_besar (via add-columns.js)
+    -- 2. Added kelompok management tables (via setup-kelompok-tables.js)
 
     -- ============================================
     -- DROP TABLES IF EXISTS (urutan terbalik dari dependency)
@@ -7,10 +12,11 @@
 
     DROP TABLE IF EXISTS nilai CASCADE;
     DROP TABLE IF EXISTS komponen_penilaian CASCADE;
-    DROP TABLE IF EXISTS anggota_kelompok CASCADE;
+    DROP TABLE IF EXISTS kelompok_members CASCADE;  -- Updated table name
+    DROP TABLE IF EXISTS anggota_kelompok CASCADE;  -- Deprecated, replaced by kelompok_members
     DROP TABLE IF EXISTS kelompok CASCADE;
     DROP TABLE IF EXISTS tugas_besar CASCADE;
-    DROP TABLE IF EXISTS mata_kuliah CASCADE;
+    -- DROP TABLE IF EXISTS mata_kuliah CASCADE; -- Deprecated - using courses table
     DROP TABLE IF EXISTS class_enrollments CASCADE;
     DROP TABLE IF EXISTS classes CASCADE;
     DROP TABLE IF EXISTS courses CASCADE;
@@ -119,7 +125,8 @@
         UNIQUE(class_id, mahasiswa_id)
     );
 
-    -- Table: mata_kuliah
+    -- Table: mata_kuliah (DEPRECATED - using courses table instead)
+    /*
     CREATE TABLE mata_kuliah (
         id SERIAL PRIMARY KEY,
         kode VARCHAR(10) NOT NULL UNIQUE,
@@ -129,27 +136,56 @@
         dosen_id INTEGER REFERENCES users(id),
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
+    */
 
     -- Table: tugas_besar
+    -- Modified via Node.js script (add-columns.js) to include:
+    -- - komponen JSONB column for storing component data
+    -- - deliverable JSONB column for storing deliverable data  
+    -- - student_choice_enabled, max_group_size, min_group_size for group management
     CREATE TABLE tugas_besar (
         id SERIAL PRIMARY KEY,
-        mata_kuliah_id INTEGER REFERENCES mata_kuliah(id) ON DELETE CASCADE,
+        course_id INTEGER REFERENCES courses(id) ON DELETE CASCADE,
         judul VARCHAR(255) NOT NULL,
         deskripsi TEXT,
         tanggal_mulai DATE NOT NULL,
         tanggal_selesai DATE NOT NULL,
+        komponen JSONB DEFAULT '[]' NOT NULL,              -- Added via Node.js script
+        deliverable JSONB DEFAULT '[]' NOT NULL,           -- Added via Node.js script
+        student_choice_enabled BOOLEAN DEFAULT FALSE,      -- Added via Node.js script
+        max_group_size INTEGER DEFAULT 4,                  -- Added via Node.js script
+        min_group_size INTEGER DEFAULT 2,                  -- Added via Node.js script
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
 
     -- Table: kelompok
+    -- Enhanced via Node.js script (setup-kelompok-tables.js) to include:
+    -- - created_by for tracking who created the group
+    -- - creation_method to distinguish between manual, automatic, and student_choice
     CREATE TABLE kelompok (
         id SERIAL PRIMARY KEY,
         tugas_besar_id INTEGER REFERENCES tugas_besar(id) ON DELETE CASCADE,
         nama_kelompok VARCHAR(100) NOT NULL,
+        created_by INTEGER REFERENCES users(id),           -- Added via Node.js script
+        creation_method VARCHAR(20) DEFAULT 'manual',      -- Added via Node.js script (manual, automatic, student_choice)
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
 
-    -- Table: anggota_kelompok
+    -- Table: kelompok_members (Replaces anggota_kelompok)
+    -- Created via Node.js script (setup-kelompok-tables.js)
+    -- Enhanced group membership tracking with leader designation
+    CREATE TABLE kelompok_members (
+        id SERIAL PRIMARY KEY,
+        kelompok_id INTEGER REFERENCES kelompok(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        is_leader BOOLEAN DEFAULT FALSE,                    -- Track group leader
+        joined_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(kelompok_id, user_id)                       -- Prevent duplicate memberships
+    );
+
+    -- Table: anggota_kelompok (DEPRECATED)
+    -- Replaced by kelompok_members table for enhanced functionality
+    -- Kept for reference - should be migrated to kelompok_members
     CREATE TABLE anggota_kelompok (
         id SERIAL PRIMARY KEY,
         kelompok_id INTEGER REFERENCES kelompok(id) ON DELETE CASCADE,
@@ -179,6 +215,7 @@
 
     -- ============================================
     -- INDEXES (Optional - untuk optimasi query)
+    -- Enhanced with new indexes for kelompok_members table
     -- ============================================
 
     CREATE INDEX idx_dosen_profiles_user_id ON dosen_profiles(user_id);
@@ -186,13 +223,16 @@
     CREATE INDEX idx_courses_dosen_id ON courses(dosen_id);
     CREATE INDEX idx_classes_course_id ON classes(course_id);
     CREATE INDEX idx_class_enrollments_mahasiswa_id ON class_enrollments(mahasiswa_id);
-    CREATE INDEX idx_tugas_besar_mata_kuliah_id ON tugas_besar(mata_kuliah_id);
+    CREATE INDEX idx_tugas_besar_course_id ON tugas_besar(course_id);
     CREATE INDEX idx_kelompok_tugas_besar_id ON kelompok(tugas_besar_id);
-    CREATE INDEX idx_anggota_kelompok_kelompok_id ON anggota_kelompok(kelompok_id);
+    CREATE INDEX idx_anggota_kelompok_kelompok_id ON anggota_kelompok(kelompok_id);    -- Deprecated table
+    CREATE INDEX idx_kelompok_members_kelompok_id ON kelompok_members(kelompok_id);   -- Added via Node.js script
+    CREATE INDEX idx_kelompok_members_user_id ON kelompok_members(user_id);          -- Added via Node.js script
     CREATE INDEX idx_nilai_mahasiswa_id ON nilai(mahasiswa_id);
 
     -- ============================================
     -- RELATIONSHIPS SUMMARY
+    -- Updated to reflect new kelompok_members table and enhanced tugas_besar
     -- ============================================
 
     /*
@@ -202,29 +242,61 @@
     ├── courses (dosen_id)
     ├── classes (dosen_id)
     ├── class_enrollments (mahasiswa_id)
-    ├── mata_kuliah (dosen_id)
-    ├── anggota_kelompok (mahasiswa_id)
+    ├── anggota_kelompok (mahasiswa_id) [DEPRECATED]
+    ├── kelompok_members (user_id) [NEW - Enhanced group membership]
+    ├── kelompok (created_by) [ENHANCED]
     └── nilai (mahasiswa_id)
 
     course_name
     └── courses (course_name_id)
 
     courses
-    └── classes (course_id)
+    ├── classes (course_id)
+    └── tugas_besar (course_id)
 
     classes
     └── class_enrollments (class_id)
 
-    mata_kuliah
-    └── tugas_besar (mata_kuliah_id)
-
-    tugas_besar
+    tugas_besar [ENHANCED with JSONB columns and group settings]
     ├── kelompok (tugas_besar_id)
     └── komponen_penilaian (tugas_besar_id)
 
-    kelompok
-    └── anggota_kelompok (kelompok_id)
+    kelompok [ENHANCED with creation tracking]
+    ├── anggota_kelompok (kelompok_id) [DEPRECATED]
+    └── kelompok_members (kelompok_id) [NEW]
 
     komponen_penilaian
     └── nilai (komponen_id)
+    */
+
+    -- ============================================
+    -- DATABASE MODIFICATION HISTORY
+    -- ============================================
+
+    /*
+    MODIFICATIONS MADE VIA NODE.JS SCRIPTS:
+
+    1. add-columns.js (executed):
+       - Added komponen JSONB column to tugas_besar
+       - Added deliverable JSONB column to tugas_besar
+       
+    2. setup-kelompok-tables.js (executed):
+       - Added created_by column to kelompok table
+       - Added creation_method column to kelompok table
+       - Created kelompok_members table (replaces anggota_kelompok)
+       - Added student_choice_enabled column to tugas_besar
+       - Added max_group_size column to tugas_besar  
+       - Added min_group_size column to tugas_besar
+       - Created indexes for new kelompok_members table
+
+    NEW API ENDPOINTS CREATED:
+    - /api/kelompok/* routes for group management
+    - Support for 3 group creation methods: manual, automatic, student_choice
+    
+    NEW FEATURES ENABLED:
+    - JSONB storage for dynamic component and deliverable data
+    - Enhanced group management with leader designation
+    - Multiple group creation methods
+    - Student self-enrollment capabilities
+    - Real-time group membership tracking
     */

@@ -31,12 +31,23 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       setIsLoading(true);
+      
+      // Clear any existing authentication data before login
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+      sessionStorage.removeItem('user');
+      sessionStorage.removeItem('token');
+      delete api.defaults.headers.common['Authorization'];
+      
       const response = await api.post('/auth/login', { email, password });
       const userData = response.data;
+      
+      console.log('Login successful for user:', userData.email, 'Role:', userData.role);
       
       // Store user data in context and localStorage
       setUser(userData);
       localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem('token', userData.token); // Also store token separately for tugasBesarApi
       
       // Set the Authorization header for future API calls
       api.defaults.headers.common['Authorization'] = `Bearer ${userData.token}`;
@@ -62,17 +73,43 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Logout function
+  // Logout function - comprehensive cleanup
   const logout = () => {
-    // Clear user data
-    setUser(null);
-    localStorage.removeItem('user');
+    console.log('Logging out - clearing all authentication data...');
     
-    // Clear Authorization header
+    // Clear user data from state
+    setUser(null);
+    
+    // Clear ALL possible token/user storage locations
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('jwt');
+    localStorage.removeItem('userToken');
+    
+    // Also clear session storage if any
+    sessionStorage.removeItem('user');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('accessToken');
+    sessionStorage.removeItem('authToken');
+    sessionStorage.removeItem('jwt');
+    sessionStorage.removeItem('userToken');
+    
+    // Clear Authorization header from axios
     delete api.defaults.headers.common['Authorization'];
+    
+    // Force refresh the page to ensure complete state reset
+    localStorage.clear(); // Clear everything from localStorage
+    sessionStorage.clear(); // Clear everything from sessionStorage
+    
+    console.log('All authentication data cleared, redirecting to login...');
     
     // Redirect to login
     navigate('/login');
+    
+    // Optional: Force page reload to ensure complete cleanup
+    window.location.reload();
   };
   
   const redirectUserBasedOnRole = (role) => {
