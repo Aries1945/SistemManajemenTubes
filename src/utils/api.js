@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'http://localhost:5001/api', // <-- Perhatikan /api di sini
+  baseURL: 'http://localhost:5001/api', // Fixed port: 5001 to match backend server
   headers: {
     'Content-Type': 'application/json',
   },
@@ -84,7 +84,7 @@ export const createMahasiswa = (mahasiswaData) => {
 
 export const getMahasiswaCourses = async () => {
   try {
-    const response = await api.get('/mahasiswa/courses');
+    const response = await api.get('/auth/mahasiswa/courses');
     return response;
   } catch (error) {
     console.error('Error fetching mahasiswa courses:', error);

@@ -1,24 +1,131 @@
-# Logs
-logs
-*.log
+# Dependencies
+node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+server/.env
+server/.env.local
 
-# Editor directories and files
+# Production builds
+dist/
+build/
+dist-ssr/
+server/dist/
+server/build/
+
+# Logs
+logs/
+*.log
+
+# Runtime data
+.tmp
+.temp
+tmp/
+temp/
+
+# Coverage directory
+coverage/
+*.lcov
+.nyc_output
+
+# Dependency directories
+jspm_packages/
+.npm
+.eslintcache
+
+# Cache directories
+.cache
+.parcel-cache
+.vite/
+
+# IDE files
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+
+# Uploads directory
+uploads/
+server/uploads/
+
+# Test files and debugging (cleaned up)
+test-*.js
+test-*.cjs
+debug-*.js
+debug-*.cjs
+*-test*.js
+*-test*.cjs
+final-*.js
+manual-*.js
+improved-*.js
+frontend-debug*.js
+frontend-test*.js
+fix-*.js
+website-*.js
+validate-*.js
+browser-*.js
+
+# Documentation files (keep only main README.md)
+*_FIX*.md
+*_IMPLEMENTATION*.md
+*_COMPLETE*.md
+*_STATUS*.md
+GROUP_*.md
+CLASS_*.md
+DATA_*.md
+FOREIGN_*.md
+FRONTEND_*.md
+DOSEN*.md
+MAHASISWA*.md
+MULTI_*.md
+MEMBER_*.md
+KELOMPOK_*.md
+JSON_*.md
+GROUPING_*.md
+DETAIL_*.md
+CORRECT_*.md
+CLEANUP_*.md
+API_*.md
+STUDENT_*.md
+
+# SQL migration files (keep only main schema)
+add-*.sql
+fix-*.sql
+cleanup-*.sql
+server/migrations/*.sql
+server/clean-*.sql
+server/database-*.sql
+
+# Backup and temporary files
+*.bak
+*.backup
+*.tmp
+
+# Lock files (optional - uncomment if needed)
+# package-lock.json
+# pnpm-lock.yaml

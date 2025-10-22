@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { 
   ChevronRight, 
   Users, 
@@ -18,8 +18,15 @@ import DosenGradingManagement from '../../components/dosen/DosenGradingManagemen
 const CourseDetail = () => {
   const { courseId } = useParams(); // Fixed: changed from 'id' to 'courseId'
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState('overview');
   const [course, setCourse] = useState(null);
+  
+  // NEW: Class-specific information from navigation state
+  const classInfo = location.state || {};
+  const classId = classInfo.classId;
+  const className = classInfo.className;
+  
   const [stats, setStats] = useState({
     totalStudents: 0,
     activeTasks: 0,
@@ -33,21 +40,78 @@ const CourseDetail = () => {
 
   const fetchCourseDetail = async () => {
     console.log('CourseDetail - Fetching course with ID:', courseId);
+    console.log('CourseDetail - Class info from navigation:', classInfo);
     
     try {
       setLoading(true);
       setError('');
       
-      // Get all courses for this dosen, then find the specific one
+      // Prioritize class info from navigation state (from DosenCourses)
+      if (classInfo && Object.keys(classInfo).length > 0) {
+        console.log('CourseDetail - Using class-specific data from navigation state');
+        
+        // Use the class-specific data directly from DosenCourses navigation
+        const courseData = {
+          id: classInfo.courseId || parseInt(courseId),
+          name: classInfo.courseName || 'Unknown Course',
+          code: classInfo.courseCode || 'N/A',
+          semester: classInfo.semester || 'Unknown Semester',
+          sks: classInfo.sks || 3,
+          description: classInfo.description || '',
+          
+          // Class-specific information (KEY CHANGE)
+          selectedClass: classInfo.className || 'Unknown',
+          classes: [classInfo.className || 'Unknown'], // Only show this specific class
+          dosen_name: classInfo.dosenName || 'Dosen',
+          class_details: classInfo.schedule || 'Jadwal tidak tersedia',
+          
+          // Additional class-specific metadata
+          classId: classInfo.classId,
+          dosenId: classInfo.dosenId,
+          ruangan: classInfo.ruangan || '',
+          kapasitas: classInfo.kapasitas || 0
+        };
+        
+        setCourse(courseData);
+        
+        // Use class-specific stats
+        const statsData = {
+          totalStudents: classInfo.students || classInfo.studentCount || 0,
+          activeTasks: classInfo.tugasBesar || classInfo.tasks || 0,
+          completedTasks: Math.floor((classInfo.tugasBesar || 0) * 0.3), // 30% completed estimate
+          activeGroups: classInfo.activeGroups || Math.floor((classInfo.students || 20) / 4),
+          pendingGrading: classInfo.pendingGrading || Math.floor(Math.random() * 10),
+          averageGrade: classInfo.progress || Math.floor(Math.random() * 40) + 60
+        };
+        
+        setStats(statsData);
+        
+        return; // Use class-specific data, no need to fetch from API
+      }
+      
+      // FALLBACK: If no class info in state, try to fetch from API (legacy)
+      console.log('CourseDetail - No class info in state, falling back to API fetch');
+      
+      // Parse courseId if in legacy format
+      let actualCourseId = courseId;
+      let fallbackClassName = null;
+      
+      if (courseId.toString().startsWith('class-')) {
+        const parts = courseId.split('-');
+        if (parts.length >= 3) {
+          actualCourseId = parts[1];
+          fallbackClassName = parts.slice(2).join(' ');
+        }
+      }
+      
+      // Get all courses for this dosen
       const response = await getDosenCourses();
       
       if (response.data.success) {
         const allCourses = response.data.courses;
-        const foundCourse = allCourses.find(course => course.course_id === parseInt(courseId));
+        const foundCourse = allCourses.find(course => course.course_id === parseInt(actualCourseId));
         
         if (foundCourse) {
-          console.log('CourseDetail - Course found:', foundCourse.course_name);
-          
           const courseData = {
             id: foundCourse.course_id,
             name: foundCourse.course_name,
@@ -56,36 +120,43 @@ const CourseDetail = () => {
             sks: foundCourse.sks || 3,
             description: foundCourse.deskripsi || '',
             classes: foundCourse.class_names ? foundCourse.class_names.split(', ') : ['A'],
-            dosen_name: 'Dosen', // Will be from user context later
-            class_details: foundCourse.class_details || ''
+            dosen_name: 'Dosen',
+            class_details: foundCourse.class_details || '',
+            selectedClass: fallbackClassName || (foundCourse.class_names ? foundCourse.class_names.split(', ')[0] : 'A')
           };
           
           setCourse(courseData);
           
-          // Calculate stats based on available data
           const statsData = {
             totalStudents: foundCourse.total_students || 0,
-            activeTasks: Math.floor(Math.random() * 5), // Random for now
-            completedTasks: Math.floor(Math.random() * 3), // Random for now
-            activeGroups: Math.floor(Math.random() * 10), // Random for now
-            pendingGrading: Math.floor(Math.random() * 15), // Random for now
-            averageGrade: Math.floor(Math.random() * 40) + 60 // Random 60-100
+            activeTasks: Math.floor(Math.random() * 5),
+            completedTasks: Math.floor(Math.random() * 3),
+            activeGroups: Math.floor(Math.random() * 10),
+            pendingGrading: Math.floor(Math.random() * 15),
+            averageGrade: Math.floor(Math.random() * 40) + 60
           };
           
           setStats(statsData);
           
         } else {
-          console.error('CourseDetail - Course not found with ID:', courseId);
-          console.log('Available course IDs:', allCourses.map(c => c.course_id));
-          throw new Error('Course not found');
+          const availableCourses = allCourses.map(course => ({
+            id: course.course_id,
+            name: course.course_name,
+            code: course.course_code
+          }));
+          
+          const errorMessage = availableCourses.length > 0 
+            ? `Mata kuliah dengan ID ${actualCourseId} tidak ditemukan. Tersedia: ${availableCourses.map(c => `${c.code} (ID: ${c.id})`).join(', ')}`
+            : 'Course not found';
+            
+          throw new Error(errorMessage);
         }
       } else {
-        console.error('CourseDetail - API response not successful');
-        throw new Error('Failed to fetch courses');
+        throw new Error('Failed to fetch courses from API');
       }
     } catch (error) {
       console.error('CourseDetail - Error:', error.message);
-      setError('Gagal memuat detail mata kuliah. Silakan coba lagi.');
+      setError(error.message);
     } finally {
       setLoading(false);
     }
@@ -147,7 +218,7 @@ const CourseDetail = () => {
 
       {/* Course Details */}
       <div className="bg-gray-50 p-6 rounded-lg">
-        <h4 className="text-lg font-semibold mb-4">Informasi Mata Kuliah</h4>
+        <h4 className="text-lg font-semibold mb-4">Informasi Kelas</h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <p className="text-sm text-gray-600 mb-1">Nama Mata Kuliah</p>
@@ -158,6 +229,21 @@ const CourseDetail = () => {
             <p className="font-medium">{course?.code}</p>
           </div>
           <div>
+            <p className="text-sm text-gray-600 mb-1">Kelas</p>
+            <div className="flex items-center gap-2">
+              <span className="font-medium text-blue-700 bg-blue-100 px-3 py-1 rounded-full text-sm">
+                {course?.selectedClass}
+              </span>
+              {classInfo.classId && (
+                <span className="text-xs text-gray-500">(ID: {classInfo.classId})</span>
+              )}
+            </div>
+          </div>
+          <div>
+            <p className="text-sm text-gray-600 mb-1">Dosen Pengampu</p>
+            <p className="font-medium">{course?.dosen_name}</p>
+          </div>
+          <div>
             <p className="text-sm text-gray-600 mb-1">Semester</p>
             <p className="font-medium">{course?.semester}</p>
           </div>
@@ -165,21 +251,49 @@ const CourseDetail = () => {
             <p className="text-sm text-gray-600 mb-1">SKS</p>
             <p className="font-medium">{course?.sks}</p>
           </div>
-          <div>
-            <p className="text-sm text-gray-600 mb-1">Dosen Pengampu</p>
-            <p className="font-medium">{course?.dosen_name}</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-600 mb-1">Kelas</p>
-            <p className="font-medium">{course?.classes?.join(', ')}</p>
-          </div>
+          {classInfo.schedule && (
+            <div>
+              <p className="text-sm text-gray-600 mb-1">Jadwal</p>
+              <p className="font-medium">{classInfo.schedule}</p>
+            </div>
+          )}
+          {classInfo.ruangan && (
+            <div>
+              <p className="text-sm text-gray-600 mb-1">Ruangan</p>
+              <p className="font-medium">{classInfo.ruangan}</p>
+            </div>
+          )}
+          {classInfo.kapasitas && (
+            <div>
+              <p className="text-sm text-gray-600 mb-1">Kapasitas</p>
+              <p className="font-medium">{classInfo.kapasitas} mahasiswa</p>
+            </div>
+          )}
         </div>
+        
+        {/* Class-specific description */}
         {course?.description && (
           <div className="mt-4">
-            <p className="text-sm text-gray-600 mb-1">Deskripsi</p>
+            <p className="text-sm text-gray-600 mb-1">Deskripsi Mata Kuliah</p>
             <p className="text-gray-700">{course.description}</p>
           </div>
         )}
+        
+        {/* Class-specific information highlight */}
+        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-start gap-3">
+            <Users className="text-blue-600 mt-0.5" size={20} />
+            <div>
+              <p className="font-medium text-blue-800">
+                Kelas {course?.selectedClass} - {course?.name}
+              </p>
+              <p className="text-sm text-blue-600 mt-1">
+                Anda sedang mengelola kelas {course?.selectedClass} dengan {stats.totalStudents} mahasiswa. 
+                Semua data dan tugas besar di halaman ini khusus untuk kelas ini.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Quick Stats */}
@@ -293,13 +407,17 @@ const CourseDetail = () => {
           <DosenTaskManagement 
             courseId={courseId}
             courseName={course?.name}
+            classId={classId}
+            className={className}
           />
         );
       case 'groups':
         return (
           <DosenGroupManagement 
             courseId={courseId}
+            classId={classId}
             courseName={course?.name}
+            className={course?.selectedClass}
           />
         );
       case 'grading':
@@ -324,19 +442,57 @@ const CourseDetail = () => {
       )}
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-6">
           <div className="flex">
-            <AlertTriangle className="text-red-600 mr-2" size={20} />
+            <AlertTriangle className="text-red-600 mr-3" size={24} />
             <div className="flex-1">
-              <p className="text-red-700">{error}</p>
-              <p className="text-red-600 text-sm mt-1">CourseID yang dicari: {courseId}</p>
+              <h3 className="text-red-800 font-semibold mb-2">Akses Ditolak</h3>
+              <p className="text-red-700 mb-3">{error}</p>
+              <p className="text-red-600 text-sm mb-4">CourseID yang dicoba diakses: <span className="font-mono bg-red-100 px-2 py-1 rounded">{courseId}</span></p>
+              
+              {/* Show available courses if error mentions them */}
+              {error.includes('Mata kuliah yang tersedia:') && (
+                <div className="bg-white border border-red-200 rounded p-4 mt-4">
+                  <h4 className="text-gray-800 font-medium mb-3">🔗 Link Mata Kuliah yang Tersedia:</h4>
+                  <div className="space-y-2">
+                    {/* Parse course info from error message and create links */}
+                    {error.match(/([A-Z0-9]+) \(ID: (\d+)\)/g)?.map((match, index) => {
+                      const [, code, id] = match.match(/([A-Z0-9]+) \(ID: (\d+)\)/);
+                      return (
+                        <div key={index} className="flex items-center gap-3">
+                          <span className="text-sm text-gray-600 min-w-20">{code}:</span>
+                          <a 
+                            href={`/dosen/courses/${id}`}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              navigate(`/dosen/courses/${id}`);
+                            }}
+                            className="text-blue-600 hover:text-blue-800 underline font-medium"
+                          >
+                            Buka Mata Kuliah {code} (ID: {id})
+                          </a>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              
+              <div className="flex gap-3 mt-4">
+                <button 
+                  onClick={fetchCourseDetail}
+                  className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition-colors"
+                >
+                  Coba Lagi
+                </button>
+                <button 
+                  onClick={() => navigate('/dosen/courses')}
+                  className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 transition-colors"
+                >
+                  Kembali ke Daftar Mata Kuliah
+                </button>
+              </div>
             </div>
-            <button 
-              onClick={fetchCourseDetail}
-              className="ml-auto text-red-600 hover:text-red-800 underline"
-            >
-              Coba lagi
-            </button>
           </div>
         </div>
       )}
@@ -346,20 +502,35 @@ const CourseDetail = () => {
           {/* Breadcrumb */}
           <div className="flex items-center gap-2 mb-6">
             <button 
-              onClick={() => navigate('/dosen/courses')}
+              onClick={() => navigate('/dosen/dashboard/mata-kuliah')}
               className="text-blue-600 hover:text-blue-800 font-medium"
             >
               Mata Kuliah
             </button>
             <ChevronRight size={16} className="text-gray-400" />
             <span className="text-gray-900 font-medium">{course.name}</span>
+            {course.selectedClass && (
+              <>
+                <ChevronRight size={16} className="text-gray-400" />
+                <span className="text-gray-700 bg-blue-100 px-2 py-1 rounded-md text-sm font-medium">
+                  Kelas {course.selectedClass}
+                </span>
+              </>
+            )}
           </div>
 
           {/* Course Header */}
           <div className="bg-white p-6 rounded-lg shadow border mb-6">
             <div className="flex justify-between items-start">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">{course.name}</h1>
+                <h1 className="text-2xl font-bold text-gray-900">
+                  {course.name}
+                  {course.selectedClass && (
+                    <span className="ml-3 text-lg font-normal text-gray-600">
+                      - Kelas {course.selectedClass}
+                    </span>
+                  )}
+                </h1>
                 <p className="text-gray-600">{course.code} • {course.sks} SKS</p>
                 <p className="text-sm text-gray-500">Semester {course.semester}</p>
               </div>

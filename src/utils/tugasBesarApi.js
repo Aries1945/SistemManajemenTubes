@@ -43,14 +43,21 @@ const makeRequest = async (url, options = {}) => {
 
   if (!response.ok) {
     // Handle authentication errors
-    if (response.status === 401 || response.status === 403) {
-      console.error('Authentication failed, clearing tokens...');
-      // Clear all auth data if we get auth error
+    if (response.status === 401) {
+      // 401 = Token invalid/expired - clear tokens and redirect to login
+      console.error('Authentication failed (401), clearing tokens...');
       localStorage.removeItem('user');
       localStorage.removeItem('token');
       sessionStorage.removeItem('user');
       sessionStorage.removeItem('token');
       throw new Error('Authentication failed. Please login again.');
+    }
+    
+    if (response.status === 403) {
+      // 403 = Token valid but access denied to specific resource - DON'T clear tokens
+      const errorData = await response.json();
+      console.error('Access denied (403):', errorData.error || 'Forbidden');
+      throw new Error(errorData.error || 'Access denied to this resource');
     }
     
     const errorData = await response.json();
@@ -62,11 +69,20 @@ const makeRequest = async (url, options = {}) => {
 
 // ===== TUGAS BESAR FUNCTIONS =====
 
-export const getTugasBesar = async (courseId) => {
-  return makeRequest(`/auth/dosen/courses/${courseId}/tugas-besar`);
+export const getTugasBesar = async (courseId, classId = null) => {
+  let url = `/auth/dosen/courses/${courseId}/tugas-besar`;
+  if (classId) {
+    url += `?class_id=${classId}`;
+  }
+  return makeRequest(url);
 };
 
 export const createTugasBesar = async (courseId, tugasData) => {
+  // Ensure class_id is included in tugasData
+  if (!tugasData.class_id) {
+    throw new Error('class_id is required for creating tugas besar');
+  }
+  
   return makeRequest(`/auth/dosen/courses/${courseId}/tugas-besar`, {
     method: 'POST',
     body: JSON.stringify(tugasData),

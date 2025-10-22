@@ -8,6 +8,7 @@ require('dotenv').config();
 const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
 const dosenRoutes = require('./routes/dosen');
+const mahasiswaRoutes = require('./routes/mahasiswa');
 const kelompokRoutes = require('./routes/kelompok');
 const { authenticateToken } = require('./middleware/auth');
 
@@ -33,6 +34,7 @@ async function initializeDatabase() {
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', authenticateToken, adminRoutes);
 app.use('/api/auth/dosen', authenticateToken, dosenRoutes);
+app.use('/api/auth/mahasiswa', authenticateToken, mahasiswaRoutes);
 app.use('/api/kelompok', authenticateToken, kelompokRoutes);
 
 // Database check endpoint

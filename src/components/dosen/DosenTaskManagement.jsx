@@ -16,7 +16,7 @@ import {
 
 
 
-const DosenTaskManagement = ({ courseId, courseName }) => {
+const DosenTaskManagement = ({ courseId, courseName, classId, className, onNavigateToGroupManagement }) => {
   const [activeView, setActiveView] = useState('list'); // 'list', 'create', 'edit', 'detail'
   const [selectedTask, setSelectedTask] = useState(null);
   
@@ -25,6 +25,15 @@ const DosenTaskManagement = ({ courseId, courseName }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Helpers function
+  const formatSistemPengelompokan = (groupFormation) => {
+    const methodMap = {
+      manual: 'Manual',
+      automatic: 'Otomatis',
+      student_choice: 'Pilihan Mahasiswa'
+    };
+    return methodMap[groupFormation] || 'Tidak Diketahui';
+  };
   // Load tugas besar when component mounts
   useEffect(() => {
     // Debug auth status and user info
@@ -51,105 +60,52 @@ const DosenTaskManagement = ({ courseId, courseName }) => {
     console.log('==========================================');
     
     loadTugasBesar();
-  }, [courseId]);
+  }, [courseId, classId]);
 
   const loadTugasBesar = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      console.log('Loading tugas besar for courseId:', courseId);
+      console.log('Loading tugas besar for courseId:', courseId, 'classId:', classId);
       
-      const response = await getTugasBesar(courseId);
+      // NEW: Pass classId to filter by specific class
+      const response = await getTugasBesar(courseId, classId);
       
       // Transform API data to UI format
-      const transformedTasks = (response.tugasBesar || []).map(task => ({
-        id: task.id,
-        title: task.judul || task.title || 'Untitled',
-        description: task.deskripsi || task.description || '',
-        startDate: task.tanggal_mulai || task.startDate || '',
-        endDate: task.tanggal_selesai || task.endDate || '',
-        status: task.status || 'active',
-        groupFormation: task.group_formation || task.groupFormation || 'manual',
-        minGroupSize: task.min_group_size || task.minGroupSize || 3,
-        maxGroupSize: task.max_group_size || task.maxGroupSize || 5,
-        totalGroups: task.total_groups || task.totalGroups || 0,
-        components: (typeof task.komponen === 'string' ? JSON.parse(task.komponen) : task.komponen) || task.components || [],
-        deliverables: (typeof task.deliverable === 'string' ? JSON.parse(task.deliverable) : task.deliverable) || task.deliverables || [],
-        createdAt: task.created_at || task.createdAt || '',
-        updatedAt: task.updated_at || task.updatedAt || '',
-        course: courseName,
-        courseId: courseId
-      }));
+      const transformedTasks = (response.tugasBesar || []).map(task => {
+        const transformedTask = {
+          id: task.id,
+          title: task.judul || task.title || 'Untitled',
+          description: task.deskripsi || task.description || '',
+          startDate: task.tanggal_mulai || task.startDate || '',
+          endDate: task.tanggal_selesai || task.endDate || '',
+          status: task.status || 'active',
+          groupFormation: task.grouping_method || task.group_formation || task.groupFormation || 'manual',
+          minGroupSize: task.min_group_size || task.minGroupSize || 3,
+          maxGroupSize: task.max_group_size || task.maxGroupSize || 5,
+          totalGroups: task.total_groups || task.totalGroups || 0,
+          components: (typeof task.komponen === 'string' ? JSON.parse(task.komponen) : task.komponen) || task.components || [],
+          deliverables: (typeof task.deliverable === 'string' ? JSON.parse(task.deliverable) : task.deliverable) || task.deliverables || [],
+          createdAt: task.created_at || task.createdAt || '',
+          updatedAt: task.updated_at || task.updatedAt || '',
+          course: courseName,
+          courseId: courseId
+        };
+        
+        return transformedTask;
+      });
       
       setTasks(transformedTasks);
     } catch (err) {
       console.error('Error loading tugas besar:', err);
       setError(err.message);
-      // Use fallback data for development
-      setTasks(sampleTasks);
+      // Set empty array as fallback
+      setTasks([]);
     } finally {
       setLoading(false);
     }
   };
-
-  // Sample data - fallback for development
-  const sampleTasks = [
-    {
-      id: 1,
-      title: 'Sistem E-Commerce',
-      description: 'Membuat aplikasi e-commerce menggunakan framework modern dengan fitur lengkap',
-      course: courseName,
-      courseId: courseId,
-      startDate: '2024-10-01',
-      endDate: '2024-12-15',
-      status: 'active',
-      groupFormation: 'manual', // 'manual', 'auto', 'student-choice'
-      minGroupSize: 3,
-      maxGroupSize: 5,
-      totalGroups: 8,
-      components: [
-        { id: 1, name: 'Proposal', weight: 20, deadline: '2024-10-15' },
-        { id: 2, name: 'Progress 1', weight: 25, deadline: '2024-11-15' },
-        { id: 3, name: 'Progress 2', weight: 25, deadline: '2024-12-01' },
-        { id: 4, name: 'Final Presentation', weight: 30, deadline: '2024-12-15' }
-      ],
-      deliverables: [
-        'Source code lengkap',
-        'Dokumentasi teknis',
-        'User manual',
-        'Presentation slides'
-      ],
-      createdAt: '2024-09-15',
-      updatedAt: '2024-09-20'
-    },
-    {
-      id: 2,
-      title: 'Database Design Project',
-      description: 'Merancang dan mengimplementasikan database untuk sistem informasi',
-      course: courseName,
-      courseId: courseId,
-      startDate: '2024-09-15',
-      endDate: '2024-11-30',
-      status: 'completed',
-      groupFormation: 'auto',
-      minGroupSize: 2,
-      maxGroupSize: 4,
-      totalGroups: 7,
-      components: [
-        { id: 1, name: 'ERD Design', weight: 30, deadline: '2024-10-01' },
-        { id: 2, name: 'Implementation', weight: 40, deadline: '2024-11-15' },
-        { id: 3, name: 'Testing & Documentation', weight: 30, deadline: '2024-11-30' }
-      ],
-      deliverables: [
-        'ERD Diagram',
-        'SQL Scripts',
-        'Database documentation'
-      ],
-      createdAt: '2024-09-01',
-      updatedAt: '2024-11-30'
-    }
-  ];
 
   const TaskList = () => {
     if (loading) {
@@ -280,7 +236,7 @@ const DosenTaskManagement = ({ courseId, courseName }) => {
               <Settings className="text-gray-400" size={16} />
               <div>
                 <p className="text-sm text-gray-600">Sistem Pengelompokan</p>
-                <p className="font-medium capitalize">{task.groupFormation || 'Manual'}</p>
+                <p className="font-medium">{formatSistemPengelompokan(task.groupFormation)}</p>
               </div>
             </div>
           </div>
@@ -354,7 +310,7 @@ const DosenTaskManagement = ({ courseId, courseName }) => {
           description: selectedTask.deskripsi || selectedTask.description || '',
           startDate: formatDateForInput(selectedTask.tanggal_mulai || selectedTask.startDate),
           endDate: formatDateForInput(selectedTask.tanggal_selesai || selectedTask.endDate),
-          groupFormation: selectedTask.group_formation || selectedTask.groupFormation || 'manual',
+          groupFormation: selectedTask.grouping_method || selectedTask.group_formation || selectedTask.groupFormation || 'manual',
           minGroupSize: selectedTask.min_group_size || selectedTask.minGroupSize || 3,
           maxGroupSize: selectedTask.max_group_size || selectedTask.maxGroupSize || 5,
           components: (selectedTask.components || [
@@ -401,7 +357,8 @@ const DosenTaskManagement = ({ courseId, courseName }) => {
           minGroupSize: formData.minGroupSize,
           maxGroupSize: formData.maxGroupSize,
           components: formData.components,
-          deliverables: formData.deliverables
+          deliverables: formData.deliverables,
+          class_id: classId // NEW: Include classId in tugas data
         };
 
         if (isEdit && selectedTask) {
@@ -409,9 +366,12 @@ const DosenTaskManagement = ({ courseId, courseName }) => {
           await updateTugasBesar(courseId, selectedTask.id, tugasData);
           console.log('Tugas besar updated successfully');
         } else {
-          // Create new task
+          // Create new task - Ensure classId is required
+          if (!classId) {
+            throw new Error('Class ID is required for creating tugas besar');
+          }
           await createTugasBesar(courseId, tugasData);
-          console.log('Tugas besar created successfully');
+          console.log('Tugas besar created successfully for classId:', classId);
         }
 
         // Reload the task list to show updated data
@@ -550,40 +510,75 @@ const DosenTaskManagement = ({ courseId, courseName }) => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="manual">Manual (Dosen yang menentukan)</option>
-                <option value="auto">Otomatis (Sistem yang menentukan)</option>
-                <option value="student-choice">Pilihan Mahasiswa</option>
+                <option value="automatic">Otomatis (Sistem yang menentukan)</option>
+                <option value="student_choice">Pilihan Mahasiswa</option>
               </select>
+              <p className="text-xs text-gray-500 mt-1">
+                {formData.groupFormation === 'automatic' 
+                  ? 'Sistem akan menghitung ukuran kelompok optimal secara otomatis berdasarkan jumlah mahasiswa' 
+                  : formData.groupFormation === 'manual'
+                  ? 'Dosen akan membentuk kelompok secara manual'
+                  : 'Mahasiswa dapat memilih kelompok mereka sendiri dengan batasan yang ditentukan'
+                }
+              </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Minimal Anggota per Kelompok
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  max="10"
-                  value={formData.minGroupSize}
-                  onChange={(e) => setFormData({ ...formData, minGroupSize: parseInt(e.target.value) })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
+            {formData.groupFormation !== 'automatic' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Minimal Anggota per Kelompok
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={formData.minGroupSize}
+                    onChange={(e) => setFormData({ ...formData, minGroupSize: parseInt(e.target.value) })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Maksimal Anggota per Kelompok
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={formData.maxGroupSize}
+                    onChange={(e) => setFormData({ ...formData, maxGroupSize: parseInt(e.target.value) })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
               </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Maksimal Anggota per Kelompok
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  max="10"
-                  value={formData.maxGroupSize}
-                  onChange={(e) => setFormData({ ...formData, maxGroupSize: parseInt(e.target.value) })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
+            )}
+
+            {formData.groupFormation === 'automatic' && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <div className="bg-blue-100 p-2 rounded-lg">
+                    <Settings className="text-blue-600" size={20} />
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-blue-900 mb-2">Pembentukan Kelompok Otomatis</h4>
+                    <p className="text-sm text-blue-700 mb-2">
+                      Sistem akan secara otomatis menghitung ukuran kelompok yang optimal berdasarkan:
+                    </p>
+                    <ul className="text-xs text-blue-600 space-y-1">
+                      <li>• Jumlah total mahasiswa yang terdaftar</li>
+                      <li>• Algoritma pembagian yang menghasilkan kelompok seimbang</li>
+                      <li>• Ukuran kelompok ideal (3-5 anggota per kelompok)</li>
+                      <li>• Meminimalkan sisa mahasiswa yang tidak terbagi</li>
+                    </ul>
+                    <p className="text-xs text-blue-600 mt-2 font-medium">
+                      Ukuran kelompok akan ditentukan saat proses pembentukan kelompok di menu Manajemen Kelompok.
+                    </p>
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Assessment Components */}
@@ -767,11 +762,16 @@ const DosenTaskManagement = ({ courseId, courseName }) => {
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Sistem Pengelompokan</p>
-                  <p className="font-medium capitalize">{selectedTask.groupFormation}</p>
+                  <p className="font-medium">{formatSistemPengelompokan(selectedTask.groupFormation)}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Ukuran Kelompok</p>
-                  <p className="font-medium">{selectedTask.minGroupSize} - {selectedTask.maxGroupSize} orang</p>
+                  <p className="font-medium">
+                    {selectedTask.groupFormation === 'automatic' 
+                      ? 'Otomatis (ditentukan sistem)' 
+                      : `${selectedTask.minGroupSize} - ${selectedTask.maxGroupSize} orang`
+                    }
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Total Kelompok</p>
@@ -793,7 +793,14 @@ const DosenTaskManagement = ({ courseId, courseName }) => {
                   <Edit size={16} />
                   Edit Tugas
                 </button>
-                <button className="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2">
+                <button 
+                  onClick={() => {
+                    if (onNavigateToGroupManagement) {
+                      onNavigateToGroupManagement(selectedTask.id, selectedTask.title);
+                    }
+                  }}
+                  className="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                >
                   <Users size={16} />
                   Kelola Kelompok
                 </button>

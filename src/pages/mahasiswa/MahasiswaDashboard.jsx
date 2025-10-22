@@ -8,7 +8,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import MahasiswaLayout from '../../components/MahasiswaLayout';
-import api, { getCurrentUser, getMahasiswaCourses } from '../../utils/api';
+import api, { getCurrentUser } from '../../utils/api';
+import { getMahasiswaCourses, getAllTugasBesarMahasiswa } from '../../utils/mahasiswaApi';
 
 // Import halaman-halaman mahasiswa
 import MahasiswaCourses from './MahasiswaCourses';
@@ -468,10 +469,15 @@ const MahasiswaDashboard = () => {
       
       // Fetch real courses for this mahasiswa
       const coursesResponse = await getMahasiswaCourses();
-      console.log('MahasiswaDashboard - Fetched courses:', coursesResponse.data);
+      console.log('MahasiswaDashboard - Full response:', coursesResponse);
+      console.log('MahasiswaDashboard - Response type:', typeof coursesResponse);
       
-      if (coursesResponse.data.success) {
-        const enrolledCourses = coursesResponse.data.courses;
+      // Handle different response structures
+      const responseData = coursesResponse?.data || coursesResponse;
+      console.log('MahasiswaDashboard - Response data:', responseData);
+      
+      if (responseData && responseData.success) {
+        const enrolledCourses = responseData.courses;
         
         // Transform courses data to match component expectations
         const transformedCourses = enrolledCourses.map(course => ({

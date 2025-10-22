@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   FileText, Calendar, Clock, CheckCircle, Upload, Download, 
   Eye, AlertCircle, Star, User, Users, Play, Paperclip, X, ArrowLeft
 } from 'lucide-react';
+import { getAllTugasBesarMahasiswa, getMahasiswaCourses } from '../../utils/mahasiswaApi';
 
 const MahasiswaTaskManagement = ({ courseId, courseName }) => {
   const [filterStatus, setFilterStatus] = useState('all');
@@ -11,226 +12,113 @@ const MahasiswaTaskManagement = ({ courseId, courseName }) => {
   const [showPreview, setShowPreview] = useState(false);
   const [submissionFiles, setSubmissionFiles] = useState([]);
   const [submissionNote, setSubmissionNote] = useState('');
+  
+  // Real data state
+  const [tasks, setTasks] = useState([]);
+  const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  // Sample tasks data
-  const tasks = [
-    {
-      id: 1,
-      title: 'Tugas 1: HTML & CSS Fundamentals',
-      description: 'Membuat website portfolio menggunakan HTML dan CSS. Pastikan responsive design dan validasi W3C.',
-      detailedDescription: `
-## Deskripsi Tugas
-Buatlah sebuah website portfolio pribadi yang menampilkan informasi tentang diri Anda, keahlian, dan proyek-proyek yang pernah dikerjakan.
+  // Load data on component mount
+  useEffect(() => {
+    loadTugasBesar();
+    loadCourses();
+  }, []);
 
-## Requirements:
-1. Menggunakan HTML5 semantic tags
-2. Styling dengan CSS3 (tanpa framework)
-3. Responsive design untuk mobile dan desktop
-4. Minimal 3 halaman (Home, About, Portfolio)
-5. Validasi W3C untuk HTML dan CSS
-6. Cross-browser compatible
-
-## Penilaian:
-- HTML Structure (20%)
-- CSS Styling (30%)
-- Responsive Design (25%)
-- Kreativitas (15%)
-- W3C Validation (10%)
-
-## Submission Format:
-Upload file .zip yang berisi:
-- index.html dan file HTML lainnya
-- folder css/ dengan file stylesheet
-- folder img/ dengan gambar yang digunakan
-- README.md dengan instruksi
-      `,
-      dueDate: '2024-10-15',
-      submittedDate: '2024-10-14',
-      status: 'submitted',
-      grade: 88,
-      feedback: 'Bagus! Tapi perlu perbaikan pada responsive design untuk mobile.',
-      type: 'individual',
-      maxGrade: 100,
-      attachments: ['portfolio-website.zip'],
-      submissionCount: 1,
-      lateSubmission: false,
-      taskFiles: ['tugas1-requirements.pdf', 'template-portfolio.zip']
-    },
-    {
-      id: 2,
-      title: 'Tugas 2: JavaScript Interactive Features',
-      description: 'Menambahkan fitur interaktif menggunakan JavaScript vanilla. Implementasikan minimal 3 fitur interaktif.',
-      detailedDescription: `
-## Deskripsi Tugas
-Tambahkan fitur-fitur interaktif pada website yang telah dibuat sebelumnya menggunakan JavaScript vanilla (tanpa library).
-
-## Requirements:
-1. Form validation
-2. Dynamic content loading
-3. Image slider/carousel
-4. Modal/popup windows
-5. Smooth scrolling navigation
-6. Dark mode toggle
-
-## Implementasi Minimal:
-Pilih dan implementasikan minimal 3 dari 6 fitur di atas
-
-## Penilaian:
-- Code Quality (30%)
-- Functionality (40%)
-- User Experience (20%)
-- Documentation (10%)
-      `,
-      dueDate: '2024-10-25',
-      submittedDate: '2024-10-24',
-      status: 'submitted',
-      grade: 92,
-      feedback: 'Excellent work! Implementasi yang sangat baik dan kode yang clean.',
-      type: 'individual',
-      maxGrade: 100,
-      attachments: ['interactive-features.zip', 'documentation.pdf'],
-      submissionCount: 2,
-      lateSubmission: false,
-      taskFiles: ['tugas2-instructions.pdf', 'example-code.js']
-    },
-    {
-      id: 3,
-      title: 'Tugas 3: React.js Application',
-      description: 'Membuat aplikasi web menggunakan React.js dengan state management dan routing.',
-      detailedDescription: `
-## Deskripsi Tugas
-Buatlah sebuah aplikasi web menggunakan React.js yang menerapkan konsep component-based architecture.
-
-## Requirements:
-1. Gunakan Create React App atau Vite
-2. Minimal 5 components
-3. State management dengan useState/useReducer
-4. Routing dengan React Router
-5. API Integration (gunakan public API)
-6. Responsive design
-
-## Contoh Aplikasi:
-- Todo List App
-- Weather App
-- Movie Database
-- News Reader
-- Recipe Finder
-
-## Penilaian:
-- Component Structure (25%)
-- State Management (25%)
-- Routing Implementation (20%)
-- API Integration (20%)
-- UI/UX (10%)
-      `,
-      dueDate: '2024-11-05',
-      submittedDate: '2024-11-03',
-      status: 'submitted',
-      grade: 85,
-      feedback: 'Good job! Component structure bisa diperbaiki. Perhatikan best practices React.',
-      type: 'individual',
-      maxGrade: 100,
-      attachments: ['react-app.zip'],
-      submissionCount: 1,
-      lateSubmission: false,
-      taskFiles: ['tugas3-guidelines.pdf', 'starter-template.zip']
-    },
-    {
-      id: 4,
-      title: 'Project: E-Commerce Website',
-      description: 'Membuat website e-commerce lengkap dengan fitur keranjang, pembayaran, dan admin panel. Tugas kelompok 4-5 orang.',
-      detailedDescription: `
-## Deskripsi Project
-Buatlah sebuah website e-commerce sederhana yang memiliki fitur lengkap untuk customer dan admin.
-
-## Requirements:
-### Customer Features:
-1. Product listing dan detail
-2. Shopping cart
-3. Checkout process
-4. User authentication
-5. Order history
-
-### Admin Features:
-1. Product management (CRUD)
-2. Order management
-3. User management
-4. Dashboard analytics
-
-## Tech Stack:
-- Frontend: React.js / Vue.js / Angular
-- Backend: Node.js / PHP / Python
-- Database: MySQL / MongoDB / PostgreSQL
-
-## Deliverables:
-1. Source code (GitHub repository)
-2. Documentation
-3. Demo video (5-10 menit)
-4. Presentation slides
-
-## Penilaian:
-- Functionality (40%)
-- Code Quality (20%)
-- UI/UX Design (15%)
-- Documentation (15%)
-- Presentation (10%)
-      `,
-      dueDate: '2024-11-20',
-      submittedDate: null,
-      status: 'in_progress',
-      grade: null,
-      feedback: null,
-      type: 'group',
-      maxGrade: 100,
-      attachments: [],
-      submissionCount: 0,
-      lateSubmission: false,
-      groupMembers: ['John Doe', 'Jane Smith', 'Bob Wilson', 'Alice Brown'],
-      taskFiles: ['project-requirements.pdf', 'database-schema.sql', 'api-documentation.pdf']
-    },
-    {
-      id: 5,
-      title: 'Final Project: Full-Stack Web Application',
-      description: 'Membuat aplikasi web full-stack dengan database, authentication, dan deployment.',
-      detailedDescription: `
-## Deskripsi Final Project
-Buatlah sebuah aplikasi web full-stack sesuai dengan topik yang Anda pilih dan disetujui oleh dosen.
-
-## Requirements:
-1. Frontend framework (React/Vue/Angular)
-2. Backend API (REST/GraphQL)
-3. Database integration
-4. User authentication & authorization
-5. Deployment (hosting)
-6. Documentation lengkap
-
-## Tahapan:
-1. Proposal (Week 1-2)
-2. Development Sprint 1 (Week 3-4)
-3. Development Sprint 2 (Week 5-6)
-4. Testing & Bug Fixing (Week 7-8)
-5. Final Presentation (Week 9)
-
-## Penilaian:
-- Proposal (10%)
-- Progress Report 1 (15%)
-- Progress Report 2 (15%)
-- Final Product (40%)
-- Presentation (20%)
-      `,
-      dueDate: '2024-12-15',
-      submittedDate: null,
-      status: 'not_started',
-      grade: null,
-      feedback: null,
-      type: 'individual',
-      maxGrade: 100,
-      attachments: [],
-      submissionCount: 0,
-      lateSubmission: false,
-      taskFiles: ['final-project-guidelines.pdf', 'proposal-template.docx']
+  const loadTugasBesar = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      console.log('Loading tugas besar for mahasiswa...');
+      
+      const response = await getAllTugasBesarMahasiswa();
+      
+      console.log('Tugas besar API response:', response);
+      
+      if (response && response.success) {
+        // Transform API data to match component expected format
+        const transformedTasks = response.tugasBesar.map(tb => ({
+          id: tb.id,
+          title: tb.title,
+          description: tb.description,
+          detailedDescription: tb.description, // You can enhance this later
+          dueDate: tb.end_date,
+          startDate: tb.start_date,
+          submittedDate: null, // Will be updated when submission API is ready
+          status: getTaskStatus(tb), // Determine status based on dates and submission
+          grade: null, // Will be updated when grade API is ready
+          feedback: null,
+          type: 'group', // Default to group, can be enhanced later
+          maxGrade: 100,
+          attachments: [],
+          submissionCount: 0,
+          lateSubmission: false,
+          taskFiles: [],
+          // Course information
+          courseId: tb.course_id,
+          courseName: tb.course_name,
+          courseCode: tb.course_code,
+          semester: tb.semester,
+          tahunAjaran: tb.tahun_ajaran,
+          dosenName: tb.dosen_name,
+          className: tb.class_name,
+          // Group settings
+          maxStudentsPerGroup: tb.max_students_per_group,
+          studentChoiceEnabled: tb.student_choice_enabled,
+          maxGroupSize: tb.max_group_size,
+          minGroupSize: tb.min_group_size,
+          // Additional data
+          komponen: tb.komponen,
+          deliverable: tb.deliverable,
+          createdAt: tb.created_at
+        }));
+        
+        console.log('Transformed tasks:', transformedTasks);
+        setTasks(transformedTasks);
+      } else {
+        console.log('No tugas besar found or API error');
+        setTasks([]);
+      }
+    } catch (err) {
+      console.error('Error loading tugas besar:', err);
+      setError('Gagal memuat daftar tugas: ' + err.message);
+      setTasks([]);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  const loadCourses = async () => {
+    try {
+      const response = await getMahasiswaCourses();
+      console.log('Courses API response:', response);
+      
+      if (response && response.success) {
+        setCourses(response.courses);
+      }
+    } catch (err) {
+      console.error('Error loading courses:', err);
+    }
+  };
+
+  const getTaskStatus = (task) => {
+    const now = new Date();
+    const endDate = new Date(task.end_date);
+    const startDate = new Date(task.start_date);
+    
+    // For now, determine status based on dates
+    // Later you can enhance this with submission status
+    if (now < startDate) {
+      return 'not_started';
+    } else if (now <= endDate) {
+      return 'in_progress';
+    } else {
+      return 'overdue';
+    }
+  };
+
+  // Tasks are now loaded from API - no sample data needed
 
   // Filter tasks
   const filteredTasks = tasks.filter(task => {
@@ -574,13 +462,64 @@ Buatlah sebuah aplikasi web full-stack sesuai dengan topik yang Anda pilih dan d
     return <TaskPreview />;
   }
 
+  // Loading state
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-center items-center min-h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+          <span className="ml-3 text-gray-600">Memuat daftar tugas...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+          <div className="flex">
+            <AlertCircle className="text-red-600 mr-3" size={24} />
+            <div className="flex-1">
+              <h3 className="text-red-800 font-semibold mb-2">Gagal Memuat Data</h3>
+              <p className="text-red-700 mb-3">{error}</p>
+              <button 
+                onClick={() => {
+                  setError('');
+                  loadTugasBesar();
+                  loadCourses();
+                }}
+                className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition-colors"
+              >
+                Coba Lagi
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">Daftar Tugas</h3>
-          <p className="text-sm text-gray-600">Kelola tugas dan pengumpulan untuk {courseName}</p>
+          <h3 className="text-lg font-semibold text-gray-900">Daftar Tugas Besar</h3>
+          <p className="text-sm text-gray-600">
+            {courseName ? `Tugas untuk ${courseName}` : 
+             `${tasks.length} tugas dari ${courses.length} mata kuliah yang Anda ikuti`}
+          </p>
+          {courses.length > 0 && !courseName && (
+            <div className="flex flex-wrap gap-2 mt-2">
+              {courses.map(course => (
+                <span key={course.course_id} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                  {course.course_code} - {course.course_name}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
         
         {/* Filters */}
