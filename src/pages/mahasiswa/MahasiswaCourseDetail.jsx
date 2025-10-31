@@ -22,7 +22,6 @@ const formatDate = (dateString) => {
       year: 'numeric'
     });
   } catch (error) {
-    console.error('Error formatting date:', error);
     return 'Tanggal tidak valid';
   }
 };
@@ -42,13 +41,6 @@ const formatGroupingMethod = (method) => {
 const canSelectGroup = (tugas) => {
   // Validasi konsistensi data dulu
   const isConsistent = (tugas.grouping_method === 'student_choice') === (tugas.student_choice_enabled === true);
-  
-  if (!isConsistent) {
-    console.warn('Data inconsistency detected for tugas:', tugas.title || tugas.judul, {
-      grouping_method: tugas.grouping_method,
-      student_choice_enabled: tugas.student_choice_enabled
-    });
-  }
   
   // Mahasiswa bisa pilih kelompok HANYA jika:
   // grouping_method adalah 'student_choice' DAN student_choice_enabled = true
@@ -80,7 +72,6 @@ const MahasiswaCourseDetail = () => {
       
       // Load course detail first
       const courseResponse = await getCourseDetail(courseId);
-      console.log('Course detail response:', courseResponse);
       
       if (courseResponse && courseResponse.success) {
         const courseData = courseResponse.course;
@@ -117,20 +108,8 @@ const MahasiswaCourseDetail = () => {
         
         // Load tugas besar for this course
         const tugasResponse = await getTugasBesarByCourse(courseId);
-        console.log('Tugas besar response:', tugasResponse);
         
         if (tugasResponse && tugasResponse.success) {
-          console.log('Raw tugas besar data:', tugasResponse.tugasBesar);
-          tugasResponse.tugasBesar.forEach((tugas, index) => {
-            console.log(`Tugas ${index}:`, {
-              title: tugas.title,
-              judul: tugas.judul,
-              start_date: tugas.start_date,
-              tanggal_mulai: tugas.tanggal_mulai,
-              end_date: tugas.end_date,
-              tanggal_selesai: tugas.tanggal_selesai
-            });
-          });
           setTugasBesar(tugasResponse.tugasBesar);
           
           // Update course with tugas besar count
@@ -149,7 +128,6 @@ const MahasiswaCourseDetail = () => {
         setTugasBesar([]);
       }
     } catch (err) {
-      console.error('Error loading course detail:', err);
       setError('Gagal memuat detail mata kuliah: ' + err.message);
       setTugasBesar([]);
       setCourse(null);
@@ -184,7 +162,6 @@ const MahasiswaCourseDetail = () => {
     }
 
     // Open group selection modal
-    console.log('Opening group selection for tugas:', tugas.title || tugas.judul);
     setSelectedTugasForGroup(tugas);
     setShowGroupModal(true);
   };
@@ -200,11 +177,6 @@ const MahasiswaCourseDetail = () => {
   };
 
   const TugasBesarCard = ({ tugas }) => {
-    // Debug: Log tugas data to see structure
-    console.log('Tugas data:', tugas);
-    console.log('Komponen:', tugas.komponen);
-    console.log('Deliverable:', tugas.deliverable);
-
     // Parse JSONB data if it's string
   const parseJSONData = (data) => {
     // If data is already an array (JSONB from PostgreSQL), return it directly
@@ -217,13 +189,14 @@ const MahasiswaCourseDetail = () => {
         const parsed = JSON.parse(data);
         return Array.isArray(parsed) ? parsed : [];
       } catch (e) {
-        console.error('Error parsing JSON:', e);
         return [];
       }
     }
     // If it's null or undefined, return empty array
     return [];
-  };    const komponenData = parseJSONData(tugas.komponen);
+  };
+  
+  const komponenData = parseJSONData(tugas.komponen);
     const deliverableData = parseJSONData(tugas.deliverable);
 
     const getStatusColor = (startDate, endDate) => {
@@ -242,7 +215,7 @@ const MahasiswaCourseDetail = () => {
         if (now > end) return 'bg-red-100 text-red-800 border-red-200';
         return 'bg-green-100 text-green-800 border-green-200';
       } catch (error) {
-        console.error('Error in getStatusColor:', error);
+        
         return 'bg-gray-100 text-gray-800 border-gray-200';
       }
     };
@@ -263,7 +236,7 @@ const MahasiswaCourseDetail = () => {
         if (now > end) return 'Sudah Berakhir';
         return 'Sedang Berjalan';
       } catch (error) {
-        console.error('Error in getStatusText:', error);
+        
         return 'Status Tidak Diketahui';
       }
     };
@@ -284,13 +257,12 @@ const MahasiswaCourseDetail = () => {
         if (now > end) return <XCircle className="h-4 w-4" />;
         return <CheckSquare className="h-4 w-4" />;
       } catch (error) {
-        console.error('Error in getStatusIcon:', error);
+        
         return <Info className="h-4 w-4" />;
       }
     };
 
     // Debugging: log tugas data
-    console.log('Tugas data in TugasBesarCard:', tugas);
 
     return (
       <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
@@ -743,7 +715,6 @@ const TugasBesarDetailModal = ({
   handleJoinKelompok 
 }) => {
   // Debugging: log tugas data in modal
-  console.log('Tugas data in modal:', tugas);
 
   const parseJSONData = (data) => {
     // If data is already an array (JSONB from PostgreSQL), return it directly
@@ -756,7 +727,7 @@ const TugasBesarDetailModal = ({
         const parsed = JSON.parse(data);
         return Array.isArray(parsed) ? parsed : [];
       } catch (e) {
-        console.error('Error parsing JSON:', e);
+        
         return [];
       }
     }
@@ -777,7 +748,7 @@ const TugasBesarDetailModal = ({
         day: 'numeric'
       });
     } catch (error) {
-      console.error('Error formatting date in modal:', error);
+      
       return 'Tanggal tidak valid';
     }
   };
@@ -801,7 +772,7 @@ const TugasBesarDetailModal = ({
       if (now > end) return 'text-red-600 bg-red-50';
       return 'text-green-600 bg-green-50';
     } catch (error) {
-      console.error('Error in getStatusColor (modal):', error);
+      
       return 'text-gray-600 bg-gray-50';
     }
   };
@@ -822,7 +793,7 @@ const TugasBesarDetailModal = ({
       if (now > end) return 'Sudah Berakhir';
       return 'Sedang Berjalan';
     } catch (error) {
-      console.error('Error in getStatusText (modal):', error);
+      
       return 'Status Tidak Diketahui';
     }
   };
@@ -1008,12 +979,7 @@ const GroupSelectionModal = ({ tugas, onClose, courseId }) => {
       const [currentGroupResponse, availableGroupsResponse] = await Promise.all([
         getCurrentGroup(tugas.id),
         getAvailableGroups(tugas.id)
-      ]);
-
-      console.log('Current group response:', currentGroupResponse);
-      console.log('Available groups response:', availableGroupsResponse);
-
-      // Set current group
+      ]);// Set current group
       if (currentGroupResponse.success && currentGroupResponse.hasGroup) {
         setCurrentGroup(currentGroupResponse.kelompok);
       } else {

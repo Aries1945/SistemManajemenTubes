@@ -14,17 +14,7 @@ import {
   deleteKelompok 
 } from '../../utils/kelompokApi';
 
-const DosenGroupManagement = ({ courseId, classId, courseName = 'Pemrograman Web', className = '', selectedTaskId = null, selectedTaskTitle = 'Tugas Besar' }) => {
-  console.log('🚀 DosenGroupManagement initialized with props:', { 
-    courseId, 
-    classId,
-    courseName,
-    className, 
-    selectedTaskId, 
-    selectedTaskTitle 
-  });
-  
-  const [activeView, setActiveView] = useState(selectedTaskId ? 'list' : 'task-list');
+const DosenGroupManagement = ({ courseId, classId, courseName = 'Pemrograman Web', className = '', selectedTaskId = null, selectedTaskTitle = 'Tugas Besar' }) => {const [activeView, setActiveView] = useState(selectedTaskId ? 'list' : 'task-list');
   const [selectedTask, setSelectedTask] = useState(null);
   const [selectedGroup, setSelectedGroup] = useState(null);
   
@@ -114,9 +104,7 @@ const DosenGroupManagement = ({ courseId, classId, courseName = 'Pemrograman Web
   };
 
   // Load initial data
-  useEffect(() => {
-    console.log('🔄 useEffect triggered with courseId:', courseId, 'classId:', classId, 'currentTaskId:', currentTaskId);
-    loadTasks();
+  useEffect(() => {loadTasks();
     // Only load students when we have a valid currentTaskId
     if (currentTaskId) {
       loadStudents();
@@ -130,32 +118,22 @@ const DosenGroupManagement = ({ courseId, classId, courseName = 'Pemrograman Web
     }
   }, [currentTaskId]);
 
-  const loadTasks = async () => {
-    console.log('🔄 loadTasks called with courseId:', courseId, 'classId:', classId);
-    
-    // Add safety check for courseId
-    if (!courseId) {
-      console.log('❌ No courseId provided, setting empty tasks');
-      setTasks([]);
+  const loadTasks = async () => {// Add safety check for courseId
+    if (!courseId) {setTasks([]);
       setLoading(false);
       return;
     }
     
     try {
       setLoading(true);
-      console.log('📞 Calling getTugasBesar API with classId...');
       const response = await getTugasBesar(courseId, classId);
-      console.log('📥 getTugasBesar response:', response);
       
       if (response && response.success) {
-        console.log('✅ Tasks loaded successfully:', response.data || response.tugasBesar);
         setTasks(response.data || response.tugasBesar || []);
       } else if (response && (response.data || response.tugasBesar)) {
         // Sometimes API returns data directly without success flag
-        console.log('✅ Tasks loaded (fallback):', response.data || response.tugasBesar);
         setTasks(response.data || response.tugasBesar || []);
       } else {
-        console.log('❌ API returned error or no data:', response);
         // Set empty array instead of showing error for better UX
         setTasks([]);
         showError('Error', 'Gagal memuat daftar tugas besar');
@@ -165,58 +143,43 @@ const DosenGroupManagement = ({ courseId, classId, courseName = 'Pemrograman Web
       // Set empty array instead of keeping loading
       setTasks([]);
       showError('Error', 'Gagal memuat daftar tugas besar: ' + error.message);
-    } finally {
-      console.log('🏁 loadTasks finished, setting loading to false');
-      setLoading(false);
+    } finally {setLoading(false);
     }
   };
 
   const loadGroups = async () => {
     if (!currentTaskId) {
-      console.log('⚠️ loadGroups: No currentTaskId available');
       return;
     }
     
     try {
-      console.log('🔄 loadGroups: Starting with currentTaskId:', currentTaskId);
       setLoadingGroups(true);
       
       const response = await getKelompok(currentTaskId);
-      console.log('📥 loadGroups: API response:', response);
-      
       // Handle both response formats
       if (response && (response.success || Array.isArray(response))) {
         // If response has success flag, use response.data
         // If response is an array (old format), use it directly
         const groupsData = response.success ? response.data : response;
-        console.log('✅ loadGroups: Groups data extracted:', groupsData);
         setGroups(Array.isArray(groupsData) ? groupsData : []);
-      } else {
-        console.log('❌ loadGroups: Invalid response format:', response);
-        setGroups([]);
+      } else {setGroups([]);
         showError('Error', 'Gagal memuat daftar kelompok: Format respons tidak valid');
       }
     } catch (error) {
       console.error('💥 loadGroups: Error:', error);
       setGroups([]);
       showError('Error', 'Gagal memuat daftar kelompok: ' + error.message);
-    } finally {
-      console.log('🏁 loadGroups: Finished, setting loading to false');
-      setLoadingGroups(false);
+    } finally {setLoadingGroups(false);
     }
   };
 
   const loadStudents = async () => {
     if (!currentTaskId) {
-      console.log('⚠️ loadStudents: No currentTaskId available, skipping loadStudents');
       return;
     }
     
     try {
-      console.log('🔄 loadStudents: Starting with currentTaskId:', currentTaskId);
       const response = await getMahasiswaForGrouping(currentTaskId);
-      console.log('📥 loadStudents: API response:', response);
-      
       // Handle both response formats
       if (response && (response.success || Array.isArray(response))) {
         // If response has success flag, use response.mahasiswa or response.data
@@ -224,16 +187,11 @@ const DosenGroupManagement = ({ courseId, classId, courseName = 'Pemrograman Web
         const studentsData = response.success 
           ? (response.mahasiswa || response.data) 
           : response;
-        console.log('✅ loadStudents: Students data extracted:', studentsData);
         setStudents(Array.isArray(studentsData) ? studentsData : []);
         
         // Don't show error if students array is empty - this is normal when all students are assigned
-        if (!Array.isArray(studentsData) || studentsData.length === 0) {
-          console.log('ℹ️ loadStudents: No available students found (this is normal if all students are assigned to groups)');
-        }
-      } else {
-        console.log('❌ loadStudents: Invalid response format:', response);
-        setStudents([]);
+        if (!Array.isArray(studentsData) || studentsData.length === 0) {}
+      } else {setStudents([]);
         // Don't show error for null or undefined response - might be empty data
         if (response !== null && response !== undefined) {
           showError('Error', 'Gagal memuat daftar mahasiswa: Format respons tidak valid');
@@ -246,9 +204,7 @@ const DosenGroupManagement = ({ courseId, classId, courseName = 'Pemrograman Web
       // Only show error for actual network/server errors, not for empty results
       if (error.name !== 'TypeError' || !error.message.includes('fetch')) {
         showError('Error', 'Gagal memuat daftar mahasiswa: ' + error.message);
-      } else {
-        console.log('ℹ️ loadStudents: Network error (possibly server not running)');
-      }
+      } else {}
     }
   };
 
@@ -298,13 +254,9 @@ const DosenGroupManagement = ({ courseId, classId, courseName = 'Pemrograman Web
 
   // Manual Group Creation Handler
   const handleCreateManualGroup = async (formData) => {
-    console.log('handleCreateManualGroup called with:', formData);
-    
     try {
       const response = await createManualGroup(formData);
-
-      console.log('API response:', response);
-
+      
       if (response.success) {
         showSuccess('Berhasil', 'Kelompok berhasil dibuat');
         setActiveView('list');
@@ -388,33 +340,14 @@ const DosenGroupManagement = ({ courseId, classId, courseName = 'Pemrograman Web
     }, [formData.selectedMembers]);
 
     const handleSubmit = (e) => {
-      e.preventDefault();
-      
-      console.log('ManualGroupForm handleSubmit triggered');
-      console.log('Form data:', formData);
-      console.log('Current task ID:', currentTaskId);
-      
-      // Create form data with current task ID and member IDs
+      e.preventDefault();// Create form data with current task ID and member IDs
       const submitData = {
         taskId: currentTaskId,
         name: formData.name,
         members: formData.selectedMembers.map(member => member.id),
         leaderId: formData.leader
-      };
-      
-      console.log('Manual group form submit data:', submitData);
-      
-      // Basic validation
-      if (!formData.name || !currentTaskId || formData.selectedMembers.length === 0 || formData.leader === null || formData.leader === undefined) {
-        console.log('Validation failed:', {
-          name: !formData.name,
-          taskId: !currentTaskId,
-          members: formData.selectedMembers.length === 0,
-          leader: formData.leader === null || formData.leader === undefined,
-          leaderValue: formData.leader
-        });
-        
-        showError(
+      };// Basic validation
+      if (!formData.name || !currentTaskId || formData.selectedMembers.length === 0 || formData.leader === null || formData.leader === undefined) {showError(
           'Data Tidak Lengkap',
           'Harap lengkapi semua field yang diperlukan: nama kelompok, anggota, dan ketua kelompok.'
         );
@@ -444,10 +377,7 @@ const DosenGroupManagement = ({ courseId, classId, courseName = 'Pemrograman Web
           );
           return; // BLOCK creation
         }
-      }
-      
-      console.log('All validations passed, calling handleCreateManualGroup...');
-      handleCreateManualGroup(submitData);
+      }handleCreateManualGroup(submitData);
     };
 
     const addMember = (student) => {
@@ -964,19 +894,11 @@ const DosenGroupManagement = ({ courseId, classId, courseName = 'Pemrograman Web
 
   // Group List View Component
   const GroupListView = () => {
-    // Add debug info untuk groups data
-    console.log('🔍 GroupListView: All groups data:', groups);
-    console.log('🔍 GroupListView: currentTaskId:', currentTaskId);
-    console.log('🔍 GroupListView: selectedTask:', selectedTask);
-    
     // Fix field mapping - API mengembalikan tugas_besar_id, bukan taskId
     const taskGroups = groups.filter(group => {
       const groupTaskId = group.taskId || group.tugas_besar_id;
-      console.log(`🔍 Comparing group ${group.id}: groupTaskId=${groupTaskId} vs currentTaskId=${currentTaskId}`);
       return groupTaskId && groupTaskId.toString() === currentTaskId.toString();
     });
-    
-    console.log('🔍 GroupListView: Task groups filtered:', taskGroups);
     
     const filteredGroups = taskGroups.filter(group => {
       const groupName = group.name || group.nama_kelompok || '';
@@ -986,15 +908,8 @@ const DosenGroupManagement = ({ courseId, classId, courseName = 'Pemrograman Web
         members.some(member => 
           member.name && member.name.toLowerCase().includes(searchTerm.toLowerCase())
         );
-    });
-
-    console.log('🔍 GroupListView: Filtered groups:', filteredGroups);
-
-    // Get group formation method from selected task
-    const groupFormation = selectedTask?.groupFormation || selectedTask?.grouping_method || 'manual';
-    console.log('🔍 GroupListView: Group formation method:', groupFormation);
-
-    // Determine available buttons based on group formation method
+    });// Get group formation method from selected task
+    const groupFormation = selectedTask?.groupFormation || selectedTask?.grouping_method || 'manual';// Determine available buttons based on group formation method
     const getAvailableGroupActions = () => {
       switch (groupFormation) {
         case 'manual':
@@ -1130,16 +1045,7 @@ const DosenGroupManagement = ({ courseId, classId, courseName = 'Pemrograman Web
               // Handle field mapping untuk compatibility
               const groupName = group.name || group.nama_kelompok || 'Kelompok Tanpa Nama';
               const groupMembers = group.members || [];
-              const groupLeaderId = group.leaderId || group.leader_id;
-              
-              console.log(`🔍 Rendering group ${group.id}:`, {
-                name: groupName,
-                membersCount: groupMembers.length,
-                members: groupMembers,
-                leaderId: groupLeaderId
-              });
-              
-              return (
+              const groupLeaderId = group.leaderId || group.leader_id;return (
                 <div key={group.id} className="bg-white rounded-lg shadow border hover:shadow-lg transition-shadow">
                   <div className="p-6">
                     <div className="flex items-start justify-between">

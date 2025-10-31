@@ -150,12 +150,6 @@ router.get('/courses/:courseId/tugas-besar', async (req, res) => {
     }
     
     // First, verify mahasiswa is enrolled in this course and get class info
-    console.log('🔍 Mahasiswa tugas-besar request:', {
-      userId,
-      courseId,
-      rawCourseId
-    });
-    
     const enrollmentCheck = await pool.query(`
       SELECT ce.class_id, cl.dosen_id 
       FROM class_enrollments ce
@@ -163,27 +157,15 @@ router.get('/courses/:courseId/tugas-besar', async (req, res) => {
       WHERE ce.mahasiswa_id = $1 AND cl.course_id = $2 AND ce.status = 'active'
     `, [userId, courseId]);
     
-    console.log('📋 Enrollment check result:', {
-      userId,
-      courseId,
-      enrollmentFound: enrollmentCheck.rows.length,
-      enrollmentData: enrollmentCheck.rows
-    });
     
     if (enrollmentCheck.rows.length === 0) {
       return res.status(403).json({ error: 'Access denied. You are not enrolled in this course.' });
     }
     
     const classInfo = enrollmentCheck.rows[0];
-    console.log('✅ Class info extracted:', classInfo);
     
     // Get tugas besar for this course created by the dosen of the class
     // NEW: Filter by class_id to ensure class-specific isolation
-    console.log('🎯 Executing tugas besar query with params:', {
-      courseId,
-      dosenId: classInfo.dosen_id,
-      classId: classInfo.class_id
-    });
     
     const result = await pool.query(`
       SELECT 
@@ -204,11 +186,6 @@ router.get('/courses/:courseId/tugas-besar', async (req, res) => {
       WHERE tb.course_id = $1 AND tb.dosen_id = $2 AND tb.class_id = $3
       ORDER BY tb.created_at DESC
     `, [courseId, classInfo.dosen_id, classInfo.class_id]);
-    
-    console.log('📊 Tugas besar query result:', {
-      rowCount: result.rows.length,
-      tugasIds: result.rows.map(t => ({ id: t.id, title: t.title, class_id: t.class_id }))
-    });
     
     res.json({
       success: true,
@@ -286,10 +263,10 @@ router.get('/tugas-besar/:tugasId/kelompok-available', async (req, res) => {
 
     // Check if student is already in a group for this tugas
     const existingGroupCheck = await pool.query(`
-      SELECT kt.id, kt.name as nama_kelompok 
+      SELECT k.id, k.nama_kelompok 
       FROM kelompok_members km
-      JOIN kelompok_tugas kt ON km.kelompok_id = kt.id
-      WHERE kt.tugas_besar_id = $1 AND km.user_id = $2
+      JOIN kelompok k ON km.kelompok_id = k.id
+      WHERE k.tugas_besar_id = $1 AND km.user_id = $2
     `, [tugasId, mahasiswaId]);
 
     if (existingGroupCheck.rows.length > 0) {
@@ -304,30 +281,30 @@ router.get('/tugas-besar/:tugasId/kelompok-available', async (req, res) => {
     // Get available groups for student choice
     const result = await pool.query(`
       SELECT 
-        kt.*,
+        k.*,
         COUNT(DISTINCT km.id) as current_members,
-        COALESCE(kt.max_members, tb.max_group_size, 4) as max_members,
+        COALESCE(k.max_members, tb.max_group_size, 4) as max_members,
         COALESCE(
           ARRAY_AGG(
-            DISTINCT jsonb_build_object(
+            jsonb_build_object(
               'id', u.id,
               'name', mp.nama_lengkap,
               'npm', mp.nim,
-              'isLeader', CASE WHEN km.user_id = kt.leader_id THEN true ELSE false END
+              'isLeader', CASE WHEN km.user_id = k.leader_id THEN true ELSE false END
             ) ORDER BY mp.nama_lengkap
           ) FILTER (WHERE u.id IS NOT NULL),
           '{}'::jsonb[]
         ) as members
-      FROM kelompok_tugas kt
-      JOIN tugas_besar tb ON kt.tugas_besar_id = tb.id
-      LEFT JOIN kelompok_members km ON kt.id = km.kelompok_id
+      FROM kelompok k
+      JOIN tugas_besar tb ON k.tugas_besar_id = tb.id
+      LEFT JOIN kelompok_members km ON k.id = km.kelompok_id
       LEFT JOIN users u ON km.user_id = u.id
       LEFT JOIN mahasiswa_profiles mp ON u.id = mp.user_id
-      WHERE kt.tugas_besar_id = $1 
-        AND (kt.is_student_choice = true OR tb.student_choice_enabled = true)
-      GROUP BY kt.id, kt.nama_kelompok, kt.tugas_besar_id, kt.leader_id, kt.creation_method, kt.max_members, kt.is_student_choice, kt.created_at, tb.max_group_size
-      HAVING COUNT(DISTINCT km.id) < COALESCE(kt.max_members, tb.max_group_size, 4)
-      ORDER BY kt.nama_kelompok ASC
+      WHERE k.tugas_besar_id = $1 
+        AND (k.is_student_choice = true OR tb.student_choice_enabled = true)
+      GROUP BY k.id, k.nama_kelompok, k.tugas_besar_id, k.leader_id, k.creation_method, k.max_members, k.is_student_choice, k.created_at, tb.max_group_size
+      HAVING COUNT(DISTINCT km.id) < COALESCE(k.max_members, tb.max_group_size, 4)
+      ORDER BY k.nama_kelompok ASC
     `, [tugasId]);
 
     res.json({
@@ -350,23 +327,23 @@ router.post('/kelompok/:kelompokId/join', async (req, res) => {
     // Get kelompok details and verify it's available for student choice
     const kelompokCheck = await pool.query(`
       SELECT 
-        kt.id,
-        kt.nama_kelompok,
-        kt.tugas_besar_id,
-        kt.leader_id,
-        kt.creation_method,
-        kt.max_members,
-        kt.is_student_choice,
-        kt.created_at,
+        k.id,
+        k.nama_kelompok,
+        k.tugas_besar_id,
+        k.leader_id,
+        k.creation_method,
+        k.max_members,
+        k.is_student_choice,
+        k.created_at,
         tb.max_group_size,
         tb.min_group_size,
         tb.student_choice_enabled,
         COUNT(DISTINCT km.id) as current_members
-      FROM kelompok_tugas kt
-      JOIN tugas_besar tb ON kt.tugas_besar_id = tb.id
-      LEFT JOIN kelompok_members km ON kt.id = km.kelompok_id
-      WHERE kt.id = $1 
-      GROUP BY kt.id, kt.nama_kelompok, kt.tugas_besar_id, kt.leader_id, kt.creation_method, kt.max_members, kt.is_student_choice, kt.created_at, tb.max_group_size, tb.min_group_size, tb.student_choice_enabled
+      FROM kelompok k
+      JOIN tugas_besar tb ON k.tugas_besar_id = tb.id
+      LEFT JOIN kelompok_members km ON k.id = km.kelompok_id
+      WHERE k.id = $1 
+      GROUP BY k.id, k.nama_kelompok, k.tugas_besar_id, k.leader_id, k.creation_method, k.max_members, k.is_student_choice, k.created_at, tb.max_group_size, tb.min_group_size, tb.student_choice_enabled
     `, [kelompokId]);
 
     if (kelompokCheck.rows.length === 0) {
@@ -399,10 +376,10 @@ router.post('/kelompok/:kelompokId/join', async (req, res) => {
 
     // Check if student is already in a group for this tugas
     const existingGroupCheck = await pool.query(`
-      SELECT kt.name as nama_kelompok 
+      SELECT k.nama_kelompok 
       FROM kelompok_members km
-      JOIN kelompok_tugas kt ON km.kelompok_id = kt.id
-      WHERE kt.tugas_besar_id = $1 AND km.user_id = $2
+      JOIN kelompok k ON km.kelompok_id = k.id
+      WHERE k.tugas_besar_id = $1 AND km.user_id = $2
     `, [kelompok.tugas_besar_id, mahasiswaId]);
 
     if (existingGroupCheck.rows.length > 0) {
@@ -434,7 +411,7 @@ router.post('/kelompok/:kelompokId/join', async (req, res) => {
         const randomLeaderId = allMembers[Math.floor(Math.random() * allMembers.length)];
         
         await client.query(
-          'UPDATE kelompok_tugas SET leader_id = $1 WHERE id = $2',
+          'UPDATE kelompok SET leader_id = $1 WHERE id = $2',
           [randomLeaderId, kelompokId]
         );
       }
@@ -444,25 +421,25 @@ router.post('/kelompok/:kelompokId/join', async (req, res) => {
       // Get updated group info
       const updatedGroupResult = await client.query(`
         SELECT 
-          kt.*,
+          k.*,
           COUNT(DISTINCT km.id) as member_count,
           COALESCE(
             ARRAY_AGG(
-              DISTINCT jsonb_build_object(
+              jsonb_build_object(
                 'id', u.id,
                 'name', mp.nama_lengkap,
                 'npm', mp.nim,
-                'isLeader', CASE WHEN km.user_id = kt.leader_id THEN true ELSE false END
+                'isLeader', CASE WHEN km.user_id = k.leader_id THEN true ELSE false END
               ) ORDER BY mp.nama_lengkap
             ) FILTER (WHERE u.id IS NOT NULL),
             '{}'::jsonb[]
           ) as members
-        FROM kelompok_tugas kt
-        LEFT JOIN kelompok_members km ON kt.id = km.kelompok_id
+        FROM kelompok k
+        LEFT JOIN kelompok_members km ON k.id = km.kelompok_id
         LEFT JOIN users u ON km.user_id = u.id
         LEFT JOIN mahasiswa_profiles mp ON u.id = mp.user_id
-        WHERE kt.id = $1
-        GROUP BY kt.id, kt.nama_kelompok, kt.tugas_besar_id, kt.leader_id, kt.creation_method, kt.max_members, kt.is_student_choice, kt.created_at
+        WHERE k.id = $1
+        GROUP BY k.id, k.nama_kelompok, k.tugas_besar_id, k.leader_id, k.creation_method, k.max_members, k.is_student_choice, k.created_at
       `, [kelompokId]);
 
       res.json({
@@ -493,13 +470,13 @@ router.post('/kelompok/:kelompokId/leave', async (req, res) => {
     const memberCheck = await pool.query(`
       SELECT 
         km.*,
-        kt.name as nama_kelompok,
-        kt.leader_id,
-        kt.tugas_besar_id,
+        k.nama_kelompok,
+        k.leader_id,
+        k.tugas_besar_id,
         tb.student_choice_enabled
       FROM kelompok_members km
-      JOIN kelompok_tugas kt ON km.kelompok_id = kt.id
-      JOIN tugas_besar tb ON kt.tugas_besar_id = tb.id
+      JOIN kelompok k ON km.kelompok_id = k.id
+      JOIN tugas_besar tb ON k.tugas_besar_id = tb.id
       WHERE km.kelompok_id = $1 AND km.user_id = $2
     `, [kelompokId, mahasiswaId]);
 
@@ -535,13 +512,13 @@ router.post('/kelompok/:kelompokId/leave', async (req, res) => {
           // Assign random new leader
           const newLeaderId = remainingMembers.rows[0].user_id;
           await client.query(
-            'UPDATE kelompok_tugas SET leader_id = $1 WHERE id = $2',
+            'UPDATE kelompok SET leader_id = $1 WHERE id = $2',
             [newLeaderId, kelompokId]
           );
         } else {
           // No members left, clear leader
           await client.query(
-            'UPDATE kelompok_tugas SET leader_id = NULL WHERE id = $2',
+            'UPDATE kelompok SET leader_id = NULL WHERE id = $2',
             [kelompokId]
           );
         }
@@ -573,26 +550,26 @@ router.get('/tugas-besar/:tugasId/kelompok-current', async (req, res) => {
 
     const result = await pool.query(`
       SELECT 
-        kt.*,
+        k.*,
         COUNT(DISTINCT km_all.id) as member_count,
         COALESCE(
           ARRAY_AGG(
-            DISTINCT jsonb_build_object(
+            jsonb_build_object(
               'id', u.id,
               'name', mp.nama_lengkap,
               'npm', mp.nim,
-              'isLeader', CASE WHEN km_all.user_id = kt.leader_id THEN true ELSE false END
+              'isLeader', CASE WHEN km_all.user_id = k.leader_id THEN true ELSE false END
             ) ORDER BY mp.nama_lengkap
           ) FILTER (WHERE u.id IS NOT NULL),
           '{}'::jsonb[]
         ) as members
       FROM kelompok_members km
-      JOIN kelompok_tugas kt ON km.kelompok_id = kt.id
-      LEFT JOIN kelompok_members km_all ON kt.id = km_all.kelompok_id
+      JOIN kelompok k ON km.kelompok_id = k.id
+      LEFT JOIN kelompok_members km_all ON k.id = km_all.kelompok_id
       LEFT JOIN users u ON km_all.user_id = u.id
       LEFT JOIN mahasiswa_profiles mp ON u.id = mp.user_id
-      WHERE kt.tugas_besar_id = $1 AND km.user_id = $2
-      GROUP BY kt.id, kt.nama_kelompok, kt.tugas_besar_id, kt.leader_id, kt.creation_method, kt.max_members, kt.is_student_choice, kt.created_at
+      WHERE k.tugas_besar_id = $1 AND km.user_id = $2
+      GROUP BY k.id, k.nama_kelompok, k.tugas_besar_id, k.leader_id, k.creation_method, k.max_members, k.is_student_choice, k.created_at
     `, [tugasId, mahasiswaId]);
 
     if (result.rows.length === 0) {

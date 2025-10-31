@@ -40,11 +40,7 @@ export const AuthProvider = ({ children }) => {
       delete api.defaults.headers.common['Authorization'];
       
       const response = await api.post('/auth/login', { email, password });
-      const userData = response.data;
-      
-      console.log('Login successful for user:', userData.email, 'Role:', userData.role);
-      
-      // Store user data in context and localStorage
+      const userData = response.data;// Store user data in context and localStorage
       setUser(userData);
       localStorage.setItem('user', JSON.stringify(userData));
       localStorage.setItem('token', userData.token); // Also store token separately for tugasBesarApi
@@ -74,10 +70,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Logout function - comprehensive cleanup
-  const logout = () => {
-    console.log('Logging out - clearing all authentication data...');
-    
-    // Clear user data from state
+  const logout = () => {// Clear user data from state
     setUser(null);
     
     // Clear ALL possible token/user storage locations
@@ -101,11 +94,7 @@ export const AuthProvider = ({ children }) => {
     
     // Force refresh the page to ensure complete state reset
     localStorage.clear(); // Clear everything from localStorage
-    sessionStorage.clear(); // Clear everything from sessionStorage
-    
-    console.log('All authentication data cleared, redirecting to login...');
-    
-    // Redirect to login
+    sessionStorage.clear(); // Clear everything from sessionStorage// Redirect to login
     navigate('/login');
     
     // Optional: Force page reload to ensure complete cleanup

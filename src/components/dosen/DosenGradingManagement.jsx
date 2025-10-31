@@ -337,7 +337,6 @@ const DosenGradingManagement = ({ courseId, courseName, taskId = null }) => {
             }}
             onDelete={(id) => {
               // Handle delete
-              console.log('Delete component:', id);
             }}
           />
         ))}
@@ -441,9 +440,7 @@ const DosenGradingManagement = ({ courseId, courseName, taskId = null }) => {
       }));
     };
 
-    const handleSaveGrades = () => {
-      console.log('Saving grades for component:', selectedComponent.id, grades);
-      setActiveView('overview');
+    const handleSaveGrades = () => {setActiveView('overview');
     };
 
     return (

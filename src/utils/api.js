@@ -26,14 +26,8 @@ api.interceptors.response.use(
   (response) => {
     return response;
   },
-  (error) => {
-    console.log('API Error:', error.response || error);
-    
-    // Handle authentication errors globally
-    if (error.response?.status === 401 || error.response?.status === 403) {
-      console.log('Authentication error detected, clearing localStorage...');
-      
-      // Clear localStorage and redirect to login
+  (error) => {// Handle authentication errors globally
+    if (error.response?.status === 401 || error.response?.status === 403) {// Clear localStorage and redirect to login
       localStorage.removeItem('user');
       localStorage.removeItem('token');
       

@@ -21,10 +21,7 @@ const MahasiswaCourses = () => {
       setLoading(true);
       setError('');
       
-      console.log('Loading mahasiswa courses...');
       const response = await getMahasiswaCourses();
-      
-      console.log('Courses response:', response);
       
       if (response && response.success) {
         // Transform API data to match component expectations
@@ -49,14 +46,11 @@ const MahasiswaCourses = () => {
           courseDescription: course.course_description
         }));
         
-        console.log('Transformed courses:', transformedCourses);
         setCourses(transformedCourses);
       } else {
-        console.log('No courses found or API error');
         setCourses([]);
       }
     } catch (err) {
-      console.error('Error loading courses:', err);
       setError('Gagal memuat data mata kuliah: ' + err.message);
       setCourses([]);
     } finally {

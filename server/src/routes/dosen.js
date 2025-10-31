@@ -661,27 +661,27 @@ router.get('/tugas-besar/:tugasId/kelompok', async (req, res) => {
 
     const result = await pool.query(`
       SELECT 
-        kt.id,
-        kt.name as nama_kelompok,
-        kt.tugas_besar_id,
-        kt.leader_id,
-        kt.creation_method,
-        kt.max_members,
-        kt.is_student_choice,
-        kt.created_at,
+        k.id,
+        k.nama_kelompok,
+        k.tugas_besar_id,
+        k.leader_id,
+        k.creation_method,
+        k.max_members,
+        k.is_student_choice,
+        k.created_at,
         COUNT(DISTINCT km.id) as member_count,
         STRING_AGG(
           DISTINCT CASE WHEN mp.nama_lengkap IS NOT NULL 
           THEN mp.nama_lengkap 
           ELSE u.email END, ', '
         ) as member_names
-      FROM kelompok_tugas kt
-      LEFT JOIN kelompok_members km ON kt.id = km.kelompok_id
+      FROM kelompok k
+      LEFT JOIN kelompok_members km ON k.id = km.kelompok_id
       LEFT JOIN users u ON km.user_id = u.id
       LEFT JOIN mahasiswa_profiles mp ON u.id = mp.user_id
-      WHERE kt.tugas_besar_id = $1
-      GROUP BY kt.id, kt.name, kt.tugas_besar_id, kt.leader_id, kt.creation_method, kt.max_members, kt.is_student_choice, kt.created_at
-      ORDER BY kt.created_at ASC
+      WHERE k.tugas_besar_id = $1
+      GROUP BY k.id, k.nama_kelompok, k.tugas_besar_id, k.leader_id, k.creation_method, k.max_members, k.is_student_choice, k.created_at
+      ORDER BY k.created_at ASC
     `, [tugasId]);
 
     res.json({
@@ -718,7 +718,7 @@ router.post('/tugas-besar/:tugasId/kelompok/manual', async (req, res) => {
 
       // Create kelompok
       const kelompokResult = await client.query(
-        'INSERT INTO kelompok_tugas (tugas_besar_id, name, leader_id, creation_method) VALUES ($1, $2, $3, $4) RETURNING *',
+        'INSERT INTO kelompok (tugas_besar_id, nama_kelompok, leader_id, creation_method) VALUES ($1, $2, $3, $4) RETURNING *',
         [tugasId, name, leaderId, 'manual']
       );
 
@@ -780,8 +780,8 @@ router.post('/tugas-besar/:tugasId/kelompok/automatic', async (req, res) => {
         AND u.id NOT IN (
           SELECT km.user_id 
           FROM kelompok_members km 
-          JOIN kelompok_tugas kt ON km.kelompok_id = kt.id 
-          WHERE kt.tugas_besar_id = $1
+          JOIN kelompok k ON km.kelompok_id = k.id 
+          WHERE k.tugas_besar_id = $1
         )
       ORDER BY mp.nama_lengkap
     `, [tugasId]);
@@ -812,7 +812,7 @@ router.post('/tugas-besar/:tugasId/kelompok/automatic', async (req, res) => {
           const randomLeaderId = currentGroup[Math.floor(Math.random() * currentGroup.length)].id;
           
           const kelompokResult = await client.query(
-            'INSERT INTO kelompok_tugas (tugas_besar_id, name, leader_id, creation_method) VALUES ($1, $2, $3, $4) RETURNING *',
+            'INSERT INTO kelompok (tugas_besar_id, nama_kelompok, leader_id, creation_method) VALUES ($1, $2, $3, $4) RETURNING *',
             [tugasId, `Kelompok ${groupLetter}`, randomLeaderId, 'automatic']
           );
 
@@ -903,7 +903,7 @@ router.post('/tugas-besar/:tugasId/kelompok/enable-student-choice', async (req, 
         const groupLetter = String.fromCharCode(65 + i); // A, B, C, etc.
         
         const kelompokResult = await client.query(
-          'INSERT INTO kelompok_tugas (tugas_besar_id, name, creation_method, max_members, is_student_choice) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+          'INSERT INTO kelompok (tugas_besar_id, nama_kelompok, creation_method, max_members, is_student_choice) VALUES ($1, $2, $3, $4, $5) RETURNING *',
           [tugasId, `Kelompok ${groupLetter}`, 'student_choice', maxGroupSize, true]
         );
 
@@ -943,9 +943,9 @@ router.delete('/kelompok/:kelompokId', async (req, res) => {
 
     // Verify ownership
     const ownerCheck = await pool.query(`
-      SELECT 1 FROM kelompok_tugas kt
-      JOIN tugas_besar tb ON kt.tugas_besar_id = tb.id
-      WHERE kt.id = $1 AND tb.dosen_id = $2
+      SELECT 1 FROM kelompok k
+      JOIN tugas_besar tb ON k.tugas_besar_id = tb.id
+      WHERE k.id = $1 AND tb.dosen_id = $2
     `, [kelompokId, dosenId]);
 
     if (ownerCheck.rows.length === 0) {
@@ -961,7 +961,7 @@ router.delete('/kelompok/:kelompokId', async (req, res) => {
       await client.query('DELETE FROM kelompok_members WHERE kelompok_id = $1', [kelompokId]);
       
       // Delete kelompok
-      await client.query('DELETE FROM kelompok_tugas WHERE id = $1', [kelompokId]);
+      await client.query('DELETE FROM kelompok WHERE id = $1', [kelompokId]);
 
       await client.query('COMMIT');
 
@@ -1009,8 +1009,8 @@ router.get('/tugas-besar/:tugasId/mahasiswa-available', async (req, res) => {
         AND u.id NOT IN (
           SELECT km.user_id 
           FROM kelompok_members km 
-          JOIN kelompok_tugas kt ON km.kelompok_id = kt.id 
-          WHERE kt.tugas_besar_id = $1
+          JOIN kelompok k ON km.kelompok_id = k.id 
+          WHERE k.tugas_besar_id = $1
         )
       ORDER BY mp.nama_lengkap
     `, [tugasId]);

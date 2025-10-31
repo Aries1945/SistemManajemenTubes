@@ -14,8 +14,6 @@ import {
   deleteTugasBesar
 } from '../../utils/tugasBesarApi';
 
-
-
 const DosenTaskManagement = ({ courseId, courseName, classId, className, onNavigateToGroupManagement }) => {
   const [activeView, setActiveView] = useState('list'); // 'list', 'create', 'edit', 'detail'
   const [selectedTask, setSelectedTask] = useState(null);
@@ -36,40 +34,13 @@ const DosenTaskManagement = ({ courseId, courseName, classId, className, onNavig
   };
   // Load tugas besar when component mounts
   useEffect(() => {
-    // Debug auth status and user info
-    console.log('=== DosenTaskManagement Debug Info ===');
-    console.log('Component mounted for courseId:', courseId);
-    console.log('Course name:', courseName);
-    
-    const userStr = localStorage.getItem('user');
-    if (userStr) {
-      try {
-        const user = JSON.parse(userStr);
-        console.log('Current logged in user:', user.email);
-        console.log('User role:', user.role);
-        console.log('User ID:', user.id);
-      } catch (e) {
-        console.error('Error parsing user:', e);
-      }
-    }
-    
-    console.log('Current localStorage user:', localStorage.getItem('user'));
-    console.log('Current localStorage token:', localStorage.getItem('token'));
-    console.log('API Base URL:', import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/api');
-    console.log('Request URL will be:', `http://localhost:5001/api/auth/dosen/courses/${courseId}/tugas-besar`);
-    console.log('==========================================');
-    
     loadTugasBesar();
   }, [courseId, classId]);
 
   const loadTugasBesar = async () => {
     try {
       setLoading(true);
-      setError(null);
-      
-      console.log('Loading tugas besar for courseId:', courseId, 'classId:', classId);
-      
-      // NEW: Pass classId to filter by specific class
+      setError(null);// NEW: Pass classId to filter by specific class
       const response = await getTugasBesar(courseId, classId);
       
       // Transform API data to UI format
@@ -169,7 +140,6 @@ const DosenTaskManagement = ({ courseId, courseName, classId, className, onNavig
               if (window.confirm('Apakah Anda yakin ingin menghapus tugas besar ini?')) {
                 try {
                   await deleteTugasBesar(courseId, id);
-                  console.log('Tugas besar deleted successfully');
                   await loadTugasBesar(); // Reload list after delete
                 } catch (error) {
                   console.error('Error deleting tugas besar:', error);
@@ -344,10 +314,7 @@ const DosenTaskManagement = ({ courseId, courseName, classId, className, onNavig
       e.preventDefault();
       
       try {
-        setSubmitting(true);
-        console.log('Submitting form data:', formData);
-        
-        // Prepare data for API - match backend expectations
+        setSubmitting(true);// Prepare data for API - match backend expectations
         const tugasData = {
           title: formData.title,
           description: formData.description,
@@ -363,16 +330,12 @@ const DosenTaskManagement = ({ courseId, courseName, classId, className, onNavig
 
         if (isEdit && selectedTask) {
           // Update existing task
-          await updateTugasBesar(courseId, selectedTask.id, tugasData);
-          console.log('Tugas besar updated successfully');
-        } else {
+          await updateTugasBesar(courseId, selectedTask.id, tugasData);} else {
           // Create new task - Ensure classId is required
           if (!classId) {
             throw new Error('Class ID is required for creating tugas besar');
           }
-          await createTugasBesar(courseId, tugasData);
-          console.log('Tugas besar created successfully for classId:', classId);
-        }
+          await createTugasBesar(courseId, tugasData);}
 
         // Reload the task list to show updated data
         await loadTugasBesar();

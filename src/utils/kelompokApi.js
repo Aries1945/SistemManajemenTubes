@@ -3,76 +3,38 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/api';
 
 // Helper function to make authenticated requests
-const makeRequest = async (url, options = {}) => {
-  console.log('=== MAKE REQUEST DEBUG ===');
-  console.log('URL:', url);
-  console.log('Method:', options.method || 'GET');
-  
-  let token = localStorage.getItem('token');
-  console.log('Token from localStorage direct:', token ? 'Found' : 'Not found');
-  
-  if (!token) {
-    const userStr = localStorage.getItem('user');
-    console.log('User string from localStorage:', userStr ? 'Found' : 'Not found');
-    if (userStr) {
+const makeRequest = async (url, options = {}) => {let token = localStorage.getItem('token');if (!token) {
+    const userStr = localStorage.getItem('user');if (userStr) {
       try {
-        const user = JSON.parse(userStr);
-        console.log('Parsed user object:', user);
-        token = user.token;
+        const user = JSON.parse(userStr);token = user.token;
         if (token) {
-          localStorage.setItem('token', token);
-          console.log('Token extracted from user object and saved');
-        }
-      } catch (error) {
-        console.log('Error parsing user data:', error);
-      }
+          localStorage.setItem('token', token);}
+      } catch (error) {}
     }
   }
   
   if (!token) {
     console.error('No authentication token found');
     throw new Error('Authentication required. Please login again.');
-  }
-
-  console.log('Using token:', token.substring(0, 20) + '...');
-  console.log('Request headers will include Authorization: Bearer', token.substring(0, 20) + '...');
-
-  const response = await fetch(url, {
+  }const response = await fetch(url, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`,
       ...options.headers,
     },
-  });
-
-  console.log('Response status:', response.status);
-  console.log('Response ok:', response.ok);
-
-  if (!response.ok) {
+  });if (!response.ok) {
     const errorData = await response.json().catch(() => ({ error: 'Server error' }));
     console.error('Response error data:', errorData);
     throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
   }
 
-  const responseData = await response.json();
-  console.log('Response data:', responseData);
-  return responseData;
+  const responseData = await response.json();return responseData;
 };
 
 // Get all kelompok for a tugas
-export const getKelompok = async (tugasId) => {
-  console.log('getKelompok API call for tugasId:', tugasId);
-  const data = await makeRequest(`${API_BASE_URL}/auth/dosen/tugas-besar/${tugasId}/kelompok`);
-  console.log('getKelompok raw response:', data);
-  console.log('getKelompok extracted kelompok:', data.kelompok);
-  console.log('getKelompok kelompok length:', data.kelompok ? data.kelompok.length : 'undefined');
-  
-  // Transform data untuk compatibility dengan frontend
-  const transformedKelompok = (data.kelompok || []).map(group => {
-    console.log('🔄 Transforming group:', group);
-    
-    return {
+export const getKelompok = async (tugasId) => {const data = await makeRequest(`${API_BASE_URL}/auth/dosen/tugas-besar/${tugasId}/kelompok`);// Transform data untuk compatibility dengan frontend
+  const transformedKelompok = (data.kelompok || []).map(group => {return {
       // Keep original fields
       ...group,
       // Add transformed fields untuk compatibility
@@ -84,11 +46,7 @@ export const getKelompok = async (tugasId) => {
       creationMethod: group.creation_method || group.creationMethod,
       createdAt: group.created_at || group.createdAt
     };
-  });
-  
-  console.log('🔄 Transformed kelompok:', transformedKelompok);
-  
-  // Return proper response structure expected by DosenGroupManagement
+  });// Return proper response structure expected by DosenGroupManagement
   return {
     success: data.success || (data.kelompok !== undefined),
     data: transformedKelompok,
@@ -97,13 +55,7 @@ export const getKelompok = async (tugasId) => {
 };
 
 // Get available students for grouping
-export const getMahasiswaForGrouping = async (tugasId) => {
-  console.log('getMahasiswaForGrouping API call for tugasId:', tugasId);
-  const data = await makeRequest(`${API_BASE_URL}/auth/dosen/tugas-besar/${tugasId}/mahasiswa-available`);
-  console.log('getMahasiswaForGrouping raw response:', data);
-  console.log('getMahasiswaForGrouping extracted mahasiswa:', data.mahasiswa);
-  
-  // Return response in same format as received from server to avoid confusion
+export const getMahasiswaForGrouping = async (tugasId) => {const data = await makeRequest(`${API_BASE_URL}/auth/dosen/tugas-besar/${tugasId}/mahasiswa-available`);// Return response in same format as received from server to avoid confusion
   return {
     success: data.success || (data.mahasiswa !== undefined),
     mahasiswa: data.mahasiswa || [],
@@ -112,18 +64,11 @@ export const getMahasiswaForGrouping = async (tugasId) => {
 };
 
 // Create group manually (Method 1)
-export const createManualGroup = async (groupData) => {
-  console.log('createManualGroup called with:', groupData);
-  
-  const { taskId, name, members, leaderId } = groupData;
+export const createManualGroup = async (groupData) => {const { taskId, name, members, leaderId } = groupData;
   
   if (!taskId) {
     throw new Error('taskId is required');
-  }
-  
-  console.log('Creating manual group for tugasId:', taskId);
-  
-  const data = await makeRequest(`${API_BASE_URL}/auth/dosen/tugas-besar/${taskId}/kelompok/manual`, {
+  }const data = await makeRequest(`${API_BASE_URL}/auth/dosen/tugas-besar/${taskId}/kelompok/manual`, {
     method: 'POST',
     body: JSON.stringify({
       name: name,
@@ -135,29 +80,13 @@ export const createManualGroup = async (groupData) => {
 };
 
 // Create groups automatically (Method 2)
-export const createAutomaticGroups = async (tugasId, groupSize) => {
-  console.log('=== CREATE AUTOMATIC GROUPS DEBUG ===');
-  console.log('tugasId:', tugasId);
-  console.log('groupSize:', groupSize);
-  console.log('API_BASE_URL:', API_BASE_URL);
-  
-  // Check token before request
+export const createAutomaticGroups = async (tugasId, groupSize) => {// Check token before request
   const token = localStorage.getItem('token') || 
-                (localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')).token : null);
-  console.log('Token available:', token ? 'YES' : 'NO');
-  console.log('Token preview:', token ? token.substring(0, 20) + '...' : 'No token');
-  
-  const url = `${API_BASE_URL}/auth/dosen/tugas-besar/${tugasId}/kelompok/automatic`;
-  console.log('Request URL:', url);
-  console.log('Request body:', { groupSize: groupSize });
-  
-  try {
+                (localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')).token : null);const url = `${API_BASE_URL}/auth/dosen/tugas-besar/${tugasId}/kelompok/automatic`;try {
     const data = await makeRequest(url, {
       method: 'POST',
       body: JSON.stringify({ groupSize: groupSize }),
-    });
-    console.log('createAutomaticGroups SUCCESS response:', data);
-    return data;
+    });return data;
   } catch (error) {
     console.error('createAutomaticGroups ERROR:', error);
     console.error('Error message:', error.message);

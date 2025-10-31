@@ -18,9 +18,7 @@ const makeRequest = async (url, options = {}) => {
         if (token) {
           localStorage.setItem('token', token);
         }
-      } catch (error) {
-        console.log('Error parsing user data:', error);
-      }
+      } catch (error) {}
     }
   }
   
@@ -28,11 +26,7 @@ const makeRequest = async (url, options = {}) => {
   if (!token) {
     console.error('No authentication token found');
     throw new Error('Authentication required. Please login again.');
-  }
-  
-  console.log('Making request with token:', token ? 'Token found' : 'No token');
-  
-  const response = await fetch(`${API_BASE_URL}${url}`, {
+  }const response = await fetch(`${API_BASE_URL}${url}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',

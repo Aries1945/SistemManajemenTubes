@@ -134,8 +134,7 @@ const MahasiswaGroupView = ({ courseId, courseName = 'Pemrograman Web' }) => {
         alert('Kelompok ini sudah penuh!');
         return;
       }
-
-      console.log('Selected group:', selectedGroup);
+      
       alert(`Anda berhasil bergabung dengan ${group.name}!`);
       setShowChoiceModal(false);
       setHasGroup(true);
@@ -297,11 +296,6 @@ const MahasiswaGroupView = ({ courseId, courseName = 'Pemrograman Web' }) => {
         alert(`Minimal ${groupFormConfig.minMembers} anggota diperlukan!`);
         return;
       }
-      
-      console.log('Submitting group:', {
-        name: groupName,
-        members: selectedMembers
-      });
       
       alert('Kelompok berhasil dibuat! ' + (groupFormConfig.autoApprove ? 'Kelompok Anda sudah disetujui.' : 'Menunggu persetujuan dosen.'));
       setShowGroupForm(false);

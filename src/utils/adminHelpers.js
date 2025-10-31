@@ -91,7 +91,7 @@ export const handleCreateMahasiswa = async (requestData, setUsers) => {
       }
       
       if (errors.length > 0) {
-        console.warn('Import errors:', errors);
+        // Import errors handled silently
         toast.error(`${errors.length} data gagal diimport. Periksa console untuk detail.`);
       }
       

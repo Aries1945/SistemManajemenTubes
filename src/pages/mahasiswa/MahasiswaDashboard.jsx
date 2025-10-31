@@ -455,7 +455,6 @@ const MahasiswaDashboard = () => {
   const fetchUserProfile = async () => {
     try {
       const response = await getCurrentUser();
-      console.log('MahasiswaDashboard - Fetched user profile:', response.data);
       setCurrentUser(response.data.user);
     } catch (error) {
       console.error('MahasiswaDashboard - Error fetching user profile:', error);
@@ -469,12 +468,8 @@ const MahasiswaDashboard = () => {
       
       // Fetch real courses for this mahasiswa
       const coursesResponse = await getMahasiswaCourses();
-      console.log('MahasiswaDashboard - Full response:', coursesResponse);
-      console.log('MahasiswaDashboard - Response type:', typeof coursesResponse);
-      
       // Handle different response structures
       const responseData = coursesResponse?.data || coursesResponse;
-      console.log('MahasiswaDashboard - Response data:', responseData);
       
       if (responseData && responseData.success) {
         const enrolledCourses = responseData.courses;

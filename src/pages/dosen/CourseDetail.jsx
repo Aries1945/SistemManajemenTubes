@@ -38,19 +38,12 @@ const CourseDetail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const fetchCourseDetail = async () => {
-    console.log('CourseDetail - Fetching course with ID:', courseId);
-    console.log('CourseDetail - Class info from navigation:', classInfo);
-    
-    try {
+  const fetchCourseDetail = async () => {try {
       setLoading(true);
       setError('');
       
       // Prioritize class info from navigation state (from DosenCourses)
-      if (classInfo && Object.keys(classInfo).length > 0) {
-        console.log('CourseDetail - Using class-specific data from navigation state');
-        
-        // Use the class-specific data directly from DosenCourses navigation
+      if (classInfo && Object.keys(classInfo).length > 0) {// Use the class-specific data directly from DosenCourses navigation
         const courseData = {
           id: classInfo.courseId || parseInt(courseId),
           name: classInfo.courseName || 'Unknown Course',
@@ -89,10 +82,7 @@ const CourseDetail = () => {
         return; // Use class-specific data, no need to fetch from API
       }
       
-      // FALLBACK: If no class info in state, try to fetch from API (legacy)
-      console.log('CourseDetail - No class info in state, falling back to API fetch');
-      
-      // Parse courseId if in legacy format
+      // FALLBACK: If no class info in state, try to fetch from API (legacy)// Parse courseId if in legacy format
       let actualCourseId = courseId;
       let fallbackClassName = null;
       

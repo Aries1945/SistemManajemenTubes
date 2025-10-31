@@ -136,7 +136,6 @@ const DosenCourses = () => {
 
             // Set transformed classes or fallback to sample data
             if (transformedClasses.length === 0) {
-              console.warn('No classes after transformation, using sample data');
               setCourses(getSampleCourses());
             } else {
               setCourses(transformedClasses);
@@ -149,7 +148,6 @@ const DosenCourses = () => {
       }
       
       // Final fallback to sample data
-      console.warn('All APIs failed, using sample data');
       setCourses(getSampleCourses());
       
     } catch (err) {
@@ -320,7 +318,6 @@ const DosenCourses = () => {
 
     if (!numericCourseId) {
       // Fallback: navigate using classId but also include a warning
-      console.warn('No numeric courseId found for class, using classId in path as fallback', classData.classId);
       navigate(`/dosen/dashboard/courses/${classData.classId}`, { 
         state: { ...classData }
       });
