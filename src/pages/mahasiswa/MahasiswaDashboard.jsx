@@ -182,8 +182,7 @@ const DashboardOverview = ({
             <p className="text-green-100 text-sm">Semester Aktif</p>
             <p className="text-xl font-semibold">Ganjil 2024/2025</p>
             <div className="flex items-center mt-1">
-              <GraduationCap className="h-4 w-4 mr-1" />
-              <span className="text-sm">IPK: {stats.gpa || '0.00'}</span>
+             
             </div>
           </div>
         </div>
@@ -199,30 +198,9 @@ const DashboardOverview = ({
           trend={0}
           color="green"
         />
-        <StatsCard
-          title="Total SKS"
-          value={stats.totalSKS}
-          icon={<Target className="h-6 w-6 text-blue-600" />}
-          description="SKS semester ini"
-          trend={0}
-          color="blue"
-        />
-        <StatsCard
-          title="Tugas Selesai"
-          value={stats.completedTasks}
-          icon={<CheckCircle className="h-6 w-6 text-purple-600" />}
-          description="Tugas yang sudah dikumpulkan"
-          trend={15}
-          color="purple"
-        />
-        <StatsCard
-          title="Tugas Pending"
-          value={stats.pendingTasks}
-          icon={<Clock className="h-6 w-6 text-orange-600" />}
-          description="Tugas belum selesai"
-          trend={-5}
-          color="orange"
-        />
+   
+        
+      
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

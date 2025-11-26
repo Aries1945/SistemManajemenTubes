@@ -24,8 +24,14 @@ const CourseDetail = () => {
   
   // NEW: Class-specific information from navigation state
   const classInfo = location.state || {};
-  const [resolvedClassId, setResolvedClassId] = useState(classInfo.classId || null);
+  const [resolvedClassId, setResolvedClassId] = useState(
+    classInfo.classPkId ?? classInfo.id ?? classInfo.classId ?? null
+  );
   const [resolvedClassName, setResolvedClassName] = useState(classInfo.className || null);
+  const [roleInfo, setRoleInfo] = useState({
+    isClassLecturer: !!classInfo.isClassLecturer,
+    isCourseCoordinator: !!classInfo.isCourseCoordinator
+  });
   
   const [stats, setStats] = useState({
     totalStudents: 0,
@@ -43,10 +49,14 @@ const CourseDetail = () => {
       setError('');
       
       // Prioritize class info from navigation state (from DosenCourses)
-      if (classInfo && Object.keys(classInfo).length > 0 && classInfo.classId) {
+      if (classInfo && Object.keys(classInfo).length > 0 && (classInfo.classPkId || classInfo.classId)) {
         // Set resolved classId and className from state
-        setResolvedClassId(classInfo.classId);
+        setResolvedClassId(classInfo.classPkId ?? classInfo.classId);
         setResolvedClassName(classInfo.className);
+        setRoleInfo({
+          isClassLecturer: !!classInfo.isClassLecturer,
+          isCourseCoordinator: !!classInfo.isCourseCoordinator
+        });
         
         // Use the class-specific data directly from DosenCourses navigation
         const courseData = {
@@ -64,7 +74,7 @@ const CourseDetail = () => {
           class_details: classInfo.schedule || 'Jadwal tidak tersedia',
           
           // Additional class-specific metadata
-          classId: classInfo.classId,
+          classId: classInfo.classPkId ?? classInfo.classId,
           dosenId: classInfo.dosenId,
           ruangan: classInfo.ruangan || '',
           kapasitas: classInfo.kapasitas || 0
@@ -103,6 +113,10 @@ const CourseDetail = () => {
             
             setResolvedClassId(resolvedId);
             setResolvedClassName(resolvedName);
+            setRoleInfo({
+              isClassLecturer: !!matchingClass.isClassLecturer,
+              isCourseCoordinator: !!matchingClass.isCourseCoordinator
+            });
             
             // Use class data to populate course
             const courseData = {
@@ -170,6 +184,14 @@ const CourseDetail = () => {
           };
           
           setCourse(courseData);
+          setRoleInfo({
+            isClassLecturer: true,
+            isCourseCoordinator: false
+          });
+          setRoleInfo({
+            isClassLecturer: true,
+            isCourseCoordinator: false
+          });
           
           const statsData = {
             totalStudents: foundCourse.total_students || 0,
@@ -230,6 +252,9 @@ const CourseDetail = () => {
     // GradingManagement will handle the taskId internally
   };
 
+  const canManageClass = roleInfo.isClassLecturer;
+  const isPengampuOnly = roleInfo.isCourseCoordinator && !roleInfo.isClassLecturer;
+
   const renderTabContent = () => {
     switch (activeTab) {
       case 'tasks':
@@ -239,6 +264,8 @@ const CourseDetail = () => {
             courseName={course?.name}
             classId={resolvedClassId || course?.classId}
             className={resolvedClassName || course?.selectedClass}
+            canManageClass={canManageClass}
+            isPengampu={isPengampuOnly}
             onNavigateToGroups={handleNavigateToGroups}
             onNavigateToGrading={handleNavigateToGrading}
             onNavigateToExport={(taskId, taskTitle) => {
@@ -253,6 +280,7 @@ const CourseDetail = () => {
             classId={resolvedClassId || course?.classId}
             courseName={course?.name}
             className={resolvedClassName || course?.selectedClass}
+            isReadOnly={isPengampuOnly}
           />
         );
       case 'grading':
@@ -262,6 +290,7 @@ const CourseDetail = () => {
             courseName={course?.name}
             taskId={null}
             classId={resolvedClassId || course?.classId}
+            isReadOnly={isPengampuOnly}
           />
         );
       default:
@@ -271,6 +300,8 @@ const CourseDetail = () => {
             courseName={course?.name}
             classId={resolvedClassId || course?.classId}
             className={resolvedClassName || course?.selectedClass}
+            canManageClass={canManageClass}
+            isPengampu={isPengampuOnly}
             onNavigateToGroups={handleNavigateToGroups}
             onNavigateToGrading={handleNavigateToGrading}
             onNavigateToExport={(taskId, taskTitle) => {

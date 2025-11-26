@@ -459,7 +459,7 @@ const MahasiswaCourseDetail = () => {
             </span>
           </div>
           <div>
-            <p className="text-sm text-gray-600 mb-1">Tanggal Enrollment</p>
+            <p className="text-sm text-gray-600 mb-1">Course Start Date</p>
             <p className="font-medium text-sm">
               {course.enrolledAt ? new Date(course.enrolledAt).toLocaleDateString('id-ID') : 'Tidak tersedia'}
             </p>

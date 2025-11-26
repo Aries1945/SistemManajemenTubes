@@ -16,7 +16,7 @@ import {
   removeMemberFromKelompok
 } from '../../utils/kelompokApi';
 
-const DosenGroupManagement = ({ courseId, classId, courseName = 'Pemrograman Web', className = '', selectedTaskId = null, selectedTaskTitle = 'Tugas Besar' }) => {const [activeView, setActiveView] = useState(selectedTaskId ? 'list' : 'task-list');
+const DosenGroupManagement = ({ courseId, classId, courseName = 'Pemrograman Web', className = '', selectedTaskId = null, selectedTaskTitle = 'Tugas Besar', isReadOnly = false }) => {const [activeView, setActiveView] = useState(selectedTaskId ? 'list' : 'task-list');
   const [selectedTask, setSelectedTask] = useState(null);
   const [selectedGroup, setSelectedGroup] = useState(null);
   
@@ -58,6 +58,33 @@ const DosenGroupManagement = ({ courseId, classId, courseName = 'Pemrograman Web
   const showError = (title, message, options = {}) => showNotification('error', title, message, options);
   const showWarning = (title, message, options = {}) => showNotification('warning', title, message, options);
   const showInfo = (title, message, options = {}) => showNotification('info', title, message, options);
+  const readOnlyBannerMessage = 'Anda terdaftar sebagai dosen pengampu pada kelas ini sehingga hanya dapat melihat informasi.';
+  const guardReadOnlyAction = (actionDescription = 'melakukan perubahan pada data kelompok') => {
+    if (!isReadOnly) return false;
+    showWarning(
+      'Akses Terbatas',
+      `${readOnlyBannerMessage} Silakan hubungi dosen pengajar untuk ${actionDescription}.`
+    );
+    return true;
+  };
+  const formatApiErrorMessage = (message, fallback) => {
+    if (!message) return fallback;
+    const normalized = message.toLowerCase();
+    if (normalized.includes('access denied')) {
+      return 'Akses ditolak: Anda tidak memiliki hak untuk tindakan ini.';
+    }
+    return `${fallback}: ${message}`;
+  };
+
+  const openManageView = (view) => {
+    if (
+      ['create-manual', 'create-auto', 'enable-student-choice'].includes(view) &&
+      guardReadOnlyAction()
+    ) {
+      return;
+    }
+    setActiveView(view);
+  };
   
   const showConfirm = (title, message, onConfirm, onCancel = null) => {
     showNotification('warning', title, message, {
@@ -144,7 +171,8 @@ const DosenGroupManagement = ({ courseId, classId, courseName = 'Pemrograman Web
       console.error('💥 Error loading tasks:', error);
       // Set empty array instead of keeping loading
       setTasks([]);
-      showError('Error', 'Gagal memuat daftar tugas besar: ' + error.message);
+      const friendly = formatApiErrorMessage(error.message, 'Gagal memuat daftar tugas besar');
+      showError('Error', friendly);
     } finally {setLoading(false);
     }
   };
@@ -170,7 +198,8 @@ const DosenGroupManagement = ({ courseId, classId, courseName = 'Pemrograman Web
     } catch (error) {
       console.error('💥 loadGroups: Error:', error);
       setGroups([]);
-      showError('Error', 'Gagal memuat daftar kelompok: ' + error.message);
+      const friendly = formatApiErrorMessage(error.message, 'Gagal memuat daftar kelompok');
+      showError('Error', friendly);
     } finally {setLoadingGroups(false);
     }
   };
@@ -256,6 +285,7 @@ const DosenGroupManagement = ({ courseId, classId, courseName = 'Pemrograman Web
 
   // Manual Group Creation Handler
   const handleCreateManualGroup = async (formData) => {
+    if (guardReadOnlyAction('membuat kelompok baru')) return;
     try {
       const response = await createManualGroup(formData);
       
@@ -274,6 +304,7 @@ const DosenGroupManagement = ({ courseId, classId, courseName = 'Pemrograman Web
 
   // Delete Group Handler
   const handleDeleteGroup = async (groupId) => {
+    if (guardReadOnlyAction('menghapus kelompok')) return;
     try {
       const response = await deleteKelompok(groupId);
       if (response.success) {
@@ -920,7 +951,7 @@ const DosenGroupManagement = ({ courseId, classId, courseName = 'Pemrograman Web
               key: 'manual', 
               label: 'Buat Manual', 
               icon: Plus, 
-              action: () => setActiveView('create-manual'),
+              action: () => openManageView('create-manual'),
               className: 'bg-blue-600 text-white hover:bg-blue-700'
             }
           ];
@@ -931,7 +962,7 @@ const DosenGroupManagement = ({ courseId, classId, courseName = 'Pemrograman Web
               key: 'auto', 
               label: 'Buat Otomatis', 
               icon: Shuffle, 
-              action: () => setActiveView('create-auto'),
+              action: () => openManageView('create-auto'),
               className: 'bg-green-600 text-white hover:bg-green-700'
             }
           ];
@@ -942,7 +973,7 @@ const DosenGroupManagement = ({ courseId, classId, courseName = 'Pemrograman Web
               key: 'enable-choice', 
               label: 'Aktifkan Pilihan Mahasiswa', 
               icon: Users, 
-              action: () => setActiveView('enable-student-choice'),
+              action: () => openManageView('enable-student-choice'),
               className: 'bg-purple-600 text-white hover:bg-purple-700'
             }
           ];
@@ -953,14 +984,14 @@ const DosenGroupManagement = ({ courseId, classId, courseName = 'Pemrograman Web
               key: 'manual', 
               label: 'Buat Manual', 
               icon: Plus, 
-              action: () => setActiveView('create-manual'),
+              action: () => openManageView('create-manual'),
               className: 'bg-blue-600 text-white hover:bg-blue-700'
             },
             { 
               key: 'auto', 
               label: 'Buat Otomatis', 
               icon: Shuffle, 
-              action: () => setActiveView('create-auto'),
+              action: () => openManageView('create-auto'),
               className: 'bg-green-600 text-white hover:bg-green-700'
             }
           ];
@@ -1173,6 +1204,7 @@ const DosenGroupManagement = ({ courseId, classId, courseName = 'Pemrograman Web
       e.preventDefault();
       
       try {
+        if (guardReadOnlyAction('membuat kelompok otomatis')) return;
         const response = await createAutomaticGroups(currentTaskId, formData.groupSize);
         if (response.success) {
           showSuccess('Berhasil', `${response.kelompokTerbentuk || 'Beberapa'} kelompok berhasil dibuat secara otomatis`);
@@ -1301,6 +1333,7 @@ const DosenGroupManagement = ({ courseId, classId, courseName = 'Pemrograman Web
       e.preventDefault();
       
       try {
+        if (guardReadOnlyAction('mengaktifkan pilihan kelompok oleh mahasiswa')) return;
         const response = await enableStudentChoice(currentTaskId, {
           maxGroupSize: formData.maxGroupSize,
           minGroupSize: formData.minGroupSize,
@@ -1506,6 +1539,7 @@ const DosenGroupManagement = ({ courseId, classId, courseName = 'Pemrograman Web
     };
 
     const handleAddMember = async (studentId) => {
+      if (guardReadOnlyAction('menambahkan anggota kelompok')) return;
       try {
         const response = await addMemberToKelompok(selectedGroup.id, studentId);
         if (response.success) {
@@ -1530,6 +1564,7 @@ const DosenGroupManagement = ({ courseId, classId, courseName = 'Pemrograman Web
     };
 
     const handleRemoveMember = async (memberId) => {
+      if (guardReadOnlyAction('menghapus anggota kelompok')) return;
       try {
         const response = await removeMemberFromKelompok(selectedGroup.id, memberId);
         if (response.success) {

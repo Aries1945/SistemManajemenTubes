@@ -22,7 +22,9 @@ const DosenTaskManagement = ({
   onNavigateToGroupManagement,
   onNavigateToGroups,
   onNavigateToGrading,
-  onNavigateToExport
+  onNavigateToExport,
+  canManageClass = true,
+  isPengampu = false
 }) => {
   const [activeView, setActiveView] = useState('list'); // 'list', 'create', 'edit', 'detail'
   const [selectedTask, setSelectedTask] = useState(null);
@@ -166,6 +168,17 @@ const DosenTaskManagement = ({
     }
   };
 
+  const isReadOnly = !canManageClass;
+  const readOnlyMessage = isPengampu
+    ? 'Anda terdaftar sebagai dosen pengampu untuk kelas ini sehingga hanya dapat melihat data.'
+    : 'Hak akses kelas ini bersifat baca saja.';
+
+  const guardReadOnlyAction = () => {
+    if (!isReadOnly) return false;
+    alert(readOnlyMessage);
+    return true;
+  };
+
   const TaskList = () => {
     if (loading) {
       return (
@@ -194,20 +207,27 @@ const DosenTaskManagement = ({
 
     return (
     <div className="space-y-6">
+      {isReadOnly && (
+        <div className="bg-yellow-50 border border-yellow-200 text-yellow-900 px-4 py-3 rounded-lg text-sm">
+          {readOnlyMessage} Hubungi dosen pengajar kelas ini apabila perlu mengubah tugas besar.
+        </div>
+      )}
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Tugas Besar</h2>
           <p className="text-gray-600">{courseName}</p>
         </div>
-        <div className="flex gap-2">
-          <button 
-            onClick={() => setActiveView('create')}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition-colors"
-          >
-            <Plus size={20} />
-            Buat Tugas Besar
-          </button>
-        </div>
+        {!isReadOnly && (
+          <div className="flex gap-2">
+            <button 
+              onClick={() => setActiveView('create')}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition-colors"
+            >
+              <Plus size={20} />
+              Buat Tugas Besar
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="grid gap-6">
@@ -215,15 +235,18 @@ const DosenTaskManagement = ({
           <TaskCard 
             key={task.id} 
             task={task} 
+            readOnly={isReadOnly}
             onView={() => {
               setSelectedTask(task);
               setActiveView('detail');
             }}
             onEdit={() => {
+              if (guardReadOnlyAction()) return;
               setSelectedTask(task);
               setActiveView('edit');
             }}
             onDelete={async (id) => {
+              if (guardReadOnlyAction()) return;
               // Handle delete with confirmation
               if (window.confirm('Apakah Anda yakin ingin menghapus tugas besar ini?')) {
                 try {
@@ -246,19 +269,21 @@ const DosenTaskManagement = ({
           <p className="text-gray-600 mb-4">
             Mulai dengan membuat tugas besar pertama untuk mata kuliah ini.
           </p>
-          <button 
-            onClick={() => setActiveView('create')}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Buat Tugas Besar
-          </button>
+          {!isReadOnly && (
+            <button 
+              onClick={() => setActiveView('create')}
+              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Buat Tugas Besar
+            </button>
+          )}
         </div>
       )}
     </div>
     );
   }; // End TaskList function
 
-  const TaskCard = ({ task, onView, onEdit, onDelete }) => (
+  const TaskCard = ({ task, onView, onEdit, onDelete, readOnly = false }) => (
     <div className="bg-white p-6 rounded-lg shadow border hover:shadow-lg transition-shadow">
       <div className="flex justify-between items-start mb-4">
         <div className="flex-1">
@@ -323,20 +348,24 @@ const DosenTaskManagement = ({
           >
             <Eye size={16} />
           </button>
-          <button 
-            onClick={onEdit}
-            className="text-green-600 hover:text-green-800 p-2 rounded transition-colors"
-            title="Edit"
-          >
-            <Edit size={16} />
-          </button>
-          <button 
-            onClick={() => onDelete(task.id)}
-            className="text-red-600 hover:text-red-800 p-2 rounded transition-colors"
-            title="Hapus"
-          >
-            <Trash2 size={16} />
-          </button>
+          {!readOnly && (
+            <>
+              <button 
+                onClick={onEdit}
+                className="text-green-600 hover:text-green-800 p-2 rounded transition-colors"
+                title="Edit"
+              >
+                <Edit size={16} />
+              </button>
+              <button 
+                onClick={() => onDelete(task.id)}
+                className="text-red-600 hover:text-red-800 p-2 rounded transition-colors"
+                title="Hapus"
+              >
+                <Trash2 size={16} />
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -882,15 +911,17 @@ const DosenTaskManagement = ({
             <div className="bg-white p-6 rounded-lg shadow border">
               <h3 className="text-lg font-semibold mb-4">Aksi</h3>
               <div className="space-y-2">
-                <button 
-                  onClick={() => {
-                    setActiveView('edit');
-                  }}
-                  className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-                >
-                  <Edit size={16} />
-                  Edit Tugas
-                </button>
+                {!isReadOnly && (
+                  <button 
+                    onClick={() => {
+                      setActiveView('edit');
+                    }}
+                    className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                  >
+                    <Edit size={16} />
+                    Edit Tugas
+                  </button>
+                )}
                 <button 
                   onClick={() => {
                     if (onNavigateToGroups) {
@@ -899,10 +930,10 @@ const DosenTaskManagement = ({
                       onNavigateToGroupManagement(selectedTask.id, selectedTask.title);
                     }
                   }}
-                  className="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                  className={`w-full px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${isReadOnly ? 'bg-green-100 text-green-800 cursor-pointer' : 'bg-green-600 text-white hover:bg-green-700'}`}
                 >
                   <Users size={16} />
-                  Kelola Kelompok
+                  {isReadOnly ? 'Lihat Kelompok' : 'Kelola Kelompok'}
                 </button>
                 <button 
                   onClick={() => {
@@ -910,7 +941,7 @@ const DosenTaskManagement = ({
                       onNavigateToGrading(selectedTask.id, selectedTask.title);
                     }
                   }}
-                  className="w-full bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
+                  className={`w-full px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${isReadOnly ? 'bg-purple-100 text-purple-800 cursor-pointer' : 'bg-purple-600 text-white hover:bg-purple-700'}`}
                 >
                   <FileText size={16} />
                   Lihat Penilaian
@@ -931,6 +962,11 @@ const DosenTaskManagement = ({
       </div>
     );
   };
+
+  // Prevent edit/create views when read-only
+  if (isReadOnly && (activeView === 'create' || activeView === 'edit')) {
+    return <TaskList />;
+  }
 
   // Render based on active view
   switch (activeView) {

@@ -14,7 +14,7 @@ import {
   updatePenilaianVisibility
 } from '../../utils/penilaianApi';
 
-const DosenGradingManagement = ({ courseId, courseName, taskId = null, classId = null }) => {
+const DosenGradingManagement = ({ courseId, courseName, taskId = null, classId = null, isReadOnly = false }) => {
   const [activeView, setActiveView] = useState('overview');
   const [selectedComponent, setSelectedComponent] = useState(null);
   const [selectedGroup, setSelectedGroup] = useState(null);
@@ -28,6 +28,20 @@ const DosenGradingManagement = ({ courseId, courseName, taskId = null, classId =
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [updatingVisibility, setUpdatingVisibility] = useState(false);
+  const formatApiErrorMessage = (message, fallback) => {
+    if (!message) return fallback;
+    const normalized = message.toLowerCase();
+    if (normalized.includes('access denied')) {
+      return 'Akses ditolak: Anda hanya dapat melihat penilaian dari kelas yang Anda ajar atau mata kuliah yang Anda pengampu.';
+    }
+    return `${fallback}: ${message}`;
+  };
+  const readOnlyMessage = 'Anda terdaftar sebagai dosen pengampu pada kelas ini sehingga tidak dapat mengubah data penilaian.';
+  const guardReadOnlyAction = (actionDescription = 'mengubah data penilaian') => {
+    if (!isReadOnly) return false;
+    alert(`${readOnlyMessage} Silakan hubungi dosen pengajar untuk ${actionDescription}.`);
+    return true;
+  };
 
   // Load tasks when component mounts
   useEffect(() => {
@@ -65,7 +79,8 @@ const DosenGradingManagement = ({ courseId, courseName, taskId = null, classId =
       }
     } catch (err) {
       console.error('Error loading tasks:', err);
-      setError(err.message);
+      const friendly = formatApiErrorMessage(err.message, 'Gagal memuat daftar tugas besar');
+      setError(friendly);
       setTasks([]);
     } finally {
       setLoading(false);
@@ -92,7 +107,8 @@ const DosenGradingManagement = ({ courseId, courseName, taskId = null, classId =
         stack: err.stack,
         tugasId: tugasId
       });
-      setError(err.message || 'Gagal memuat data penilaian');
+      const friendly = formatApiErrorMessage(err.message, 'Gagal memuat data penilaian');
+      setError(friendly);
       setGradingData(null);
     } finally {
       setLoading(false);
@@ -101,6 +117,7 @@ const DosenGradingManagement = ({ courseId, courseName, taskId = null, classId =
 
   const handleToggleVisibility = async (visible) => {
     if (!selectedTaskId) return;
+    if (guardReadOnlyAction('mengubah visibilitas penilaian')) return;
     
     try {
       setUpdatingVisibility(true);
@@ -247,8 +264,13 @@ const DosenGradingManagement = ({ courseId, courseName, taskId = null, classId =
                 <input
                   type="checkbox"
                   checked={gradingData.tugas?.penilaian_visible || false}
-                  onChange={(e) => handleToggleVisibility(e.target.checked)}
-                  disabled={updatingVisibility}
+                  onChange={(e) => {
+                    if (guardReadOnlyAction('mengubah visibilitas penilaian')) {
+                      return;
+                    }
+                    handleToggleVisibility(e.target.checked);
+                  }}
+                  disabled={updatingVisibility || isReadOnly}
                   className="sr-only peer"
                 />
                 <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
@@ -529,15 +551,17 @@ const DosenGradingManagement = ({ courseId, courseName, taskId = null, classId =
         <div className="text-sm text-gray-500">
           Komponen penilaian dari tugas besar
         </div>
-        <div className="flex gap-2">
-          <button 
-            onClick={onEdit}
-            className="text-green-600 hover:text-green-800 p-2 rounded transition-colors"
-            title="Edit melalui Tugas Besar"
-          >
-            <Edit size={16} />
-          </button>
-        </div>
+        {!isReadOnly && (
+          <div className="flex gap-2">
+            <button 
+              onClick={onEdit}
+              className="text-green-600 hover:text-green-800 p-2 rounded transition-colors"
+              title="Edit melalui Tugas Besar"
+            >
+              <Edit size={16} />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -569,6 +593,7 @@ const DosenGradingManagement = ({ courseId, courseName, taskId = null, classId =
     };
 
     const handleSaveGrades = async () => {
+      if (guardReadOnlyAction('menyimpan nilai')) return;
       try {
         setSaving(true);
         
@@ -622,13 +647,13 @@ const DosenGradingManagement = ({ courseId, courseName, taskId = null, classId =
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-lg font-semibold">Daftar Kelompok</h3>
             <div className="flex gap-2">
-              <button className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2">
+              <button className={`bg-green-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${isReadOnly ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-700'}`} disabled={isReadOnly}>
                 <Upload size={16} />
                 Import Excel
               </button>
               <button 
                 onClick={handleSaveGrades}
-                disabled={saving}
+                disabled={saving || isReadOnly}
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:bg-blue-400 disabled:cursor-not-allowed"
               >
                 {saving ? (
@@ -665,7 +690,8 @@ const DosenGradingManagement = ({ courseId, courseName, taskId = null, classId =
                       max="100"
                       value={grades[group.id]?.score || ''}
                       onChange={(e) => handleGradeChange(group.id, 'score', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                      disabled={isReadOnly}
                       placeholder="Masukkan nilai"
                     />
                   </div>
@@ -678,7 +704,8 @@ const DosenGradingManagement = ({ courseId, courseName, taskId = null, classId =
                       value={grades[group.id]?.feedback || ''}
                       onChange={(e) => handleGradeChange(group.id, 'feedback', e.target.value)}
                       rows={2}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                      disabled={isReadOnly}
                       placeholder="Berikan feedback untuk kelompok"
                     />
                   </div>

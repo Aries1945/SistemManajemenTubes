@@ -8,6 +8,52 @@ const DosenCourses = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
+  // Normalize payload from different backend shapes into a consistent class object
+  const normalizeClassData = (rawClass = {}) => {
+    const computedClassId = rawClass.classId ?? rawClass.id ?? rawClass.class_id ?? rawClass.classIdLegacy;
+    const normalizedCourseId = rawClass.courseId ?? rawClass.course_id ?? parseCourseIdFromClassId(computedClassId);
+    const classLecturerId = rawClass.dosenId ?? rawClass.dosen_id ?? rawClass.classLecturerId ?? rawClass.class_dosen_id;
+    const coordinatorId = rawClass.courseCoordinatorId ?? rawClass.course_coordinator_id ?? rawClass.course_dosen_id ?? classLecturerId;
+
+    const isClassLecturer = rawClass.isClassLecturer ?? rawClass.is_class_lecturer ?? (user?.id ? classLecturerId === user.id : true);
+    const isCourseCoordinator = rawClass.isCourseCoordinator ?? rawClass.is_course_coordinator ?? (user?.id ? coordinatorId === user.id : false);
+    const isPengampuOnly = isCourseCoordinator && !isClassLecturer;
+
+    const courseName = rawClass.courseName ?? rawClass.course_name ?? 'Mata Kuliah';
+    const className = rawClass.className ?? rawClass.class_name ?? 'Kelas';
+    const courseCode = rawClass.courseCode ?? rawClass.course_code ?? 'N/A';
+    const dosenName = rawClass.dosenName ?? rawClass.dosen_name ?? rawClass.class_dosen_name ?? 'Dosen belum ditentukan';
+    const courseCoordinatorName = rawClass.courseCoordinatorName ?? rawClass.course_coordinator_name ?? rawClass.course_dosen_name ?? dosenName ?? 'Belum ditentukan';
+
+    return {
+      ...rawClass,
+      id: rawClass.id ?? rawClass.class_id ?? computedClassId,
+      classId: computedClassId ?? `class-${normalizedCourseId}-${className}`,
+      courseId: normalizedCourseId ?? parseCourseIdFromClassId(computedClassId),
+      courseName,
+      courseCode,
+      className,
+      dosenId: classLecturerId,
+      dosenName,
+      courseCoordinatorId: coordinatorId,
+      courseCoordinatorName,
+      name: rawClass.name ?? `${courseName} - Kelas ${className}`,
+      code: rawClass.code ?? courseCode,
+      tasks: rawClass.tugasBesar ?? rawClass.tasks ?? 0,
+      students: rawClass.studentCount ?? rawClass.students ?? 0,
+      totalClasses: rawClass.totalClasses ?? 1,
+      studentCount: rawClass.studentCount ?? rawClass.students ?? 0,
+      tugasBesar: rawClass.tugasBesar ?? rawClass.tasks ?? 0,
+      pendingGrading: rawClass.pendingGrading ?? 0,
+      activeGroups: rawClass.activeGroups ?? 0,
+      progress: rawClass.progress ?? 0,
+      isClassLecturer,
+      isCourseCoordinator,
+      accessRole: rawClass.accessRole ?? (isPengampuOnly ? 'course-coordinator' : 'class-lecturer'),
+      roleBadgeLabel: isPengampuOnly ? 'Pengampu' : 'Pengajar'
+    };
+  };
+
   // Helper: try to extract numeric courseId from various classId shapes
   const parseCourseIdFromClassId = (classId) => {
     if (!classId) return null;
@@ -49,23 +95,7 @@ const DosenCourses = () => {
           const classesData = response.data.classes;
           
           // Use data directly from API - all statistics come from database
-          setCourses(classesData.map(classData => ({
-            ...classData,
-            // Use numeric IDs from API response
-            classId: classData.id, // Use numeric class ID from API
-            courseId: classData.courseId ?? classData.course_id,
-            // Add backward compatibility fields
-            name: `${classData.courseName} - Kelas ${classData.className}`,
-            code: classData.courseCode,
-            tasks: classData.tugasBesar,
-            students: classData.studentCount,
-            totalClasses: 1, // Each class is independent
-            
-            // All statistics from database (no random data)
-            pendingGrading: classData.pendingGrading || 0,
-            activeGroups: classData.activeGroups || 0,
-            progress: classData.progress || 0
-          })));
+          setCourses(classesData.map(normalizeClassData));
           
           return; // Success - exit early
         }
@@ -135,7 +165,7 @@ const DosenCourses = () => {
             });
 
             // Set transformed classes - no fallback to sample data
-            setCourses(transformedClasses);
+            setCourses(transformedClasses.map(normalizeClassData));
             return;
           }
         } catch (legacyError) {
@@ -191,11 +221,17 @@ const DosenCourses = () => {
     navigate(`/dosen/dashboard/courses/${numericCourseId}`, { 
       state: { 
         classId: classData.classId,
+        classPkId: classData.id,
         className: classData.className,
         courseName: classData.courseName,
         courseCode: classData.courseCode,
         dosenId: classData.dosenId,
         dosenName: classData.dosenName,
+        courseCoordinatorId: classData.courseCoordinatorId,
+        courseCoordinatorName: classData.courseCoordinatorName,
+        isClassLecturer: classData.isClassLecturer,
+        isCourseCoordinator: classData.isCourseCoordinator,
+        accessRole: classData.accessRole,
         courseId: numericCourseId
       }
     });
@@ -350,125 +386,147 @@ const DosenCourses = () => {
   );
 };
 
-const ClassCard = ({ classData, onSelect }) => (
-  <div 
-    onClick={onSelect}
-    className="bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 rounded-2xl p-6 cursor-pointer hover:from-blue-600 hover:via-indigo-600 hover:to-purple-700 transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-[1.02] relative overflow-hidden min-h-[380px] group"
-  >
-    {/* Background Pattern */}
-    <div className="absolute inset-0 opacity-10">
-      <div className="absolute top-4 right-4 w-8 h-8 border-2 border-white rounded-sm"></div>
-      <div className="absolute top-8 right-8 w-6 h-6 border-2 border-white rounded-sm"></div>
-      <div className="absolute bottom-4 left-4 w-10 h-10 border-2 border-white rounded-sm"></div>
-      <div className="absolute bottom-8 left-8 w-4 h-4 border-2 border-white rounded-sm"></div>
-    </div>
-    
-    {/* Content */}
-    <div className="relative z-10 h-full flex flex-col">
-      {/* Header */}
-      <div className="flex justify-between items-start mb-4">
-        <div className="flex items-center space-x-2">
-          <div className="inline-block bg-white bg-opacity-20 text-white text-xs px-3 py-1 rounded-full font-medium">
-            {classData.semester}
-          </div>
-          <div className="inline-block bg-yellow-400 bg-opacity-90 text-yellow-900 text-xs px-2 py-1 rounded-full font-bold">
-            {classData.className}
-          </div>
-        </div>
-        <div className="text-right">
-          {classData.pendingGrading > 0 && (
-            <div className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
-              {classData.pendingGrading} perlu dinilai
-            </div>
-          )}
-        </div>
+const ClassCard = ({ classData, onSelect }) => {
+  const isPengampuOnly = classData.isCourseCoordinator && !classData.isClassLecturer;
+  const roleBadgeLabel = classData.roleBadgeLabel;
+  const roleBadgeStyles = classData.isClassLecturer
+    ? 'bg-emerald-300 text-emerald-900'
+    : 'bg-amber-300 text-amber-900';
+
+  return (
+    <div 
+      onClick={onSelect}
+      className="bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 rounded-2xl p-6 cursor-pointer hover:from-blue-600 hover:via-indigo-600 hover:to-purple-700 transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-[1.02] relative overflow-hidden min-h-[400px] group"
+    >
+      {/* Background Pattern */}
+      <div className="absolute inset-0 opacity-10">
+        <div className="absolute top-4 right-4 w-8 h-8 border-2 border-white rounded-sm"></div>
+        <div className="absolute top-8 right-8 w-6 h-6 border-2 border-white rounded-sm"></div>
+        <div className="absolute bottom-4 left-4 w-10 h-10 border-2 border-white rounded-sm"></div>
+        <div className="absolute bottom-8 left-8 w-4 h-4 border-2 border-white rounded-sm"></div>
       </div>
       
-      {/* Course & Class Title */}
-      <div className="mb-4">
-        <h3 className="text-white font-bold text-xl mb-1 leading-tight">
-          {classData.courseName}
-        </h3>
-        <div className="text-white text-opacity-80 text-sm mb-2">
-          <span className="bg-white bg-opacity-20 px-2 py-1 rounded-md font-semibold">
-            Kelas {classData.className}
-          </span>
-        </div>
-        <div className="text-white text-opacity-90 text-sm mb-2">
-          <span className="font-semibold">{classData.courseCode}</span>
-          <span className="mx-2">•</span>
-          <span>{classData.sks} SKS</span>
-        </div>
-        {/* Dosen Information - KEY FEATURE */}
-        <div className="text-white text-opacity-80 text-sm">
-          <span className="mr-1">👨‍🏫</span>
-          <span className="font-medium">{classData.dosenName}</span>
-        </div>
-      </div>
-
-      {/* Class Details */}
-      <div className="text-white text-opacity-90 mb-4 space-y-2">
-        <div className="flex items-center text-sm">
-          <Users size={14} className="mr-2" />
-          <span>{classData.studentCount || classData.students || 0} mahasiswa</span>
-        </div>
-        <div className="flex items-center text-sm">
-          <FileText size={14} className="mr-2" />
-          <span>{classData.tugasBesar || 0} tugas besar</span>
-        </div>
-        <div className="flex items-center text-sm">
-          <User size={14} className="mr-2" />
-          <span>{classData.activeGroups || 0} kelompok aktif</span>
-        </div>
-        {classData.schedule && (
-          <div className="flex items-center text-sm">
-            <span className="mr-2">📅</span>
-            <span className="text-xs">{classData.schedule}</span>
+      {/* Content */}
+      <div className="relative z-10 h-full flex flex-col">
+        {/* Header */}
+        <div className="flex justify-between items-start mb-4">
+          <div className="flex items-center space-x-2">
+            <div className="inline-block bg-white bg-opacity-20 text-white text-xs px-3 py-1 rounded-full font-medium">
+              {classData.semester}
+            </div>
+            <div className="inline-block bg-yellow-400 bg-opacity-90 text-yellow-900 text-xs px-2 py-1 rounded-full font-bold">
+              {classData.className}
+            </div>
+            {roleBadgeLabel && (
+              <div className={`inline-block text-xs px-2 py-1 rounded-full font-bold ${roleBadgeStyles}`}>
+                {roleBadgeLabel}
+              </div>
+            )}
           </div>
-        )}
-      </div>
-
-      {/* Progress Section */}
-      <div className="mb-4">
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-white text-sm opacity-90">Progress Semester</span>
-          <span className="text-white text-sm font-semibold">{classData.progress || 0}%</span>
-        </div>
-        <div className="w-full bg-white bg-opacity-20 rounded-full h-2">
-          <div 
-            className="bg-white h-2 rounded-full transition-all duration-500" 
-            style={{ width: `${classData.progress || 0}%` }}
-          ></div>
-        </div>
-      </div>
-
-      {/* Stats Row */}
-      <div className="flex items-center justify-between text-white text-opacity-90 text-sm mt-auto">
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-1" title="Tugas Besar">
-            <FileText size={14} />
-            <span>{classData.tugasBesar || 0}</span>
-          </div>
-          <div className="flex items-center space-x-1" title="Perlu Dinilai">
-            <AlertTriangle size={14} />
-            <span>{classData.pendingGrading || 0}</span>
-          </div>
-          <div className="flex items-center space-x-1" title="Kelompok Aktif">
-            <TrendingUp size={14} />
-            <span>{classData.activeGroups || 0}</span>
-          </div>
-          <div className="flex items-center space-x-1" title="Total Mahasiswa">
-            <Users size={14} />
-            <span>{classData.studentCount || classData.students || 0}</span>
+          <div className="text-right">
+            {classData.pendingGrading > 0 && (
+              <div className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                {classData.pendingGrading} perlu dinilai
+              </div>
+            )}
           </div>
         </div>
         
-        <div className="flex items-center">
-          <ChevronRight size={16} />
+        {/* Course & Class Title */}
+        <div className="mb-4">
+          <h3 className="text-white font-bold text-xl mb-1 leading-tight">
+            {classData.courseName}
+          </h3>
+          <div className="text-white text-opacity-80 text-sm mb-2">
+            <span className="bg-white bg-opacity-20 px-2 py-1 rounded-md font-semibold">
+              Kelas {classData.className}
+            </span>
+          </div>
+          <div className="text-white text-opacity-90 text-sm mb-2">
+            <span className="font-semibold">{classData.courseCode}</span>
+            <span className="mx-2">•</span>
+            <span>{classData.sks} SKS</span>
+          </div>
+          {/* Dosen Information */}
+          <div className="text-white text-opacity-80 text-sm">
+            <span className="mr-1">👨‍🏫</span>
+            <span className="font-medium">{classData.dosenName}</span>
+          </div>
+          <div className="text-white text-opacity-70 text-xs mt-2">
+            <p className="uppercase tracking-wide text-[10px] mb-1">Dosen Pengampu</p>
+            <p className="font-semibold">{classData.courseCoordinatorName || 'Belum ditentukan'}</p>
+          </div>
+          {isPengampuOnly && (
+            <div className="mt-3 text-xs text-white text-opacity-90 bg-black/20 rounded-lg px-3 py-2">
+              Anda tercatat sebagai dosen pengampu. Kelas ini diajar oleh {classData.dosenName || 'dosen lain'}.
+            </div>
+          )}
+        </div>
+
+        {/* Class Details */}
+        <div className="text-white text-opacity-90 mb-4 space-y-2">
+          <div className="flex items-center text-sm">
+            <Users size={14} className="mr-2" />
+            <span>{classData.studentCount || classData.students || 0} mahasiswa</span>
+          </div>
+          <div className="flex items-center text-sm">
+            <FileText size={14} className="mr-2" />
+            <span>{classData.tugasBesar || 0} tugas besar</span>
+          </div>
+          <div className="flex items-center text-sm">
+            <User size={14} className="mr-2" />
+            <span>{classData.activeGroups || 0} kelompok aktif</span>
+          </div>
+          {classData.schedule && (
+            <div className="flex items-center text-sm">
+              <span className="mr-2">📅</span>
+              <span className="text-xs">{classData.schedule}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Progress Section */}
+        <div className="mb-4">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-white text-sm opacity-90">Progress Semester</span>
+            <span className="text-white text-sm font-semibold">{classData.progress || 0}%</span>
+          </div>
+          <div className="w-full bg-white bg-opacity-20 rounded-full h-2">
+            <div 
+              className="bg-white h-2 rounded-full transition-all duration-500" 
+              style={{ width: `${classData.progress || 0}%` }}
+            ></div>
+          </div>
+        </div>
+
+        {/* Stats Row */}
+        <div className="flex items-center justify-between text-white text-opacity-90 text-sm mt-auto">
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-1" title="Tugas Besar">
+              <FileText size={14} />
+              <span>{classData.tugasBesar || 0}</span>
+            </div>
+            <div className="flex items-center space-x-1" title="Perlu Dinilai">
+              <AlertTriangle size={14} />
+              <span>{classData.pendingGrading || 0}</span>
+            </div>
+            <div className="flex items-center space-x-1" title="Kelompok Aktif">
+              <TrendingUp size={14} />
+              <span>{classData.activeGroups || 0}</span>
+            </div>
+            <div className="flex items-center space-x-1" title="Total Mahasiswa">
+              <Users size={14} />
+              <span>{classData.studentCount || classData.students || 0}</span>
+            </div>
+          </div>
+          
+          <div className="flex items-center">
+            <ChevronRight size={16} />
+          </div>
         </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 export default DosenCourses;

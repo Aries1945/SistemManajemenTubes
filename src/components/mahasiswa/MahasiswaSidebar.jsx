@@ -46,11 +46,7 @@ const MahasiswaSidebar = ({ isCollapsed, onToggle }) => {
       icon: Trophy,
       path: '/mahasiswa/dashboard/grades'
     },
-    {
-      title: 'Jadwal',
-      icon: Calendar,
-      path: '/mahasiswa/dashboard/schedule'
-    },
+   
     {
       title: 'Diskusi',
       icon: MessageSquare,

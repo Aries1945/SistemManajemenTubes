@@ -136,16 +136,22 @@ router.get('/classes', async (req, res) => {
         cl.id as class_id,
         cl.nama as class_name,
         cl.kode as class_code,
+        cl.dosen_id as class_dosen_id,
         cl.kapasitas,
         c.id as course_id,
         c.course_name_id,
+        c.dosen_id as course_dosen_id,
         cn.kode as course_code, 
         cn.nama as course_name, 
         cn.sks, 
         c.semester, 
         c.tahun_ajaran,
-        dp.nama_lengkap as dosen_name,
-        dp.nip as dosen_nip,
+        dp.nama_lengkap as class_dosen_name,
+        dp.nip as class_dosen_nip,
+        coord_dp.nama_lengkap as course_dosen_name,
+        coord_dp.nip as course_dosen_nip,
+        (cl.dosen_id = $1) as is_class_lecturer,
+        (c.dosen_id = $1) as is_course_coordinator,
         COUNT(DISTINCT ce.mahasiswa_id) FILTER (WHERE ce.status = 'active') as student_count,
         (SELECT COUNT(*) FROM tugas_besar WHERE class_id = cl.id AND dosen_id = cl.dosen_id) as tugas_besar_count,
         (SELECT COUNT(*) FROM tugas_besar tb 
@@ -174,42 +180,55 @@ router.get('/classes', async (req, res) => {
       FROM classes cl
       JOIN courses c ON cl.course_id = c.id
       LEFT JOIN course_name cn ON c.course_name_id = cn.id
-      JOIN users u ON cl.dosen_id = u.id
-      JOIN dosen_profiles dp ON u.id = dp.user_id
+      LEFT JOIN users u ON cl.dosen_id = u.id
+      LEFT JOIN dosen_profiles dp ON u.id = dp.user_id
+      LEFT JOIN users coord_u ON c.dosen_id = coord_u.id
+      LEFT JOIN dosen_profiles coord_dp ON coord_u.id = coord_dp.user_id
       LEFT JOIN class_enrollments ce ON cl.id = ce.class_id
-      WHERE cl.dosen_id = $1
+      WHERE cl.dosen_id = $1 OR c.dosen_id = $1
       GROUP BY 
-        cl.id, cl.nama, cl.kode, cl.kapasitas,
-        c.id, c.course_name_id, cn.kode, cn.nama, cn.sks, c.semester, c.tahun_ajaran,
-        dp.nama_lengkap, dp.nip
+        cl.id, cl.nama, cl.kode, cl.kapasitas, cl.dosen_id,
+        c.id, c.course_name_id, c.dosen_id, cn.kode, cn.nama, cn.sks, c.semester, c.tahun_ajaran,
+        dp.nama_lengkap, dp.nip,
+        coord_dp.nama_lengkap, coord_dp.nip
       ORDER BY cn.nama ASC, cl.nama ASC
     `, [dosenId]);
 
     // Transform data to match frontend expectations
-    const transformedClasses = result.rows.map(row => ({
-      classId: `class-${row.course_id}-${row.class_name}`,
-      id: row.class_id,
-      courseId: row.course_id,
-      courseName: row.course_name,
-      courseCode: row.course_code,
-      className: row.class_name,
-      classCode: row.class_code,
-      sks: row.sks,
-      semester: row.semester,
-      tahunAjaran: row.tahun_ajaran,
-      kapasitas: row.kapasitas,
-      dosenId: dosenId,
-      dosenName: row.dosen_name,
-      dosenNip: row.dosen_nip,
-      studentCount: parseInt(row.student_count) || 0,
-      tugasBesar: parseInt(row.tugas_besar_count) || 0,
-      activeTasks: parseInt(row.active_tasks_count) || 0,
-      activeGroups: parseInt(row.active_groups_count) || 0,
-      pendingGrading: parseInt(row.pending_grading_count) || 0,
-      progress: Math.round(parseFloat(row.average_progress) || 0),
-      // Add lastActivity for display
-      lastActivity: 'Baru saja'
-    }));
+    const transformedClasses = result.rows.map(row => {
+      const isClassLecturer = !!row.is_class_lecturer;
+      const isCourseCoordinator = !!row.is_course_coordinator;
+      
+      return {
+        classId: `class-${row.course_id}-${row.class_name}`,
+        id: row.class_id,
+        courseId: row.course_id,
+        courseName: row.course_name,
+        courseCode: row.course_code,
+        className: row.class_name,
+        classCode: row.class_code,
+        sks: row.sks,
+        semester: row.semester,
+        tahunAjaran: row.tahun_ajaran,
+        kapasitas: row.kapasitas,
+        dosenId: row.class_dosen_id,
+        dosenName: row.class_dosen_name || 'Dosen belum ditentukan',
+        dosenNip: row.class_dosen_nip,
+        courseCoordinatorId: row.course_dosen_id,
+        courseCoordinatorName: row.course_dosen_name || row.class_dosen_name || 'Belum ditentukan',
+        studentCount: parseInt(row.student_count) || 0,
+        tugasBesar: parseInt(row.tugas_besar_count) || 0,
+        activeTasks: parseInt(row.active_tasks_count) || 0,
+        activeGroups: parseInt(row.active_groups_count) || 0,
+        pendingGrading: parseInt(row.pending_grading_count) || 0,
+        progress: Math.round(parseFloat(row.average_progress) || 0),
+        isClassLecturer,
+        isCourseCoordinator,
+        accessRole: isClassLecturer ? 'class-lecturer' : 'course-coordinator',
+        // Add lastActivity for display
+        lastActivity: 'Baru saja'
+      };
+    });
 
     console.log(`GET /auth/dosen/classes - Found ${transformedClasses.length} classes`);
     
@@ -296,16 +315,32 @@ router.get('/courses/:courseId/tugas-besar', async (req, res) => {
       }
     }
 
-    // NEW: If classId provided, parse and verify dosen teaches this specific class
+    // Determine whether current dosen is the course coordinator
+    const coordinatorCheck = await pool.query(
+      'SELECT 1 FROM courses WHERE id = $1 AND dosen_id = $2 LIMIT 1',
+      [courseId, dosenId]
+    );
+    const isCourseCoordinator = coordinatorCheck.rows.length > 0;
+
+    let targetClassId = null;
+    let targetClassName = null;
+
+    // NEW: If classId provided, parse and verify dosen has rights to this specific class
     if (classId) {
       // Parse classId: accept numeric ID or "class-courseId-className" format
       let parsedClassId = parseInt(classId, 10);
       if (Number.isNaN(parsedClassId)) {
         // Handle class-14-Kelas STEH format: extract actual class ID from database
-        const classMatch = await pool.query(
-          'SELECT id FROM classes WHERE course_id = $1 AND dosen_id = $2 AND nama ILIKE $3',
-          [courseId, dosenId, '%' + classId.split('-').slice(2).join(' ') + '%']
-        );
+        const classNamePart = classId.split('-').slice(2).join(' ');
+        const classMatchQuery = isCourseCoordinator
+          ? 'SELECT id FROM classes WHERE course_id = $1 AND nama ILIKE $2'
+          : 'SELECT id FROM classes WHERE course_id = $1 AND dosen_id = $2 AND nama ILIKE $3';
+
+        const classMatchParams = isCourseCoordinator
+          ? [courseId, '%' + classNamePart + '%']
+          : [courseId, dosenId, '%' + classNamePart + '%'];
+
+        const classMatch = await pool.query(classMatchQuery, classMatchParams);
         
         if (classMatch.rows.length === 0) {
           return res.status(400).json({ 
@@ -317,7 +352,12 @@ router.get('/courses/:courseId/tugas-besar', async (req, res) => {
       }
 
       const classOwnership = await pool.query(
-        'SELECT id, nama FROM classes WHERE id = $1 AND course_id = $2 AND dosen_id = $3',
+        `SELECT cl.id, cl.nama 
+         FROM classes cl
+         JOIN courses c ON cl.course_id = c.id
+         WHERE cl.id = $1 
+           AND cl.course_id = $2 
+           AND (cl.dosen_id = $3 OR c.dosen_id = $3)`,
         [parsedClassId, courseId, dosenId]
       );
 
@@ -327,67 +367,35 @@ router.get('/courses/:courseId/tugas-besar', async (req, res) => {
           debug: { courseId, classId, dosenId }
         });
       }
+      targetClassId = parsedClassId;
+      targetClassName = classOwnership.rows[0].nama;
+    } else if (!isCourseCoordinator) {
+      // FALLBACK: If no classId, verify dosen teaches at least one class in this course
+      const classCheck = await pool.query(
+        'SELECT id, nama FROM classes WHERE course_id = $1 AND dosen_id = $2',
+        [courseId, dosenId]
+      );
 
-      // CLASS-SPECIFIC: Only return tugas_besar for this specific class
-      // class_id column exists in schema - use it directly
-      const result = await pool.query(`
-        SELECT 
-          tb.id, 
-          tb.judul, 
-          tb.judul as title, 
-          tb.deskripsi, 
-          tb.deskripsi as description, 
-          tb.tanggal_mulai,
-          tb.tanggal_selesai,
-          tb.tanggal_selesai as deadline, 
-          tb.komponen,
-          tb.deliverable,
-          tb.grouping_method,
-          tb.min_group_size,
-          tb.max_group_size,
-          tb.max_group_size as max_members,
-          tb.student_choice_enabled,
-          tb.student_choice_enabled as is_student_choice,
-          tb.course_id,
-          tb.class_id,
-          tb.dosen_id,
-          tb.created_at,
-          cn.nama AS course_name,
-          cn.kode AS course_code,
-          cl.nama AS class_name,
-          dp.nama_lengkap AS dosen_name
-        FROM tugas_besar tb
-        JOIN courses c ON tb.course_id = c.id
-        LEFT JOIN course_name cn ON c.course_name_id = cn.id
-        JOIN classes cl ON tb.class_id = cl.id
-        LEFT JOIN dosen_profiles dp ON tb.dosen_id = dp.user_id
-        WHERE tb.course_id = $1 AND tb.dosen_id = $2 AND tb.class_id = $3
-        ORDER BY tb.created_at DESC
-      `, [courseId, dosenId, parsedClassId]);
-
-      return res.json({
-        success: true,
-        tugasBesar: result.rows,
-        classInfo: {
-          classId: parsedClassId,
-          className: classOwnership.rows[0].nama
-        }
-      });
+      if (classCheck.rows.length === 0) {
+        return res.status(403).json({ error: 'Access denied. You do not teach any class in this course.' });
+      }
     }
 
-    // FALLBACK: If no classId, verify dosen teaches at least one class in this course
-    const classCheck = await pool.query(
-      'SELECT id, nama FROM classes WHERE course_id = $1 AND dosen_id = $2',
-      [courseId, dosenId]
-    );
+    // Build tugas besar query dynamically based on role and optional class filter
+    const queryParams = [courseId];
+    let whereClause = 'WHERE tb.course_id = $1';
 
-    if (classCheck.rows.length === 0) {
-      return res.status(403).json({ error: 'Access denied. You do not teach any class in this course.' });
+    if (!isCourseCoordinator) {
+      queryParams.push(dosenId);
+      whereClause += ` AND tb.dosen_id = $${queryParams.length}`;
     }
 
-    // LEGACY: Return tugas_besar for all classes this dosen teaches in this course
-    // class_id column exists in schema - use it directly
-    const result = await pool.query(`
+    if (targetClassId) {
+      queryParams.push(targetClassId);
+      whereClause += ` AND tb.class_id = $${queryParams.length}`;
+    }
+
+    const tugasQuery = `
       SELECT 
         tb.id, 
         tb.judul, 
@@ -418,13 +426,16 @@ router.get('/courses/:courseId/tugas-besar', async (req, res) => {
       LEFT JOIN course_name cn ON c.course_name_id = cn.id
       LEFT JOIN classes cl ON tb.class_id = cl.id
       LEFT JOIN dosen_profiles dp ON tb.dosen_id = dp.user_id
-      WHERE tb.course_id = $1 AND tb.dosen_id = $2
+      ${whereClause}
       ORDER BY tb.created_at DESC
-    `, [courseId, dosenId]);
+    `;
+
+    const result = await pool.query(tugasQuery, queryParams);
 
     res.json({
       success: true,
-      tugasBesar: result.rows
+      tugasBesar: result.rows,
+      classInfo: targetClassId ? { classId: targetClassId, className: targetClassName } : undefined
     });
   } catch (error) {
     console.error('Error fetching tugas besar:', error);
@@ -464,7 +475,7 @@ router.post('/courses/:courseId/tugas-besar', async (req, res) => {
       }
     }
     
-    const { 
+    const {
       title, 
       description, 
       deadline, 
@@ -484,16 +495,27 @@ router.post('/courses/:courseId/tugas-besar', async (req, res) => {
       });
     }
 
-    // NEW: Verify dosen teaches this specific class
+    // Determine whether current dosen is the course coordinator
+    const coordinatorCheck = await pool.query(
+      'SELECT 1 FROM courses WHERE id = $1 AND dosen_id = $2 LIMIT 1',
+      [courseId, dosenId]
+    );
+    const isCourseCoordinator = coordinatorCheck.rows.length > 0;
+
+    // NEW: Verify dosen has access to this specific class
     const classOwnership = await pool.query(
-      'SELECT id, nama FROM classes WHERE id = $1 AND course_id = $2 AND dosen_id = $3',
+      `SELECT cl.id, cl.nama 
+       FROM classes cl
+       WHERE cl.id = $1 
+         AND cl.course_id = $2 
+         AND cl.dosen_id = $3`,
       [class_id, courseId, dosenId]
     );
 
     if (classOwnership.rows.length === 0) {
       return res.status(403).json({ 
-        error: 'Access denied. You do not teach this specific class.',
-        debug: { courseId, class_id, dosenId }
+        error: 'Access denied. You do not have permission for this class.',
+        debug: { courseId, class_id, dosenId, isCourseCoordinator }
       });
     }
 
@@ -803,16 +825,17 @@ router.get('/tugas-besar/:tugasId/grading', async (req, res) => {
       SELECT tb.*, 
         cn.nama AS course_name,
         cn.kode AS course_code,
-        cl.nama AS class_name
+        cl.nama AS class_name,
+        c.dosen_id as course_dosen_id
       FROM tugas_besar tb
       JOIN courses c ON tb.course_id = c.id
       LEFT JOIN course_name cn ON c.course_name_id = cn.id
       LEFT JOIN classes cl ON tb.class_id = cl.id
-      WHERE tb.id = $1 AND tb.dosen_id = $2
+      WHERE tb.id = $1 AND (tb.dosen_id = $2 OR c.dosen_id = $2)
     `, [tugasId, dosenId]);
 
     if (tugasCheck.rows.length === 0) {
-      return res.status(403).json({ error: 'Access denied.' });
+      return res.status(403).json({ error: 'Access denied. You can only view penilaian untuk tugas besar yang Anda ajar atau mata kuliah yang Anda pengampu.' });
     }
 
     const tugas = tugasCheck.rows[0];
@@ -1222,25 +1245,24 @@ router.get('/tugas-besar/:tugasId/kelompok', async (req, res) => {
     const { tugasId } = req.params;
     const dosenId = req.user.id;
 
-    // ENHANCED: Verify ownership AND class access
+    // Verify access via ownership or course coordinator role
     const ownerCheck = await pool.query(`
-      SELECT tb.id, tb.course_id, tb.dosen_id 
+      SELECT tb.id, tb.course_id, tb.dosen_id, c.dosen_id AS course_dosen_id
       FROM tugas_besar tb
-      WHERE tb.id = $1 AND tb.dosen_id = $2
-    `, [tugasId, dosenId]);
+      JOIN courses c ON tb.course_id = c.id
+      WHERE tb.id = $1
+    `, [tugasId]);
 
     if (ownerCheck.rows.length === 0) {
-      return res.status(403).json({ error: 'Access denied. You can only access tugas besar you created.' });
+      return res.status(404).json({ error: 'Tugas besar not found' });
     }
 
-    // Additional validation: Ensure dosen teaches in this course
-    const classCheck = await pool.query(
-      'SELECT 1 FROM classes WHERE course_id = $1 AND dosen_id = $2 LIMIT 1',
-      [ownerCheck.rows[0].course_id, dosenId]
-    );
+    const tugasInfo = ownerCheck.rows[0];
+    const isCreator = tugasInfo.dosen_id === dosenId;
+    const isCourseCoordinator = tugasInfo.course_dosen_id === dosenId;
 
-    if (classCheck.rows.length === 0) {
-      return res.status(403).json({ error: 'Access denied. You do not teach any class in this course.' });
+    if (!isCreator && !isCourseCoordinator) {
+      return res.status(403).json({ error: 'Access denied. Anda hanya dapat melihat kelompok untuk tugas besar yang Anda ajar atau mata kuliah yang Anda pengampu.' });
     }
 
     const result = await pool.query(`
