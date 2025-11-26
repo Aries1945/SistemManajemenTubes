@@ -30,9 +30,12 @@ const EnrollStudentsModal = ({ isOpen, onClose, classId, className }) => {
       const allMahasiswa = studentsResponse.data.filter(
         user => user.role === 'mahasiswa' && user.is_active
       );
+      console.log('All mahasiswa from API:', allMahasiswa);
+      console.log('Enrolled students:', enrolledResponse.data);
+      console.log('Course enrolled students:', courseEnrollmentsResponse.data);
       setStudents(allMahasiswa);
-      setEnrolledStudents(enrolledResponse.data);
-      setCourseEnrolledStudents(courseEnrollmentsResponse.data);
+      setEnrolledStudents(enrolledResponse.data || []);
+      setCourseEnrolledStudents(courseEnrollmentsResponse.data || []);
     } catch (err) {
       console.error('Error fetching data:', err);
       setError('Gagal memuat data mahasiswa');
@@ -104,7 +107,7 @@ const EnrollStudentsModal = ({ isOpen, onClose, classId, className }) => {
       const searchLower = searchQuery.toLowerCase();
       return (
         (student.nama_lengkap?.toLowerCase().includes(searchLower)) ||
-        (student.nim?.toLowerCase().includes(searchLower)) ||
+        ((student.npm || student.nim)?.toLowerCase().includes(searchLower)) ||
         (student.email?.toLowerCase().includes(searchLower))
       );
     })
@@ -179,7 +182,7 @@ const EnrollStudentsModal = ({ isOpen, onClose, classId, className }) => {
             <div className="bg-gray-50 p-3 border-b">
               <h3 className="font-semibold">Daftar Mahasiswa</h3>
               <p className="text-xs text-gray-600 mt-1">
-                Mahasiswa yang sudah terdaftar di mata kuliah yang sama ditampilkan dengan status "Tidak tersedia"
+                Mahasiswa dapat terdaftar di banyak kelas, termasuk kelas yang berbeda untuk mata kuliah yang sama
               </p>
             </div>
             <div className="overflow-y-auto max-h-96 p-2">
@@ -198,9 +201,7 @@ const EnrollStudentsModal = ({ isOpen, onClose, classId, className }) => {
                         className={`flex justify-between items-center p-3 rounded-md ${
                           enrolledInThis 
                             ? 'bg-green-50 text-green-700' 
-                            : enrolledInOther
-                              ? 'bg-yellow-50 text-yellow-700 opacity-75'
-                              : 'bg-gray-50 hover:bg-gray-100'
+                            : 'bg-gray-50 hover:bg-gray-100'
                         }`}
                       >
                         <div className="flex items-center flex-grow">
@@ -209,10 +210,10 @@ const EnrollStudentsModal = ({ isOpen, onClose, classId, className }) => {
                           </div>
                           <div className="flex-grow">
                             <p className="font-medium">{student.nama_lengkap || 'Unnamed'}</p>
-                            <p className="text-sm text-gray-600">{student.nim || 'No NIM'}</p>
-                            {enrolledInOther && (
-                              <p className="text-xs text-yellow-600 mt-1">
-                                Sudah terdaftar di: {otherClassName}
+                            <p className="text-sm text-gray-600">{student.npm || student.nim || 'No NPM'}</p>
+                            {enrolledInOther && !enrolledInThis && (
+                              <p className="text-xs text-blue-600 mt-1">
+                                Juga terdaftar di: {otherClassName}
                               </p>
                             )}
                           </div>
@@ -222,10 +223,6 @@ const EnrollStudentsModal = ({ isOpen, onClose, classId, className }) => {
                           {enrolledInThis ? (
                             <span className="flex items-center text-green-600">
                               <CheckCircle size={16} className="mr-1" /> Terdaftar
-                            </span>
-                          ) : enrolledInOther ? (
-                            <span className="flex items-center text-yellow-600 text-sm">
-                              Tidak tersedia
                             </span>
                           ) : (
                             <button
@@ -274,7 +271,7 @@ const EnrollStudentsModal = ({ isOpen, onClose, classId, className }) => {
                         </div>
                         <div>
                           <p className="font-medium">{student.nama_lengkap || 'Unnamed'}</p>
-                          <p className="text-sm text-gray-600">{student.nim || 'No NIM'}</p>
+                          <p className="text-sm text-gray-600">{student.nim || 'No NPM'}</p>
                         </div>
                       </div>
                       <button

@@ -10,10 +10,16 @@ const ClassesSection = ({
 }) => {
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Manajemen Kelas</h1>
-        <div className="text-sm text-gray-600">
-          Total: {classes.length} kelas
+      <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl p-6 border border-gray-200/50">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Manajemen Kelas</h1>
+            <p className="text-sm text-gray-600 mt-1">Kelola kelas dan mahasiswa</p>
+          </div>
+          <div className="bg-purple-50 px-4 py-2 rounded-lg border border-purple-200">
+            <div className="text-xs text-purple-600 font-medium">Total Kelas</div>
+            <div className="text-lg font-bold text-purple-900">{classes.length}</div>
+          </div>
         </div>
       </div>
 
@@ -21,7 +27,7 @@ const ClassesSection = ({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {classes.length > 0 ? (
           classes.map(classItem => (
-            <div key={classItem.id} className="bg-white p-6 rounded-xl shadow-lg border hover:shadow-xl transition-shadow">
+            <div key={classItem.id} className="bg-white/80 backdrop-blur-md p-6 rounded-2xl shadow-xl border border-gray-200/50 hover:shadow-2xl hover:scale-105 transition-all duration-200">
               <div className="flex justify-between items-start mb-4">
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">{classItem.nama}</h3>
@@ -65,15 +71,15 @@ const ClassesSection = ({
       </div>
 
       {/* Courses with Classes Management */}
-      <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
+      <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl overflow-hidden border border-gray-200/50">
+        <div className="px-6 py-4 bg-gradient-to-r from-purple-50 to-indigo-50 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">Buat Kelas untuk Mata Kuliah</h2>
           <p className="text-sm text-gray-600">Pilih mata kuliah untuk membuat kelas baru</p>
         </div>
         <div className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {courses.map(course => (
-              <div key={course.id} className="border border-gray-200 rounded-lg p-4 hover:border-purple-300 transition-colors">
+              <div key={course.id} className="border border-gray-200 rounded-xl p-4 hover:border-purple-300 hover:shadow-md transition-all bg-white/50 backdrop-blur-sm">
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <h3 className="font-medium text-gray-900">{course.nama}</h3>

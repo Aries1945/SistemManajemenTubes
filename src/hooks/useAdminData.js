@@ -28,15 +28,22 @@ export const useAdminData = (serverAvailable, logout) => {
       
       let userData = [];
       try {
+        console.log('Fetching users from API...');
         const usersResponse = await api.get('/admin/users');
         userData = usersResponse.data || [];
+        console.log(`Received ${userData.length} users from API:`, userData);
         setUsers(userData);
       } catch (err) {
         console.error('Failed to fetch users:', err);
+        console.error('Error response:', err.response);
         if (err.response?.status === 401 || err.response?.status === 403) {
           toast.error('Sesi Anda telah berakhir. Silakan login kembali.');
           logout();
           return;
+        }
+        // Show error to user
+        if (err.response?.status === 500) {
+          toast.error('Gagal memuat data user. Silakan refresh halaman.');
         }
       }
       

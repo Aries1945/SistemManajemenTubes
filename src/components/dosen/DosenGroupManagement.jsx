@@ -11,7 +11,9 @@ import {
   createManualGroup, 
   createAutomaticGroups, 
   enableStudentChoice, 
-  deleteKelompok 
+  deleteKelompok,
+  addMemberToKelompok,
+  removeMemberFromKelompok
 } from '../../utils/kelompokApi';
 
 const DosenGroupManagement = ({ courseId, classId, courseName = 'Pemrograman Web', className = '', selectedTaskId = null, selectedTaskTitle = 'Tugas Besar' }) => {const [activeView, setActiveView] = useState(selectedTaskId ? 'list' : 'task-list');
@@ -1110,8 +1112,24 @@ const DosenGroupManagement = ({ courseId, classId, courseName = 'Pemrograman Web
                       
                       <div className="flex gap-2 ml-4">
                         <button
-                          onClick={() => {
-                            setSelectedGroup(group);
+                          onClick={async () => {
+                            // Reload group data to ensure members are loaded
+                            try {
+                              const response = await getKelompok(currentTaskId);
+                              if (response && response.success) {
+                                const updatedGroup = response.data.find(g => g.id === group.id);
+                                if (updatedGroup) {
+                                  setSelectedGroup(updatedGroup);
+                                } else {
+                                  setSelectedGroup(group);
+                                }
+                              } else {
+                                setSelectedGroup(group);
+                              }
+                            } catch (error) {
+                              console.error('Error loading group details:', error);
+                              setSelectedGroup(group);
+                            }
                           }}
                           className="bg-blue-100 text-blue-700 px-3 py-2 rounded-lg hover:bg-blue-200 transition-colors flex items-center gap-2 text-sm"
                           title="Lihat Detail Kelompok"
@@ -1451,12 +1469,92 @@ const DosenGroupManagement = ({ courseId, classId, courseName = 'Pemrograman Web
     if (!selectedGroup) return null;
 
     const groupName = selectedGroup.name || selectedGroup.nama_kelompok || 'Kelompok Tanpa Nama';
-    const groupMembers = selectedGroup.members || [];
+    const groupMembers = Array.isArray(selectedGroup.members) ? selectedGroup.members.filter(m => m && m.id) : [];
     const groupLeaderId = selectedGroup.leaderId || selectedGroup.leader_id;
+    const groupFormation = selectedTask?.groupFormation || selectedTask?.grouping_method || 'manual';
+    const isManualGroup = groupFormation === 'manual' || selectedGroup.creation_method === 'manual';
+    
+    const [showAddMember, setShowAddMember] = useState(false);
+    const [availableStudents, setAvailableStudents] = useState([]);
+    const [loadingMembers, setLoadingMembers] = useState(false);
+
+    // Load available students when modal opens
+    useEffect(() => {
+      if (showAddMember && currentTaskId) {
+        loadAvailableStudents();
+      }
+    }, [showAddMember, currentTaskId]);
+
+    const loadAvailableStudents = async () => {
+      try {
+        setLoadingMembers(true);
+        const response = await getMahasiswaForGrouping(currentTaskId);
+        if (response && response.success) {
+          const studentsData = response.mahasiswa || response.data || [];
+          // Filter out students already in this group
+          const available = studentsData.filter(student => 
+            !groupMembers.some(member => member.id === student.id)
+          );
+          setAvailableStudents(available);
+        }
+      } catch (error) {
+        console.error('Error loading available students:', error);
+        setAvailableStudents([]);
+      } finally {
+        setLoadingMembers(false);
+      }
+    };
+
+    const handleAddMember = async (studentId) => {
+      try {
+        const response = await addMemberToKelompok(selectedGroup.id, studentId);
+        if (response.success) {
+          showSuccess('Berhasil', 'Anggota berhasil ditambahkan');
+          await loadGroups();
+          // Reload selected group
+          const updatedGroups = await getKelompok(currentTaskId);
+          if (updatedGroups.success) {
+            const updatedGroup = updatedGroups.data.find(g => g.id === selectedGroup.id);
+            if (updatedGroup) {
+              setSelectedGroup(updatedGroup);
+            }
+          }
+          setShowAddMember(false);
+        } else {
+          showError('Error', response.message || 'Gagal menambah anggota');
+        }
+      } catch (error) {
+        console.error('Error adding member:', error);
+        showError('Error', 'Gagal menambah anggota: ' + error.message);
+      }
+    };
+
+    const handleRemoveMember = async (memberId) => {
+      try {
+        const response = await removeMemberFromKelompok(selectedGroup.id, memberId);
+        if (response.success) {
+          showSuccess('Berhasil', 'Anggota berhasil dihapus');
+          await loadGroups();
+          // Reload selected group
+          const updatedGroups = await getKelompok(currentTaskId);
+          if (updatedGroups.success) {
+            const updatedGroup = updatedGroups.data.find(g => g.id === selectedGroup.id);
+            if (updatedGroup) {
+              setSelectedGroup(updatedGroup);
+            }
+          }
+        } else {
+          showError('Error', response.message || 'Gagal menghapus anggota');
+        }
+      } catch (error) {
+        console.error('Error removing member:', error);
+        showError('Error', 'Gagal menghapus anggota: ' + error.message);
+      }
+    };
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
+        <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
           {/* Modal Header */}
           <div className="p-6 border-b border-gray-200 bg-gray-50">
             <div className="flex items-center justify-between">
@@ -1468,10 +1566,18 @@ const DosenGroupManagement = ({ courseId, classId, courseName = 'Pemrograman Web
                     new Date(selectedGroup.created_at || selectedGroup.createdAt).toLocaleDateString('id-ID') : 
                     'tanggal tidak diketahui'
                   }
+                  {isManualGroup && (
+                    <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded">
+                      Manual
+                    </span>
+                  )}
                 </p>
               </div>
               <button
-                onClick={() => setSelectedGroup(null)}
+                onClick={() => {
+                  setSelectedGroup(null);
+                  setShowAddMember(false);
+                }}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
               >
                 <X size={24} />
@@ -1480,11 +1586,53 @@ const DosenGroupManagement = ({ courseId, classId, courseName = 'Pemrograman Web
           </div>
 
           {/* Modal Body */}
-          <div className="p-6 overflow-y-auto max-h-[60vh]">
-            <h4 className="text-lg font-semibold text-gray-900 mb-4">Daftar Anggota</h4>
+          <div className="p-6 overflow-y-auto flex-1">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-lg font-semibold text-gray-900">Daftar Anggota</h4>
+              {isManualGroup && (
+                <button
+                  onClick={() => setShowAddMember(!showAddMember)}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 text-sm"
+                >
+                  <UserPlus size={16} />
+                  {showAddMember ? 'Batal' : 'Tambah Anggota'}
+                </button>
+              )}
+            </div>
+
+            {/* Add Member Section */}
+            {showAddMember && isManualGroup && (
+              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h5 className="font-medium text-blue-900 mb-3">Pilih Mahasiswa untuk Ditambahkan</h5>
+                {loadingMembers ? (
+                  <div className="text-center py-4">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
+                  </div>
+                ) : availableStudents.length > 0 ? (
+                  <div className="max-h-48 overflow-y-auto space-y-2">
+                    {availableStudents.map(student => (
+                      <div key={student.id} className="flex items-center justify-between p-2 bg-white rounded border">
+                        <div>
+                          <p className="font-medium text-sm">{student.name}</p>
+                          <p className="text-xs text-gray-600">{student.npm}</p>
+                        </div>
+                        <button
+                          onClick={() => handleAddMember(student.id)}
+                          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                        >
+                          Tambah
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-600">Tidak ada mahasiswa yang tersedia</p>
+                )}
+              </div>
+            )}
             
             {groupMembers.length > 0 ? (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {groupMembers.map((member, index) => {
                   const isLeader = groupLeaderId === member.id || member.role === 'leader';
                   
@@ -1514,6 +1662,21 @@ const DosenGroupManagement = ({ courseId, classId, courseName = 'Pemrograman Web
                             Email: {member.email || 'Tidak tersedia'}
                           </p>
                         </div>
+                        {isManualGroup && groupMembers.length > (selectedTask?.minGroupSize || selectedTask?.min_group_size || 2) && (
+                          <button
+                            onClick={() => {
+                              showConfirm(
+                                'Konfirmasi Hapus',
+                                `Apakah Anda yakin ingin menghapus ${member.name} dari kelompok ini?`,
+                                () => handleRemoveMember(member.id)
+                              );
+                            }}
+                            className="text-red-600 hover:text-red-800 p-2"
+                            title="Hapus Anggota"
+                          >
+                            <UserMinus size={18} />
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
@@ -1523,6 +1686,14 @@ const DosenGroupManagement = ({ courseId, classId, courseName = 'Pemrograman Web
               <div className="text-center py-8">
                 <Users className="mx-auto h-12 w-12 text-gray-400" />
                 <p className="text-gray-500 mt-2">Tidak ada anggota ditemukan</p>
+                {isManualGroup && (
+                  <button
+                    onClick={() => setShowAddMember(true)}
+                    className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Tambah Anggota Pertama
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -1530,7 +1701,10 @@ const DosenGroupManagement = ({ courseId, classId, courseName = 'Pemrograman Web
           {/* Modal Footer */}
           <div className="flex justify-between items-center p-6 bg-gray-50 border-t border-gray-200">
             <button
-              onClick={() => setSelectedGroup(null)}
+              onClick={() => {
+                setSelectedGroup(null);
+                setShowAddMember(false);
+              }}
               className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
             >
               Tutup

@@ -117,9 +117,27 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Function to update user data
+  const updateUser = (updatedUserData) => {
+    setUser(prevUser => {
+      if (!prevUser) {
+        // If no previous user, just use the updated data
+        const newUser = updatedUserData;
+        localStorage.setItem('user', JSON.stringify(newUser));
+        return newUser;
+      }
+      // Merge with previous user data
+      const newUser = { ...prevUser, ...updatedUserData };
+      // Also update localStorage
+      localStorage.setItem('user', JSON.stringify(newUser));
+      return newUser;
+    });
+  };
+
   // Auth context value
   const value = {
     user,
+    setUser: updateUser,
     isLoading,
     login,
     logout,

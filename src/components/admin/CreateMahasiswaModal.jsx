@@ -6,9 +6,8 @@ const CreateMahasiswaModal = ({ isOpen, onClose, onSubmit }) => {
   const [mode, setMode] = useState('select'); // 'select', 'create', 'import'
   const [formData, setFormData] = useState({
     email: '',
-    nim: '',
-    nama_lengkap: '',
-    angkatan: ''
+    npm: '',
+    nama_lengkap: ''
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -29,11 +28,11 @@ const CreateMahasiswaModal = ({ isOpen, onClose, onSubmit }) => {
       errors.email = 'Format email tidak valid';
     }
     
-    // NIM validation
-    if (!formData.nim) {
-      errors.nim = 'NIM wajib diisi';
-    } else if (formData.nim.length > 10) {
-      errors.nim = 'NIM tidak boleh lebih dari 10 karakter';
+    // NPM validation
+    if (!formData.npm) {
+      errors.npm = 'NPM wajib diisi';
+    } else if (formData.npm.length > 20) {
+      errors.npm = 'NPM tidak boleh lebih dari 20 karakter';
     }
     
     // Nama lengkap validation
@@ -41,14 +40,6 @@ const CreateMahasiswaModal = ({ isOpen, onClose, onSubmit }) => {
       errors.nama_lengkap = 'Nama lengkap wajib diisi';
     } else if (formData.nama_lengkap.length > 255) {
       errors.nama_lengkap = 'Nama lengkap tidak boleh lebih dari 255 karakter';
-    }
-    
-    // Angkatan validation (optional)
-    if (formData.angkatan) {
-      const angkatanNum = Number(formData.angkatan);
-      if (isNaN(angkatanNum) || angkatanNum < 1900 || angkatanNum > 2100) {
-        errors.angkatan = 'Tahun angkatan tidak valid';
-      }
     }
     
     setFieldErrors(errors);
@@ -59,15 +50,13 @@ const CreateMahasiswaModal = ({ isOpen, onClose, onSubmit }) => {
     const templateData = [
       {
         'Email': 'contoh@email.com',
-        'NIM': '2020730001',
-        'Nama Lengkap': 'Nama Mahasiswa',
-        'Angkatan': '2020'
+        'NPM': '2020730001',
+        'Nama Lengkap': 'Nama Mahasiswa'
       },
       {
         'Email': '',
-        'NIM': '',
-        'Nama Lengkap': '',
-        'Angkatan': ''
+        'NPM': '',
+        'Nama Lengkap': ''
       }
     ];
 
@@ -78,9 +67,8 @@ const CreateMahasiswaModal = ({ isOpen, onClose, onSubmit }) => {
     // Set column widths
     ws['!cols'] = [
       { wch: 25 }, // Email
-      { wch: 15 }, // NIM
-      { wch: 30 }, // Nama Lengkap
-      { wch: 10 }  // Angkatan
+      { wch: 20 }, // NPM
+      { wch: 30 }  // Nama Lengkap
     ];
     
     XLSX.writeFile(wb, 'template_mahasiswa.xlsx');
@@ -106,9 +94,8 @@ const CreateMahasiswaModal = ({ isOpen, onClose, onSubmit }) => {
           const rowNumber = index + 2; // +2 because index starts at 0 and Excel row starts at 2
           const processedRow = {
             email: row['Email']?.toString().trim() || '',
-            nim: row['NIM']?.toString().trim() || '',
-            nama_lengkap: row['Nama Lengkap']?.toString().trim() || '',
-            angkatan: row['Angkatan']?.toString().trim() || ''
+            npm: row['NPM']?.toString().trim() || '',
+            nama_lengkap: row['Nama Lengkap']?.toString().trim() || ''
           };
 
           // Validate each row
@@ -120,19 +107,12 @@ const CreateMahasiswaModal = ({ isOpen, onClose, onSubmit }) => {
             rowErrors.push('Format email tidak valid');
           }
           
-          if (!processedRow.nim) {
-            rowErrors.push('NIM wajib diisi');
+          if (!processedRow.npm) {
+            rowErrors.push('NPM wajib diisi');
           }
           
           if (!processedRow.nama_lengkap) {
             rowErrors.push('Nama lengkap wajib diisi');
-          }
-
-          if (processedRow.angkatan) {
-            const angkatanNum = Number(processedRow.angkatan);
-            if (isNaN(angkatanNum) || angkatanNum < 1900 || angkatanNum > 2100) {
-              rowErrors.push('Tahun angkatan tidak valid');
-            }
           }
 
           if (rowErrors.length > 0) {
@@ -238,8 +218,7 @@ const CreateMahasiswaModal = ({ isOpen, onClose, onSubmit }) => {
     setFormData({
       email: '',
       nama_lengkap: '',
-      nim: '',
-      angkatan: ''
+      npm: ''
     });
     setFieldErrors({});
     setImportData([]);
@@ -333,22 +312,22 @@ const CreateMahasiswaModal = ({ isOpen, onClose, onSubmit }) => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              NIM
+              NPM
             </label>
             <input
               type="text"
-              name="nim"
-              value={formData.nim}
+              name="npm"
+              value={formData.npm}
               onChange={handleChange}
               required
-              maxLength={10}
-              className={`w-full px-3 py-2 border ${fieldErrors.nim ? 'border-red-500' : 'border-gray-300'} rounded-md focus:ring-purple-500 focus:border-purple-500`}
-              placeholder="Nomor Induk Mahasiswa (max 10 karakter)"
+              maxLength={20}
+              className={`w-full px-3 py-2 border ${fieldErrors.npm ? 'border-red-500' : 'border-gray-300'} rounded-md focus:ring-purple-500 focus:border-purple-500`}
+              placeholder="Nomor Pokok Mahasiswa (max 20 karakter)"
             />
-            {fieldErrors.nim && (
-              <p className="mt-1 text-xs text-red-500">{fieldErrors.nim}</p>
+            {fieldErrors.npm && (
+              <p className="mt-1 text-xs text-red-500">{fieldErrors.npm}</p>
             )}
-            <p className="mt-1 text-xs text-gray-500">{formData.nim.length}/10 karakter</p>
+            <p className="mt-1 text-xs text-gray-500">{formData.npm.length}/20 karakter</p>
           </div>
 
           <div>
@@ -367,25 +346,6 @@ const CreateMahasiswaModal = ({ isOpen, onClose, onSubmit }) => {
             />
             {fieldErrors.nama_lengkap && (
               <p className="mt-1 text-xs text-red-500">{fieldErrors.nama_lengkap}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Angkatan
-            </label>
-            <input
-              type="number"
-              name="angkatan"
-              value={formData.angkatan}
-              onChange={handleChange}
-              min="1900"
-              max="2100"
-              className={`w-full px-3 py-2 border ${fieldErrors.angkatan ? 'border-red-500' : 'border-gray-300'} rounded-md focus:ring-purple-500 focus:border-purple-500`}
-              placeholder="Tahun angkatan (opsional)"
-            />
-            {fieldErrors.angkatan && (
-              <p className="mt-1 text-xs text-red-500">{fieldErrors.angkatan}</p>
             )}
           </div>
         </div>
@@ -486,7 +446,7 @@ const CreateMahasiswaModal = ({ isOpen, onClose, onSubmit }) => {
             <div className="max-h-32 overflow-y-auto">
               {importData.slice(0, 5).map((data, index) => (
                 <div key={index} className="text-xs text-green-700 mb-1">
-                  {data.nama_lengkap} ({data.nim}) - {data.email}
+                  {data.nama_lengkap} ({data.npm}) - {data.email}
                 </div>
               ))}
               {importData.length > 5 && (

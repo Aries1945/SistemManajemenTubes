@@ -100,7 +100,7 @@ router.get('/me', authenticateToken, async (req, res) => {
     
     if (user.role === 'dosen') {
       const dosenResult = await pool.query(
-        'SELECT nip, nama_lengkap, departemen FROM dosen_profiles WHERE user_id = $1',
+        'SELECT nip, nama_lengkap FROM dosen_profiles WHERE user_id = $1',
         [user.id]
       );
       if (dosenResult.rows.length > 0) {
@@ -108,7 +108,7 @@ router.get('/me', authenticateToken, async (req, res) => {
       }
     } else if (user.role === 'mahasiswa') {
       const mahasiswaResult = await pool.query(
-        'SELECT nim, nama_lengkap, angkatan FROM mahasiswa_profiles WHERE user_id = $1',
+        'SELECT nim, nama_lengkap FROM mahasiswa_profiles WHERE user_id = $1',
         [user.id]
       );
       if (mahasiswaResult.rows.length > 0) {
@@ -126,7 +126,12 @@ router.get('/me', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Get user error:', error);
-    res.status(500).json({ error: 'Server error' });
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      userId: req.user?.id
+    });
+    res.status(500).json({ error: 'Server error: ' + error.message });
   }
 });
 
@@ -148,8 +153,6 @@ router.get('/mahasiswa/classes', authenticateToken, async (req, res) => {
         c.id,
         c.nama as class_name,
         c.kode as class_code,
-        c.ruangan,
-        c.jadwal,
         c.kapasitas,
         co.nama as course_name,
         co.kode as course_code,
@@ -188,29 +191,35 @@ router.get('/dosen/courses', authenticateToken, async (req, res) => {
     }
     
     // Get assigned courses with class information
+    // IMPORTANT: One dosen can teach multiple courses (courses.dosen_id)
+    // Also include courses where dosen teaches classes (classes.dosen_id)
+    // Join with course_name to get kode, nama, sks
     const coursesResult = await pool.query(`
       SELECT 
         co.id as course_id,
-        co.nama as course_name,
-        co.kode as course_code,
-        co.sks,
+        co.course_name_id,
+        cn.nama as course_name,
+        cn.kode as course_code,
+        cn.sks,
         co.semester,
         co.tahun_ajaran,
         co.deskripsi,
+        co.status,
         COUNT(DISTINCT c.id) as total_classes,
         COUNT(DISTINCT ce.mahasiswa_id) as total_students,
-        STRING_AGG(DISTINCT c.nama, ', ') as class_names,
-        STRING_AGG(DISTINCT CONCAT(c.ruangan, ' (', c.jadwal, ')'), ', ') as class_details
+        STRING_AGG(DISTINCT c.nama, ', ') as class_names
       FROM courses co
+      LEFT JOIN course_name cn ON co.course_name_id = cn.id
       LEFT JOIN classes c ON co.id = c.course_id AND c.dosen_id = $1
       LEFT JOIN class_enrollments ce ON c.id = ce.class_id
-      WHERE co.id IN (
-        SELECT DISTINCT course_id 
-        FROM classes 
-        WHERE dosen_id = $1
-      )
-      GROUP BY co.id, co.nama, co.kode, co.sks, co.semester, co.tahun_ajaran, co.deskripsi
-      ORDER BY co.nama
+      WHERE co.dosen_id = $1 
+         OR co.id IN (
+           SELECT DISTINCT course_id 
+           FROM classes 
+           WHERE dosen_id = $1
+         )
+      GROUP BY co.id, co.course_name_id, cn.nama, cn.kode, cn.sks, co.semester, co.tahun_ajaran, co.deskripsi, co.status
+      ORDER BY cn.nama
     `, [userId]);
     
     res.json({

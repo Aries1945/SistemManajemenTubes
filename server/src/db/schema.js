@@ -3,38 +3,46 @@ const { pool } = require('../db');
 async function createTables() {
   try {
     // Create users table
+    // Note: is_active TIDAK ada di sini, ada di profile tables
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         email VARCHAR(255) UNIQUE NOT NULL,
         password_hash VARCHAR(255) NOT NULL,
-        role VARCHAR(50) NOT NULL,
-        is_active BOOLEAN DEFAULT true,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        role VARCHAR(50) NOT NULL CHECK (role IN ('admin', 'dosen', 'mahasiswa')),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       )
     `);
     
     // Create dosen_profiles table
+    // Note: TIDAK ada kolom departemen, is_active ada di sini
     await pool.query(`
       CREATE TABLE IF NOT EXISTS dosen_profiles (
         id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id),
-        nip VARCHAR(50) UNIQUE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        nip VARCHAR(50) NOT NULL UNIQUE,
         nama_lengkap VARCHAR(255) NOT NULL,
-        departemen VARCHAR(100),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id)
       )
     `);
     
     // Create mahasiswa_profiles table
+    // Note: TIDAK ada kolom angkatan, is_active ada di sini
+    // Note: Kolom di database tetap bernama 'nim' (bukan npm)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS mahasiswa_profiles (
         id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id),
-        nim VARCHAR(50) UNIQUE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        nim VARCHAR(50) NOT NULL UNIQUE,
         nama_lengkap VARCHAR(255) NOT NULL,
-        angkatan INTEGER,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id)
       )
     `);
     
@@ -64,6 +72,7 @@ async function createTables() {
     `);
     
     // Tabel untuk kelas
+    // Note: TIDAK ada kolom ruangan dan jadwal
     await pool.query(`
       CREATE TABLE IF NOT EXISTS classes (
         id SERIAL PRIMARY KEY,
@@ -72,10 +81,8 @@ async function createTables() {
         nama VARCHAR(100) NOT NULL, -- contoh: "Kelas A", "Kelas B", dll.
         kode VARCHAR(20), -- Kode kelas (opsional)
         kapasitas INTEGER DEFAULT 40,
-        ruangan VARCHAR(50),
-        jadwal VARCHAR(100), -- contoh: "Senin, 08:00-10:00"
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       )
     `);
     

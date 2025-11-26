@@ -14,6 +14,10 @@ import { getMahasiswaCourses, getAllTugasBesarMahasiswa } from '../../utils/maha
 // Import halaman-halaman mahasiswa
 import MahasiswaCourses from './MahasiswaCourses';
 import MahasiswaCourseDetail from './MahasiswaCourseDetail';
+import MahasiswaAllTasks from './MahasiswaAllTasks';
+import MahasiswaGrades from './MahasiswaGrades';
+import MahasiswaSchedule from './MahasiswaSchedule';
+import MahasiswaStatistics from './MahasiswaStatistics';
 
 // Component untuk Dashboard Overview (halaman utama)
 const DashboardOverview = ({ 
@@ -133,10 +137,12 @@ const DashboardOverview = ({
       </div>
 
       <div className="flex justify-between items-center pt-4 border-t border-gray-100">
-        <div className="flex items-center text-xs text-gray-500">
-          <Star className="h-4 w-4 mr-1 text-yellow-500" />
-          <span>Nilai: {course.averageGrade || 'Belum ada'}</span>
-        </div>
+        {course.averageGrade && (
+          <div className="flex items-center text-xs text-gray-500">
+            <Star className="h-4 w-4 mr-1 text-yellow-500" />
+            <span>Nilai: {course.averageGrade}</span>
+          </div>
+        )}
         <button 
           onClick={() => navigate(`/mahasiswa/dashboard/courses/${course.id}`)}
           className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center"
@@ -246,29 +252,55 @@ const DashboardOverview = ({
             </div>
             
             <div className="space-y-4">
-              {courses.length > 0 ? (
-                courses.slice(0, 3).map(course => (
-                  <CourseCard key={course.id} course={course} />
-                ))
-              ) : (
-                <div className="text-center py-12">
-                  <BookOpen className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Belum Ada Mata Kuliah</h3>
-                  <p className="text-gray-500 mb-4">
-                    Anda belum terdaftar di mata kuliah manapun semester ini.<br />
-                    Silakan lakukan registrasi mata kuliah terlebih dahulu.
-                  </p>
-                  <div className="bg-green-50 p-4 rounded-lg text-left max-w-md mx-auto">
-                    <h4 className="font-medium text-green-900 mb-2">Cara mendaftar mata kuliah:</h4>
-                    <ul className="text-sm text-green-700 space-y-1">
-                      <li>• Akses sistem registrasi online</li>
-                      <li>• Pilih mata kuliah sesuai kurikulum</li>
-                      <li>• Pastikan tidak ada bentrok jadwal</li>
-                      <li>• Konfirmasi registrasi sebelum deadline</li>
-                    </ul>
-                  </div>
-                </div>
-              )}
+              {(() => {
+                // Filter courses based on selectedFilter
+                const filteredCourses = courses.filter(course => {
+                  if (selectedFilter === 'all') return true;
+                  if (selectedFilter === 'active') return course.status === 'active';
+                  if (selectedFilter === 'completed') return course.status === 'completed';
+                  return true;
+                });
+                
+                if (filteredCourses.length > 0) {
+                  return filteredCourses.slice(0, 3).map((course, index) => (
+                    <CourseCard key={`course-${course.id}-${course.classId || index}-${course.class || ''}`} course={course} />
+                  ));
+                } else if (courses.length > 0) {
+                  // No courses match the filter
+                  return (
+                    <div className="text-center py-12">
+                      <Filter className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">
+                        Tidak Ada Mata Kuliah {selectedFilter === 'active' ? 'Aktif' : selectedFilter === 'completed' ? 'Selesai' : ''}
+                      </h3>
+                      <p className="text-gray-500">
+                        Tidak ada mata kuliah yang sesuai dengan filter yang dipilih.
+                      </p>
+                    </div>
+                  );
+                } else {
+                  // No courses at all
+                  return (
+                    <div className="text-center py-12">
+                      <BookOpen className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">Belum Ada Mata Kuliah</h3>
+                      <p className="text-gray-500 mb-4">
+                        Anda belum terdaftar di mata kuliah manapun semester ini.<br />
+                        Silakan lakukan registrasi mata kuliah terlebih dahulu.
+                      </p>
+                      <div className="bg-green-50 p-4 rounded-lg text-left max-w-md mx-auto">
+                        <h4 className="font-medium text-green-900 mb-2">Cara mendaftar mata kuliah:</h4>
+                        <ul className="text-sm text-green-700 space-y-1">
+                          <li>• Akses sistem registrasi online</li>
+                          <li>• Pilih mata kuliah sesuai kurikulum</li>
+                          <li>• Pastikan tidak ada bentrok jadwal</li>
+                          <li>• Konfirmasi registrasi sebelum deadline</li>
+                        </ul>
+                      </div>
+                    </div>
+                  );
+                }
+              })()}
             </div>
           </div>
         </div>
@@ -397,15 +429,24 @@ const DashboardOverview = ({
                 <FileText className="h-4 w-4 text-blue-600 mr-3" />
                 <span className="text-sm font-medium">Lihat Semua Tugas</span>
               </button>
-              <button className="w-full text-left p-3 rounded-lg hover:bg-gray-50 transition-colors flex items-center">
+              <button 
+                onClick={() => navigate('/mahasiswa/dashboard/nilai')}
+                className="w-full text-left p-3 rounded-lg hover:bg-gray-50 transition-colors flex items-center"
+              >
                 <Star className="h-4 w-4 text-yellow-600 mr-3" />
                 <span className="text-sm font-medium">Lihat Nilai</span>
               </button>
-              <button className="w-full text-left p-3 rounded-lg hover:bg-gray-50 transition-colors flex items-center">
+              <button 
+                onClick={() => navigate('/mahasiswa/dashboard/jadwal')}
+                className="w-full text-left p-3 rounded-lg hover:bg-gray-50 transition-colors flex items-center"
+              >
                 <Calendar className="h-4 w-4 text-purple-600 mr-3" />
                 <span className="text-sm font-medium">Jadwal Kuliah</span>
               </button>
-              <button className="w-full text-left p-3 rounded-lg hover:bg-gray-50 transition-colors flex items-center">
+              <button 
+                onClick={() => navigate('/mahasiswa/dashboard/statistik')}
+                className="w-full text-left p-3 rounded-lg hover:bg-gray-50 transition-colors flex items-center"
+              >
                 <BarChart3 className="h-4 w-4 text-orange-600 mr-3" />
                 <span className="text-sm font-medium">Lihat Statistik</span>
               </button>
@@ -475,22 +516,37 @@ const MahasiswaDashboard = () => {
         const enrolledCourses = responseData.courses;
         
         // Transform courses data to match component expectations
-        const transformedCourses = enrolledCourses.map(course => ({
-          id: course.course_id,
-          name: course.course_name,
-          code: course.course_code,
-          semester: `${course.semester} ${course.tahun_ajaran}`,
-          lecturer: course.lecturer_name || 'Belum ditentukan',
-          class: course.class_name || 'A',
-          schedule: course.schedule || 'Jadwal akan diumumkan',
-          totalTasks: 0,
-          completedTasks: 0,
-          pendingTasks: 0,
-          taskProgress: 0,
-          averageGrade: null,
-          status: 'active',
-          sks: course.sks || 3
-        }));
+        // Determine course status based on semester and year
+        const currentDate = new Date();
+        const currentYear = currentDate.getFullYear();
+        const currentMonth = currentDate.getMonth() + 1; // 1-12
+        const currentSemester = currentMonth >= 1 && currentMonth <= 6 ? 'Ganjil' : 'Genap';
+        
+        const transformedCourses = enrolledCourses.map(course => {
+          // Determine status: active if current semester/year matches, otherwise completed
+          const courseSemester = course.semester || 'Ganjil';
+          const courseYear = course.tahun_ajaran || `${currentYear}/${currentYear + 1}`;
+          const isCurrentSemester = courseSemester === currentSemester && 
+                                   courseYear.includes(currentYear.toString());
+          
+          return {
+            id: course.course_id,
+            classId: course.class_id,
+            name: course.course_name,
+            code: course.course_code,
+            semester: `${course.semester} ${course.tahun_ajaran}`,
+            lecturer: course.dosen_name || 'Belum ditentukan',
+            class: course.class_name || 'A',
+            schedule: course.schedule || 'Jadwal akan diumumkan',
+            totalTasks: 0,
+            completedTasks: 0,
+            pendingTasks: 0,
+            taskProgress: 0,
+            averageGrade: course.nilai_akhir || null,
+            status: isCurrentSemester ? 'active' : 'completed',
+            sks: course.sks || 3
+          };
+        });
         
         // Calculate stats from real data
         const totalSKS = enrolledCourses.reduce((sum, course) => sum + (parseInt(course.sks) || 0), 0);
@@ -588,6 +644,18 @@ const MahasiswaDashboard = () => {
         
         {/* Course Detail Page - dengan courseId */}
         <Route path="courses/:courseId" element={<MahasiswaCourseDetail />} />
+        
+        {/* All Tasks Page */}
+        <Route path="tugas" element={<MahasiswaAllTasks />} />
+        
+        {/* Grades Page */}
+        <Route path="nilai" element={<MahasiswaGrades />} />
+        
+        {/* Schedule Page */}
+        <Route path="jadwal" element={<MahasiswaSchedule />} />
+        
+        {/* Statistics Page */}
+        <Route path="statistik" element={<MahasiswaStatistics />} />
         
         {/* Redirect unknown routes to dashboard */}
         <Route path="*" element={<Navigate to="/mahasiswa/dashboard" replace />} />

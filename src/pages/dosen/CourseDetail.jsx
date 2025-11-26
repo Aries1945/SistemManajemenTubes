@@ -10,7 +10,7 @@ import {
   CheckCircle,
   Clock
 } from 'lucide-react';
-import { getDosenCourses } from '../../utils/api';
+import { getDosenCourses, getDosenClasses } from '../../utils/api';
 import DosenTaskManagement from '../../components/dosen/DosenTaskManagement';
 import DosenGroupManagement from '../../components/dosen/DosenGroupManagement';
 import DosenGradingManagement from '../../components/dosen/DosenGradingManagement';
@@ -19,13 +19,13 @@ const CourseDetail = () => {
   const { courseId } = useParams(); // Fixed: changed from 'id' to 'courseId'
   const navigate = useNavigate();
   const location = useLocation();
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState('tasks'); // Default to tasks, overview removed
   const [course, setCourse] = useState(null);
   
   // NEW: Class-specific information from navigation state
   const classInfo = location.state || {};
-  const classId = classInfo.classId;
-  const className = classInfo.className;
+  const [resolvedClassId, setResolvedClassId] = useState(classInfo.classId || null);
+  const [resolvedClassName, setResolvedClassName] = useState(classInfo.className || null);
   
   const [stats, setStats] = useState({
     totalStudents: 0,
@@ -43,7 +43,12 @@ const CourseDetail = () => {
       setError('');
       
       // Prioritize class info from navigation state (from DosenCourses)
-      if (classInfo && Object.keys(classInfo).length > 0) {// Use the class-specific data directly from DosenCourses navigation
+      if (classInfo && Object.keys(classInfo).length > 0 && classInfo.classId) {
+        // Set resolved classId and className from state
+        setResolvedClassId(classInfo.classId);
+        setResolvedClassName(classInfo.className);
+        
+        // Use the class-specific data directly from DosenCourses navigation
         const courseData = {
           id: classInfo.courseId || parseInt(courseId),
           name: classInfo.courseName || 'Unknown Course',
@@ -67,14 +72,14 @@ const CourseDetail = () => {
         
         setCourse(courseData);
         
-        // Use class-specific stats
+        // Use class-specific stats - all from database, no random data
         const statsData = {
           totalStudents: classInfo.students || classInfo.studentCount || 0,
           activeTasks: classInfo.tugasBesar || classInfo.tasks || 0,
-          completedTasks: Math.floor((classInfo.tugasBesar || 0) * 0.3), // 30% completed estimate
-          activeGroups: classInfo.activeGroups || Math.floor((classInfo.students || 20) / 4),
-          pendingGrading: classInfo.pendingGrading || Math.floor(Math.random() * 10),
-          averageGrade: classInfo.progress || Math.floor(Math.random() * 40) + 60
+          completedTasks: 0, // Will be calculated from database if needed
+          activeGroups: classInfo.activeGroups || 0,
+          pendingGrading: classInfo.pendingGrading || 0,
+          averageGrade: classInfo.progress || 0
         };
         
         setStats(statsData);
@@ -82,7 +87,56 @@ const CourseDetail = () => {
         return; // Use class-specific data, no need to fetch from API
       }
       
-      // FALLBACK: If no class info in state, try to fetch from API (legacy)// Parse courseId if in legacy format
+      // FALLBACK: If no class info in state, fetch classes from API
+      if (!resolvedClassId) {
+        // Fetch classes to get classId for this course
+        const classesResponse = await getDosenClasses();
+        
+        if (classesResponse.data.success) {
+          const classes = classesResponse.data.classes || [];
+          // Find first class that matches this courseId
+          const matchingClass = classes.find(cls => cls.courseId === parseInt(courseId));
+          
+          if (matchingClass) {
+            const resolvedId = matchingClass.id;
+            const resolvedName = matchingClass.className;
+            
+            setResolvedClassId(resolvedId);
+            setResolvedClassName(resolvedName);
+            
+            // Use class data to populate course
+            const courseData = {
+              id: matchingClass.courseId,
+              name: matchingClass.courseName,
+              code: matchingClass.courseCode,
+              semester: `${matchingClass.semester} ${matchingClass.tahunAjaran}`,
+              sks: matchingClass.sks || 3,
+              description: '',
+              classes: [resolvedName],
+              dosen_name: matchingClass.dosenName || 'Dosen',
+              class_details: '',
+              selectedClass: resolvedName,
+              classId: resolvedId
+            };
+            
+            setCourse(courseData);
+            
+            const statsData = {
+              totalStudents: matchingClass.studentCount || 0,
+              activeTasks: matchingClass.tugasBesar || 0,
+              completedTasks: 0,
+              activeGroups: matchingClass.activeGroups || 0,
+              pendingGrading: matchingClass.pendingGrading || 0,
+              averageGrade: matchingClass.progress || 0
+            };
+            
+            setStats(statsData);
+            return;
+          }
+        }
+      }
+      
+      // FALLBACK: If still no classId, try legacy method
       let actualCourseId = courseId;
       let fallbackClassName = null;
       
@@ -119,11 +173,11 @@ const CourseDetail = () => {
           
           const statsData = {
             totalStudents: foundCourse.total_students || 0,
-            activeTasks: Math.floor(Math.random() * 5),
-            completedTasks: Math.floor(Math.random() * 3),
-            activeGroups: Math.floor(Math.random() * 10),
-            pendingGrading: Math.floor(Math.random() * 15),
-            averageGrade: Math.floor(Math.random() * 40) + 60
+            activeTasks: 0,
+            completedTasks: 0,
+            activeGroups: 0,
+            pendingGrading: 0,
+            averageGrade: 0
           };
           
           setStats(statsData);
@@ -161,253 +215,44 @@ const CourseDetail = () => {
     }
   }, [courseId]);
 
-  const CourseOverview = ({ course, stats }) => (
-    <div className="space-y-6">
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-blue-50 p-4 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-blue-600 text-sm font-medium">Total Mahasiswa</p>
-              <p className="text-2xl font-bold text-blue-700">{stats.totalStudents}</p>
-            </div>
-            <Users className="text-blue-600" size={32} />
-          </div>
-        </div>
-        
-        <div className="bg-green-50 p-4 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-green-600 text-sm font-medium">Tugas Aktif</p>
-              <p className="text-2xl font-bold text-green-700">{stats.activeTasks}</p>
-            </div>
-            <FileText className="text-green-600" size={32} />
-          </div>
-        </div>
-        
-        <div className="bg-purple-50 p-4 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-purple-600 text-sm font-medium">Kelompok Aktif</p>
-              <p className="text-2xl font-bold text-purple-700">{stats.activeGroups}</p>
-            </div>
-            <Users className="text-purple-600" size={32} />
-          </div>
-        </div>
+  // CourseOverview component removed
 
-        <div className="bg-orange-50 p-4 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-orange-600 text-sm font-medium">Perlu Dinilai</p>
-              <p className="text-2xl font-bold text-orange-700">{stats.pendingGrading}</p>
-            </div>
-            <AlertTriangle className="text-orange-600" size={32} />
-          </div>
-        </div>
-      </div>
+  // Handler untuk navigasi dari TaskManagement ke tab lain
+  const handleNavigateToGroups = (taskId, taskTitle) => {
+    setActiveTab('groups');
+    // Pass taskId to GroupManagement via state or props
+    // GroupManagement will handle the taskId internally
+  };
 
-      {/* Course Details */}
-      <div className="bg-gray-50 p-6 rounded-lg">
-        <h4 className="text-lg font-semibold mb-4">Informasi Kelas</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <p className="text-sm text-gray-600 mb-1">Nama Mata Kuliah</p>
-            <p className="font-medium">{course?.name}</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-600 mb-1">Kode Mata Kuliah</p>
-            <p className="font-medium">{course?.code}</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-600 mb-1">Kelas</p>
-            <div className="flex items-center gap-2">
-              <span className="font-medium text-blue-700 bg-blue-100 px-3 py-1 rounded-full text-sm">
-                {course?.selectedClass}
-              </span>
-              {classInfo.classId && (
-                <span className="text-xs text-gray-500">(ID: {classInfo.classId})</span>
-              )}
-            </div>
-          </div>
-          <div>
-            <p className="text-sm text-gray-600 mb-1">Dosen Pengampu</p>
-            <p className="font-medium">{course?.dosen_name}</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-600 mb-1">Semester</p>
-            <p className="font-medium">{course?.semester}</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-600 mb-1">SKS</p>
-            <p className="font-medium">{course?.sks}</p>
-          </div>
-          {classInfo.schedule && (
-            <div>
-              <p className="text-sm text-gray-600 mb-1">Jadwal</p>
-              <p className="font-medium">{classInfo.schedule}</p>
-            </div>
-          )}
-          {classInfo.ruangan && (
-            <div>
-              <p className="text-sm text-gray-600 mb-1">Ruangan</p>
-              <p className="font-medium">{classInfo.ruangan}</p>
-            </div>
-          )}
-          {classInfo.kapasitas && (
-            <div>
-              <p className="text-sm text-gray-600 mb-1">Kapasitas</p>
-              <p className="font-medium">{classInfo.kapasitas} mahasiswa</p>
-            </div>
-          )}
-        </div>
-        
-        {/* Class-specific description */}
-        {course?.description && (
-          <div className="mt-4">
-            <p className="text-sm text-gray-600 mb-1">Deskripsi Mata Kuliah</p>
-            <p className="text-gray-700">{course.description}</p>
-          </div>
-        )}
-        
-        {/* Class-specific information highlight */}
-        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <div className="flex items-start gap-3">
-            <Users className="text-blue-600 mt-0.5" size={20} />
-            <div>
-              <p className="font-medium text-blue-800">
-                Kelas {course?.selectedClass} - {course?.name}
-              </p>
-              <p className="text-sm text-blue-600 mt-1">
-                Anda sedang mengelola kelas {course?.selectedClass} dengan {stats.totalStudents} mahasiswa. 
-                Semua data dan tugas besar di halaman ini khusus untuk kelas ini.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white border rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-600 text-sm font-medium">Tugas Selesai</p>
-              <p className="text-xl font-bold text-gray-900">{stats.completedTasks}</p>
-            </div>
-            <CheckCircle className="text-green-600" size={24} />
-          </div>
-        </div>
-        
-        <div className="bg-white border rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-600 text-sm font-medium">Rata-rata Nilai</p>
-              <p className="text-xl font-bold text-gray-900">{stats.averageGrade}</p>
-            </div>
-            <Star className="text-yellow-500" size={24} />
-          </div>
-        </div>
-        
-        <div className="bg-white border rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-600 text-sm font-medium">Progress Semester</p>
-              <p className="text-xl font-bold text-gray-900">
-                {Math.round((stats.completedTasks / (stats.activeTasks + stats.completedTasks || 1)) * 100)}%
-              </p>
-            </div>
-            <TrendingUp className="text-blue-600" size={24} />
-          </div>
-        </div>
-      </div>
-
-      {/* Recent Activity */}
-      <div className="bg-white border rounded-lg p-6">
-        <h4 className="text-lg font-semibold mb-4">Aktivitas Terbaru</h4>
-        <div className="space-y-3">
-          {stats.activeTasks > 0 && (
-            <div className="flex items-start gap-3 p-3 bg-blue-50 rounded">
-              <Clock className="text-blue-600 mt-0.5" size={16} />
-              <div>
-                <p className="font-medium">Ada {stats.activeTasks} tugas aktif</p>
-                <p className="text-sm text-gray-600">Mahasiswa sedang mengerjakan tugas</p>
-              </div>
-            </div>
-          )}
-          {stats.pendingGrading > 0 && (
-            <div className="flex items-start gap-3 p-3 bg-orange-50 rounded">
-              <AlertTriangle className="text-orange-600 mt-0.5" size={16} />
-              <div>
-                <p className="font-medium">{stats.pendingGrading} tugas perlu dinilai</p>
-                <p className="text-sm text-gray-600">Tugas menunggu penilaian dari dosen</p>
-              </div>
-            </div>
-          )}
-          {stats.activeGroups > 0 && (
-            <div className="flex items-start gap-3 p-3 bg-green-50 rounded">
-              <Users className="text-green-600 mt-0.5" size={16} />
-              <div>
-                <p className="font-medium">{stats.activeGroups} kelompok aktif</p>
-                <p className="text-sm text-gray-600">Kelompok sedang mengerjakan proyek</p>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="bg-white border rounded-lg p-6">
-        <h4 className="text-lg font-semibold mb-4">Aksi Cepat</h4>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button 
-            onClick={() => setActiveTab('tasks')}
-            className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left"
-          >
-            <FileText className="text-blue-600 mb-2" size={24} />
-            <p className="font-medium">Kelola Tugas Besar</p>
-            <p className="text-sm text-gray-600">Buat dan atur tugas besar</p>
-          </button>
-          <button 
-            onClick={() => setActiveTab('groups')}
-            className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left"
-          >
-            <Users className="text-green-600 mb-2" size={24} />
-            <p className="font-medium">Kelola Kelompok</p>
-            <p className="text-sm text-gray-600">Atur kelompok mahasiswa</p>
-          </button>
-          <button 
-            onClick={() => setActiveTab('grading')}
-            className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left"
-          >
-            <Star className="text-purple-600 mb-2" size={24} />
-            <p className="font-medium">Input Penilaian</p>
-            <p className="text-sm text-gray-600">Berikan nilai dan feedback</p>
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+  const handleNavigateToGrading = (taskId, taskTitle) => {
+    setActiveTab('grading');
+    // Pass taskId to GradingManagement via state or props
+    // GradingManagement will handle the taskId internally
+  };
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'overview':
-        return <CourseOverview course={course} stats={stats} />;
       case 'tasks':
         return (
           <DosenTaskManagement 
             courseId={courseId}
             courseName={course?.name}
-            classId={classId}
-            className={className}
+            classId={resolvedClassId || course?.classId}
+            className={resolvedClassName || course?.selectedClass}
+            onNavigateToGroups={handleNavigateToGroups}
+            onNavigateToGrading={handleNavigateToGrading}
+            onNavigateToExport={(taskId, taskTitle) => {
+              // Export functionality will be handled in TaskManagement
+            }}
           />
         );
       case 'groups':
         return (
           <DosenGroupManagement 
             courseId={courseId}
-            classId={classId}
+            classId={resolvedClassId || course?.classId}
             courseName={course?.name}
-            className={course?.selectedClass}
+            className={resolvedClassName || course?.selectedClass}
           />
         );
       case 'grading':
@@ -415,10 +260,24 @@ const CourseDetail = () => {
           <DosenGradingManagement 
             courseId={courseId}
             courseName={course?.name}
+            taskId={null}
+            classId={resolvedClassId || course?.classId}
           />
         );
       default:
-        return <CourseOverview course={course} stats={stats} />;
+        return (
+          <DosenTaskManagement 
+            courseId={courseId}
+            courseName={course?.name}
+            classId={resolvedClassId || course?.classId}
+            className={resolvedClassName || course?.selectedClass}
+            onNavigateToGroups={handleNavigateToGroups}
+            onNavigateToGrading={handleNavigateToGrading}
+            onNavigateToExport={(taskId, taskTitle) => {
+              // Export functionality will be handled in TaskManagement
+            }}
+          />
+        );
     }
   };
 
@@ -533,19 +392,9 @@ const CourseDetail = () => {
             </div>
           </div>
 
-          {/* Tab Navigation */}
+          {/* Tab Navigation - Overview removed */}
           <div className="bg-white rounded-lg shadow border mb-6">
             <div className="flex border-b">
-              <button 
-                onClick={() => setActiveTab('overview')}
-                className={`px-6 py-3 font-medium transition-colors ${
-                  activeTab === 'overview' 
-                    ? 'border-b-2 border-blue-600 text-blue-600' 
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                Overview
-              </button>
               <button 
                 onClick={() => setActiveTab('tasks')}
                 className={`px-6 py-3 font-medium transition-colors ${

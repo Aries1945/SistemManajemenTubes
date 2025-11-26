@@ -5,8 +5,7 @@ const CreateDosenModal = ({ isOpen, onClose, onSubmit }) => {
   const [formData, setFormData] = useState({
     email: '',
     nip: '',
-    nama_lengkap: '',
-    departemen: ''
+    nama_lengkap: ''
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -36,11 +35,6 @@ const CreateDosenModal = ({ isOpen, onClose, onSubmit }) => {
       errors.nama_lengkap = 'Nama lengkap wajib diisi';
     } else if (formData.nama_lengkap.length > 255) {
       errors.nama_lengkap = 'Nama lengkap tidak boleh lebih dari 255 karakter';
-    }
-    
-    // Departemen validation (optional)
-    if (formData.departemen && formData.departemen.length > 100) {
-      errors.departemen = 'Departemen tidak boleh lebih dari 100 karakter';
     }
     
     setFieldErrors(errors);
@@ -90,8 +84,7 @@ const CreateDosenModal = ({ isOpen, onClose, onSubmit }) => {
       setFormData({
         email: '',
         nip: '',
-        nama_lengkap: '',
-        departemen: ''
+        nama_lengkap: ''
       });
       setFieldErrors({});
     } catch (err) {
@@ -179,24 +172,6 @@ const CreateDosenModal = ({ isOpen, onClose, onSubmit }) => {
               />
               {fieldErrors.nama_lengkap && (
                 <p className="mt-1 text-xs text-red-500">{fieldErrors.nama_lengkap}</p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Departemen
-              </label>
-              <input
-                type="text"
-                name="departemen"
-                value={formData.departemen}
-                onChange={handleChange}
-                maxLength={100}
-                className={`w-full px-3 py-2 border ${fieldErrors.departemen ? 'border-red-500' : 'border-gray-300'} rounded-md focus:ring-purple-500 focus:border-purple-500`}
-                placeholder="Departemen/Fakultas (opsional)"
-              />
-              {fieldErrors.departemen && (
-                <p className="mt-1 text-xs text-red-500">{fieldErrors.departemen}</p>
               )}
             </div>
           </div>

@@ -10,54 +10,80 @@ router.use(authorizeRole(['admin']));
 // GET all users - exclude admin users
 router.get('/users', async (req, res) => {
   try {
-    // Query excludes users with role 'admin' and includes profile data
-    const result = await pool.query(`
-      SELECT u.id, u.email, u.role, u.created_at,
-             CASE 
-               WHEN u.role = 'dosen' THEN d.is_active
-               WHEN u.role = 'mahasiswa' THEN m.is_active
-               ELSE true
-             END as is_active,
-             CASE 
-               WHEN u.role = 'dosen' THEN d.nama_lengkap
-               WHEN u.role = 'mahasiswa' THEN m.nama_lengkap
-               ELSE 'Admin'
-             END as nama_lengkap,
-             CASE 
-               WHEN u.role = 'dosen' THEN d.nip
-               WHEN u.role = 'mahasiswa' THEN m.nim
-               ELSE NULL
-             END as identifier
+    // Simplified query that directly fetches all users with their profiles
+    // Note: is_active is in profile tables, not in users table
+    const query = `
+      SELECT 
+        u.id, 
+        u.email, 
+        u.role, 
+        u.created_at,
+        COALESCE(
+          CASE 
+            WHEN u.role = 'dosen' THEN d.is_active
+            WHEN u.role = 'mahasiswa' THEN m.is_active
+            ELSE true
+          END,
+          true
+        ) as is_active,
+        COALESCE(
+          CASE 
+            WHEN u.role = 'dosen' THEN d.nama_lengkap
+            WHEN u.role = 'mahasiswa' THEN m.nama_lengkap
+            ELSE NULL
+          END,
+          u.email
+        ) as nama_lengkap,
+        CASE 
+          WHEN u.role = 'dosen' THEN d.nip
+          WHEN u.role = 'mahasiswa' THEN m.nim
+          ELSE NULL
+        END as identifier
       FROM users u
-      LEFT JOIN dosen_profiles d ON u.id = d.user_id AND u.role = 'dosen'
-      LEFT JOIN mahasiswa_profiles m ON u.id = m.user_id AND u.role = 'mahasiswa'
+      LEFT JOIN dosen_profiles d ON u.id = d.user_id
+      LEFT JOIN mahasiswa_profiles m ON u.id = m.user_id
       WHERE u.role != 'admin'
       ORDER BY u.created_at DESC
-    `);
+    `;
+    
+    console.log('Fetching users from database...');
+    const result = await pool.query(query);
+    console.log(`Found ${result.rows.length} users in database`);
     
     // Transform data for frontend
-    const users = result.rows.map(user => ({
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      is_active: user.is_active,
-      created_at: user.created_at,
-      nama_lengkap: user.nama_lengkap,
-      nip: user.role === 'dosen' ? user.identifier : null,
-      nim: user.role === 'mahasiswa' ? user.identifier : null,
-      status: user.is_active ? 'active' : 'inactive'
-    }));
+    const users = result.rows.map(user => {
+      const transformed = {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        is_active: user.is_active !== null && user.is_active !== undefined ? Boolean(user.is_active) : true,
+        created_at: user.created_at,
+        nama_lengkap: user.nama_lengkap || user.email,
+        nip: user.role === 'dosen' ? user.identifier : null,
+        npm: user.role === 'mahasiswa' ? user.identifier : null,
+        nim: user.role === 'mahasiswa' ? user.identifier : null, // Keep for backward compatibility
+        status: (user.is_active !== null && user.is_active !== undefined ? Boolean(user.is_active) : true) ? 'active' : 'inactive'
+      };
+      return transformed;
+    });
     
+    console.log(`Returning ${users.length} users to frontend`);
     res.json(users);
   } catch (error) {
     console.error('Error fetching users:', error);
-    res.status(500).json({ error: 'Server error', details: error.message });
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ 
+      error: 'Server error', 
+      details: error.message,
+      hint: 'Check server console for more details'
+    });
   }
 });
 
 // POST create dosen account
 router.post('/dosen', async (req, res) => {
-  const { email, nip, nama_lengkap, departemen } = req.body;
+  const { email, nip, nama_lengkap } = req.body;
   
   // Validate required fields
   if (!email || !nip || !nama_lengkap) {
@@ -75,10 +101,6 @@ router.post('/dosen', async (req, res) => {
   
   if (nama_lengkap.length > 255) {
     return res.status(400).json({ error: 'Nama lengkap cannot exceed 255 characters' });
-  }
-  
-  if (departemen && departemen.length > 100) {
-    return res.status(400).json({ error: 'Departemen cannot exceed 100 characters' });
   }
   
   const client = await pool.connect();
@@ -99,11 +121,11 @@ router.post('/dosen', async (req, res) => {
     
     const userId = userResult.rows[0].id;
     
-    // Then create dosen profile with is_active set to true
+    // Then create dosen profile with is_active set to true (departemen removed)
     await client.query(
-      `INSERT INTO dosen_profiles (user_id, nip, nama_lengkap, departemen, is_active) 
-       VALUES ($1, $2, $3, $4, true)`,
-      [userId, nip, nama_lengkap, departemen || null]
+      `INSERT INTO dosen_profiles (user_id, nip, nama_lengkap, is_active) 
+       VALUES ($1, $2, $3, true)`,
+      [userId, nip, nama_lengkap]
     );
     
     await client.query('COMMIT');
@@ -133,16 +155,16 @@ router.post('/dosen', async (req, res) => {
 
 // POST create mahasiswa account
 router.post('/mahasiswa', async (req, res) => {
-  const { email, nim, nama_lengkap, angkatan } = req.body;
+  const { email, npm, nama_lengkap } = req.body;
   
   // Validate required fields
-  if (!email || !nim || !nama_lengkap) {
-    return res.status(400).json({ error: 'Email, NIM, and nama_lengkap are required' });
+  if (!email || !npm || !nama_lengkap) {
+    return res.status(400).json({ error: 'Email, NPM, and nama_lengkap are required' });
   }
   
   // Validate field lengths
-  if (nim.length > 10) {
-    return res.status(400).json({ error: 'NIM cannot exceed 10 characters' });
+  if (npm.length > 20) {
+    return res.status(400).json({ error: 'NPM cannot exceed 20 characters' });
   }
   
   if (email.length > 255) {
@@ -171,18 +193,18 @@ router.post('/mahasiswa', async (req, res) => {
     
     const userId = userResult.rows[0].id;
     
-    // Then create mahasiswa profile with is_active set to true
+    // Then create mahasiswa profile with is_active set to true (angkatan removed, npm stored as nim in DB)
     await client.query(
-      `INSERT INTO mahasiswa_profiles (user_id, nim, nama_lengkap, angkatan, is_active) 
-       VALUES ($1, $2, $3, $4, true)`,
-      [userId, nim, nama_lengkap, angkatan || null]
+      `INSERT INTO mahasiswa_profiles (user_id, nim, nama_lengkap, is_active) 
+       VALUES ($1, $2, $3, true)`,
+      [userId, npm, nama_lengkap]
     );
     
     await client.query('COMMIT');
     
     res.status(201).json({ 
       message: 'Mahasiswa account created successfully',
-      user: { id: userId, email, role: 'mahasiswa', nim, nama_lengkap }
+      user: { id: userId, email, role: 'mahasiswa', npm, nama_lengkap }
     });
   } catch (error) {
     await client.query('ROLLBACK');
@@ -193,7 +215,7 @@ router.post('/mahasiswa', async (req, res) => {
       if (error.constraint.includes('email')) {
         return res.status(400).json({ error: 'Email already in use' });
       } else if (error.constraint.includes('nim')) {
-        return res.status(400).json({ error: 'NIM already in use' });
+        return res.status(400).json({ error: 'NPM already in use' });
       }
     }
     
@@ -205,6 +227,126 @@ router.post('/mahasiswa', async (req, res) => {
     res.status(500).json({ error: 'Failed to create mahasiswa account' });
   } finally {
     client.release();
+  }
+});
+
+// PUT update dosen
+router.put('/dosen/:userId', async (req, res) => {
+  try {
+    const userId = parseInt(req.params.userId);
+    const { nama_lengkap, nip } = req.body;
+    
+    if (!nama_lengkap) {
+      return res.status(400).json({ error: 'Nama lengkap wajib diisi' });
+    }
+    
+    if (!nip) {
+      return res.status(400).json({ error: 'NIP wajib diisi' });
+    }
+    
+    // Check if user exists and is dosen
+    const userCheck = await pool.query(
+      'SELECT role FROM users WHERE id = $1',
+      [userId]
+    );
+    
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'User tidak ditemukan' });
+    }
+    
+    if (userCheck.rows[0].role !== 'dosen') {
+      return res.status(400).json({ error: 'User bukan dosen' });
+    }
+    
+    // Update dosen profile
+    const result = await pool.query(
+      'UPDATE dosen_profiles SET nama_lengkap = $1, nip = $2 WHERE user_id = $3 RETURNING nama_lengkap, nip',
+      [nama_lengkap, nip, userId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Profil dosen tidak ditemukan' });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Dosen berhasil diperbarui',
+      user: {
+        id: userId,
+        nama_lengkap: result.rows[0].nama_lengkap,
+        nip: result.rows[0].nip
+      }
+    });
+  } catch (error) {
+    console.error('Error updating dosen:', error);
+    
+    if (error.code === '23505') { // Unique violation
+      if (error.constraint.includes('nip')) {
+        return res.status(400).json({ error: 'NIP sudah digunakan' });
+      }
+    }
+    
+    res.status(500).json({ error: 'Gagal memperbarui dosen: ' + error.message });
+  }
+});
+
+// PUT update mahasiswa
+router.put('/mahasiswa/:userId', async (req, res) => {
+  try {
+    const userId = parseInt(req.params.userId);
+    const { nama_lengkap, npm } = req.body;
+    
+    if (!nama_lengkap) {
+      return res.status(400).json({ error: 'Nama lengkap wajib diisi' });
+    }
+    
+    if (!npm) {
+      return res.status(400).json({ error: 'NPM wajib diisi' });
+    }
+    
+    // Check if user exists and is mahasiswa
+    const userCheck = await pool.query(
+      'SELECT role FROM users WHERE id = $1',
+      [userId]
+    );
+    
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'User tidak ditemukan' });
+    }
+    
+    if (userCheck.rows[0].role !== 'mahasiswa') {
+      return res.status(400).json({ error: 'User bukan mahasiswa' });
+    }
+    
+    // Update mahasiswa profile (npm stored as nim in DB)
+    const result = await pool.query(
+      'UPDATE mahasiswa_profiles SET nama_lengkap = $1, nim = $2 WHERE user_id = $3 RETURNING nama_lengkap, nim',
+      [nama_lengkap, npm, userId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Profil mahasiswa tidak ditemukan' });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Mahasiswa berhasil diperbarui',
+      user: {
+        id: userId,
+        nama_lengkap: result.rows[0].nama_lengkap,
+        npm: result.rows[0].nim
+      }
+    });
+  } catch (error) {
+    console.error('Error updating mahasiswa:', error);
+    
+    if (error.code === '23505') { // Unique violation
+      if (error.constraint.includes('nim')) {
+        return res.status(400).json({ error: 'NPM sudah digunakan' });
+      }
+    }
+    
+    res.status(500).json({ error: 'Gagal memperbarui mahasiswa: ' + error.message });
   }
 });
 
@@ -222,24 +364,24 @@ router.post('/mahasiswa/bulk', async (req, res) => {
   // Process each student individually to avoid transaction conflicts
   for (let i = 0; i < students.length; i++) {
     const student = students[i];
-    const { email, nim, nama_lengkap, angkatan } = student;
+    const { email, npm, nama_lengkap } = student;
     
     // Validate required fields for each student
-    if (!email || !nim || !nama_lengkap) {
+    if (!email || !npm || !nama_lengkap) {
       errors.push({
         row: i + 1,
         data: student,
-        error: 'Email, NIM, and nama_lengkap are required'
+        error: 'Email, NPM, and nama_lengkap are required'
       });
       continue;
     }
 
     // Validate field lengths
-    if (nim.length > 10) {
+    if (npm.length > 20) {
       errors.push({
         row: i + 1,
         data: student,
-        error: 'NIM cannot exceed 10 characters'
+        error: 'NPM cannot exceed 20 characters'
       });
       continue;
     }
@@ -278,7 +420,7 @@ router.post('/mahasiswa/bulk', async (req, res) => {
     try {
       await client.query('BEGIN');
 
-      // Check if email or NIM already exists
+      // Check if email or NPM already exists
       const existingCheck = await client.query(`
         SELECT 
           u.email,
@@ -286,7 +428,7 @@ router.post('/mahasiswa/bulk', async (req, res) => {
         FROM users u
         LEFT JOIN mahasiswa_profiles m ON u.id = m.user_id
         WHERE u.email = $1 OR m.nim = $2
-      `, [email, nim]);
+      `, [email, npm]);
 
       if (existingCheck.rows.length > 0) {
         const existing = existingCheck.rows[0];
@@ -296,11 +438,11 @@ router.post('/mahasiswa/bulk', async (req, res) => {
             data: student,
             error: 'Email already exists'
           });
-        } else if (existing.nim === nim) {
+        } else if (existing.nim === npm) {
           errors.push({
             row: i + 1,
             data: student,
-            error: 'NIM already exists'
+            error: 'NPM already exists'
           });
         }
         await client.query('ROLLBACK');
@@ -320,11 +462,11 @@ router.post('/mahasiswa/bulk', async (req, res) => {
 
       const userId = userResult.rows[0].id;
 
-      // Create mahasiswa profile
+      // Create mahasiswa profile (angkatan removed, npm stored as nim in DB)
       await client.query(
-        `INSERT INTO mahasiswa_profiles (user_id, nim, nama_lengkap, angkatan, is_active) 
-         VALUES ($1, $2, $3, $4, true)`,
-        [userId, nim, nama_lengkap, angkatan || null]
+        `INSERT INTO mahasiswa_profiles (user_id, nim, nama_lengkap, is_active) 
+         VALUES ($1, $2, $3, true)`,
+        [userId, npm, nama_lengkap]
       );
 
       await client.query('COMMIT');
@@ -333,9 +475,8 @@ router.post('/mahasiswa/bulk', async (req, res) => {
         id: userId,
         email,
         role: 'mahasiswa',
-        nim,
+        npm,
         nama_lengkap,
-        angkatan,
         is_active: true
       });
 
@@ -349,7 +490,7 @@ router.post('/mahasiswa/bulk', async (req, res) => {
         if (error.constraint && error.constraint.includes('email')) {
           errorMessage = 'Email already exists';
         } else if (error.constraint && error.constraint.includes('nim')) {
-          errorMessage = 'NIM already exists';
+          errorMessage = 'NPM already exists';
         }
       } else if (error.code === '22001') { // Character length error
         errorMessage = 'One of the fields exceeds the maximum allowed length';
@@ -566,13 +707,28 @@ router.post('/course-names', async (req, res) => {
   }
 });
 
-// GET all courses (modify this to use your existing table structure)
+// GET all courses (join with course_name to get kode, nama, sks)
 router.get('/courses', async (req, res) => {
   try {
-    // Use the actual columns that exist in your database
+    // Join with course_name to get kode, nama, sks
     const result = await pool.query(`
-      SELECT c.*, d.user_id as dosen_id, d.nama_lengkap as dosen_nama, d.nip as dosen_nip
+      SELECT 
+        c.id,
+        c.course_name_id,
+        c.dosen_id,
+        c.semester,
+        c.tahun_ajaran,
+        c.status,
+        c.deskripsi,
+        c.created_at,
+        c.updated_at,
+        cn.kode,
+        cn.nama,
+        cn.sks,
+        d.nama_lengkap as dosen_nama,
+        d.nip as dosen_nip
       FROM courses c
+      LEFT JOIN course_name cn ON c.course_name_id = cn.id
       LEFT JOIN dosen_profiles d ON c.dosen_id = d.user_id
       ORDER BY c.created_at DESC
     `);
@@ -619,18 +775,15 @@ router.post('/courses', async (req, res) => {
     
     const courseDetails = courseNameResult.rows[0];
     
-    // Insert into courses with values from course_name
+    // Insert into courses (kode, nama, sks are in course_name, not in courses)
     const result = await client.query(
       `INSERT INTO courses (
-        kode, nama, sks, course_name_id, dosen_id, semester, 
+        course_name_id, dosen_id, semester, 
         tahun_ajaran, deskripsi, status
       ) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'active') 
+      VALUES ($1, $2, $3, $4, $5, 'active') 
       RETURNING *`,
       [
-        courseDetails.kode, 
-        courseDetails.nama, 
-        courseDetails.sks, 
         course_name_id, 
         dosen_id || null, 
         semester, 
@@ -658,9 +811,7 @@ router.post('/courses', async (req, res) => {
 router.patch('/courses/:id', async (req, res) => {
   const { id } = req.params;
   const { 
-    kode, 
-    nama, 
-    sks, 
+    course_name_id,  // If updating course_name reference
     dosen_id, 
     semester, 
     tahun_ajaran, 
@@ -670,23 +821,14 @@ router.patch('/courses/:id', async (req, res) => {
   
   try {
     // Build the query dynamically based on provided fields
+    // Note: kode, nama, sks are in course_name table, not in courses table
     let updateFields = [];
     let params = [];
     let paramCounter = 1;
     
-    if (kode !== undefined) {
-      updateFields.push(`kode = $${paramCounter++}`);
-      params.push(kode);
-    }
-    
-    if (nama !== undefined) {
-      updateFields.push(`nama = $${paramCounter++}`);
-      params.push(nama);
-    }
-    
-    if (sks !== undefined) {
-      updateFields.push(`sks = $${paramCounter++}`);
-      params.push(sks);
+    if (course_name_id !== undefined) {
+      updateFields.push(`course_name_id = $${paramCounter++}`);
+      params.push(course_name_id);
     }
     
     if (dosen_id !== undefined) {
@@ -717,6 +859,9 @@ router.patch('/courses/:id', async (req, res) => {
     if (updateFields.length === 0) {
       return res.status(400).json({ error: 'No fields to update' });
     }
+    
+    // Add updated_at
+    updateFields.push(`updated_at = CURRENT_TIMESTAMP`);
     
     // Add the id as the last parameter
     params.push(id);
@@ -756,15 +901,7 @@ router.patch('/courses/:id', async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating course:', error);
-    
-    // Handle unique constraint violations
-    if (error.code === '23505') {
-      if (error.constraint.includes('kode')) {
-        return res.status(400).json({ error: 'Kode mata kuliah sudah digunakan' });
-      }
-    }
-    
-    res.status(500).json({ error: 'Failed to update course' });
+    res.status(500).json({ error: 'Failed to update course: ' + error.message });
   }
 });
 
@@ -883,7 +1020,7 @@ router.get('/courses/:courseId/classes', async (req, res) => {
   
   try {
     const result = await pool.query(`
-      SELECT c.*, 
+      SELECT c.id, c.nama, c.kode, c.kapasitas, c.dosen_id, c.course_id, c.created_at, c.updated_at,
              d.nama_lengkap AS dosen_nama,
              d.nip AS dosen_nip,
              (SELECT COUNT(*) FROM class_enrollments ce WHERE ce.class_id = c.id) AS jumlah_mahasiswa
@@ -903,7 +1040,7 @@ router.get('/courses/:courseId/classes', async (req, res) => {
 // POST create a new class for a course
 router.post('/courses/:courseId/classes', async (req, res) => {
   const { courseId } = req.params;
-  const { dosen_id, nama, kode, kapasitas, ruangan, jadwal } = req.body;
+  const { dosen_id, nama, kode, kapasitas } = req.body;
   
   // Validate required fields
   if (!nama) {
@@ -918,12 +1055,12 @@ router.post('/courses/:courseId/classes', async (req, res) => {
       return res.status(404).json({ error: 'Mata kuliah tidak ditemukan' });
     }
     
-    // Create the class
+    // Create the class (ruangan and jadwal removed)
     const result = await pool.query(`
-      INSERT INTO classes (course_id, dosen_id, nama, kode, kapasitas, ruangan, jadwal)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
-      RETURNING *
-    `, [courseId, dosen_id || null, nama, kode || null, kapasitas || 40, ruangan || null, jadwal || null]);
+      INSERT INTO classes (course_id, dosen_id, nama, kode, kapasitas)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING id, course_id, dosen_id, nama, kode, kapasitas, created_at, updated_at
+    `, [courseId, dosen_id || null, nama, kode || null, kapasitas || 40]);
     
     const newClass = result.rows[0];
     
@@ -955,10 +1092,11 @@ router.get('/classes/:classId/students', async (req, res) => {
   const { classId } = req.params;
   
   try {
+    // Note: angkatan column removed, using nim (stored as npm in frontend)
     const result = await pool.query(`
       SELECT ce.id AS enrollment_id, ce.status, ce.enrolled_at, ce.nilai_akhir,
              u.id AS user_id, u.email, u.role,
-             m.nama_lengkap, m.nim, m.angkatan
+             m.nama_lengkap, m.nim
       FROM class_enrollments ce
       JOIN users u ON ce.mahasiswa_id = u.id
       JOIN mahasiswa_profiles m ON u.id = m.user_id
@@ -969,7 +1107,7 @@ router.get('/classes/:classId/students', async (req, res) => {
     res.json(result.rows);
   } catch (error) {
     console.error('Error fetching class students:', error);
-    res.status(500).json({ error: 'Failed to fetch students' });
+    res.status(500).json({ error: 'Failed to fetch students: ' + error.message });
   }
 });
 
@@ -988,7 +1126,7 @@ router.post('/classes/:classId/enrollments', async (req, res) => {
     await client.query('BEGIN');
     
     // Check if the class exists
-    const classCheck = await client.query('SELECT * FROM classes WHERE id = $1', [classId]);
+    const classCheck = await client.query('SELECT id FROM classes WHERE id = $1', [classId]);
     
     if (classCheck.rows.length === 0) {
       await client.query('ROLLBACK');
@@ -1013,29 +1151,13 @@ router.post('/classes/:classId/enrollments', async (req, res) => {
       [classId, mahasiswa_id]
     );
     
+    // Check if student is already enrolled in this specific class
     if (enrollmentCheck.rows.length > 0) {
       await client.query('ROLLBACK');
       return res.status(400).json({ error: 'Mahasiswa sudah terdaftar di kelas ini' });
     }
 
-    // Check if student is already enrolled in another class with the same course
-    const courseEnrollmentCheck = await client.query(`
-      SELECT c1.nama as class_name, c2.nama as course_name, c2.kode as course_code
-      FROM class_enrollments ce
-      JOIN classes c1 ON ce.class_id = c1.id
-      JOIN courses c2 ON c1.course_id = c2.id
-      WHERE ce.mahasiswa_id = $1 
-        AND c1.course_id = (SELECT course_id FROM classes WHERE id = $2)
-        AND ce.status = 'active'
-    `, [mahasiswa_id, classId]);
-    
-    if (courseEnrollmentCheck.rows.length > 0) {
-      await client.query('ROLLBACK');
-      const existingEnrollment = courseEnrollmentCheck.rows[0];
-      return res.status(400).json({ 
-        error: `Mahasiswa sudah terdaftar di kelas "${existingEnrollment.class_name}" untuk mata kuliah "${existingEnrollment.course_name} (${existingEnrollment.course_code})". Satu mahasiswa hanya bisa terdaftar di satu kelas per mata kuliah.` 
-      });
-    }
+    // Note: Removed restriction - students can now enroll in multiple classes, even for the same course
     
     // Check if class is at capacity
     const currentEnrollments = await client.query(
@@ -1114,28 +1236,41 @@ router.delete('/classes/:classId/enrollments/:enrollmentId', async (req, res) =>
 // GET list of all classes (for dropdown/selection)
 router.get('/classes', async (req, res) => {
   try {
+    // Join with course_name to get kode, nama, sks
     const result = await pool.query(`
-      SELECT c.id, c.nama, c.kode, c.jadwal, c.ruangan,
-             co.nama AS course_nama, co.kode AS course_kode,
-             d.nama_lengkap AS dosen_nama,
-             (SELECT COUNT(*) FROM class_enrollments ce WHERE ce.class_id = c.id) AS jumlah_mahasiswa
+      SELECT 
+        c.id, 
+        c.nama, 
+        c.kode,
+        c.course_id,
+        c.dosen_id,
+        c.kapasitas,
+        c.created_at,
+        c.updated_at,
+        cn.nama AS course_nama, 
+        cn.kode AS course_kode,
+        cn.sks AS course_sks,
+        d.nama_lengkap AS dosen_nama,
+        d.nip AS dosen_nip,
+        (SELECT COUNT(*) FROM class_enrollments ce WHERE ce.class_id = c.id) AS jumlah_mahasiswa
       FROM classes c
       JOIN courses co ON c.course_id = co.id
+      LEFT JOIN course_name cn ON co.course_name_id = cn.id
       LEFT JOIN dosen_profiles d ON c.dosen_id = d.user_id
-      ORDER BY co.nama ASC, c.nama ASC
+      ORDER BY cn.nama ASC, c.nama ASC
     `);
     
     res.json(result.rows);
   } catch (error) {
     console.error('Error fetching classes:', error);
-    res.status(500).json({ error: 'Failed to fetch classes' });
+    res.status(500).json({ error: 'Failed to fetch classes: ' + error.message });
   }
 });
 
 // PATCH update class details
 router.patch('/classes/:classId', async (req, res) => {
   const { classId } = req.params;
-  const { dosen_id, nama, kode, kapasitas, ruangan, jadwal } = req.body;
+  const { dosen_id, nama, kode, kapasitas } = req.body;
   
   // Build update query dynamically
   let updateFields = [];
@@ -1162,16 +1297,6 @@ router.patch('/classes/:classId', async (req, res) => {
     params.push(kapasitas);
   }
   
-  if (ruangan !== undefined) {
-    updateFields.push(`ruangan = $${paramCount++}`);
-    params.push(ruangan);
-  }
-  
-  if (jadwal !== undefined) {
-    updateFields.push(`jadwal = $${paramCount++}`);
-    params.push(jadwal);
-  }
-  
   if (updateFields.length === 0) {
     return res.status(400).json({ error: 'No fields to update' });
   }
@@ -1183,7 +1308,7 @@ router.patch('/classes/:classId', async (req, res) => {
       UPDATE classes
       SET ${updateFields.join(', ')}
       WHERE id = $1
-      RETURNING *
+      RETURNING id, course_id, dosen_id, nama, kode, kapasitas, created_at, updated_at
     `, params);
     
     if (result.rows.length === 0) {
@@ -1192,7 +1317,7 @@ router.patch('/classes/:classId', async (req, res) => {
     
     // Get updated class with additional info
     const updatedClass = await pool.query(`
-      SELECT c.*, 
+      SELECT c.id, c.nama, c.kode, c.kapasitas, c.dosen_id, c.course_id, c.created_at, c.updated_at,
              d.nama_lengkap AS dosen_nama,
              d.nip AS dosen_nip,
              (SELECT COUNT(*) FROM class_enrollments ce WHERE ce.class_id = c.id) AS jumlah_mahasiswa
@@ -1221,7 +1346,7 @@ router.delete('/classes/:classId', async (req, res) => {
     await client.query('BEGIN');
     
     // Check if class exists
-    const classCheck = await client.query('SELECT * FROM classes WHERE id = $1', [classId]);
+    const classCheck = await client.query('SELECT id FROM classes WHERE id = $1', [classId]);
     
     if (classCheck.rows.length === 0) {
       await client.query('ROLLBACK');

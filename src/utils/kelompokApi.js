@@ -33,20 +33,34 @@ const makeRequest = async (url, options = {}) => {let token = localStorage.getIt
 };
 
 // Get all kelompok for a tugas
-export const getKelompok = async (tugasId) => {const data = await makeRequest(`${API_BASE_URL}/auth/dosen/tugas-besar/${tugasId}/kelompok`);// Transform data untuk compatibility dengan frontend
-  const transformedKelompok = (data.kelompok || []).map(group => {return {
+export const getKelompok = async (tugasId) => {
+  const data = await makeRequest(`${API_BASE_URL}/auth/dosen/tugas-besar/${tugasId}/kelompok`);
+  
+  // Transform data untuk compatibility dengan frontend
+  const transformedKelompok = (data.kelompok || []).map(group => {
+    // Ensure members is an array and filter out null members
+    let members = group.members || [];
+    if (Array.isArray(members)) {
+      members = members.filter(m => m && m.id !== null && m.id !== undefined);
+    } else {
+      members = [];
+    }
+    
+    return {
       // Keep original fields
       ...group,
       // Add transformed fields untuk compatibility
       taskId: group.tugas_besar_id || group.taskId,
       name: group.nama_kelompok || group.name,
-      leaderId: group.leader_id || group.leaderId || (group.members && group.members.find(m => m.role === 'leader')?.id),
-      members: group.members || [],
+      leaderId: group.leader_id || group.leaderId || (members.find(m => m.role === 'leader')?.id),
+      members: members,
       createdBy: group.created_by || group.createdBy,
       creationMethod: group.creation_method || group.creationMethod,
       createdAt: group.created_at || group.createdAt
     };
-  });// Return proper response structure expected by DosenGroupManagement
+  });
+  
+  // Return proper response structure expected by DosenGroupManagement
   return {
     success: data.success || (data.kelompok !== undefined),
     data: transformedKelompok,
@@ -136,5 +150,22 @@ export const leaveStudentGroup = async (kelompokId) => {
 // For mahasiswa - get current group for a tugas besar
 export const getCurrentGroup = async (tugasId) => {
   const data = await makeRequest(`${API_BASE_URL}/auth/mahasiswa/tugas-besar/${tugasId}/kelompok-current`);
+  return data;
+};
+
+// Add member to kelompok (dosen only, manual grouping)
+export const addMemberToKelompok = async (kelompokId, memberId) => {
+  const data = await makeRequest(`${API_BASE_URL}/auth/dosen/kelompok/${kelompokId}/members`, {
+    method: 'POST',
+    body: JSON.stringify({ memberId }),
+  });
+  return data;
+};
+
+// Remove member from kelompok (dosen only, manual grouping)
+export const removeMemberFromKelompok = async (kelompokId, memberId) => {
+  const data = await makeRequest(`${API_BASE_URL}/auth/dosen/kelompok/${kelompokId}/members/${memberId}`, {
+    method: 'DELETE',
+  });
   return data;
 };

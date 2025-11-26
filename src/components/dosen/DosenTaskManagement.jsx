@@ -14,7 +14,16 @@ import {
   deleteTugasBesar
 } from '../../utils/tugasBesarApi';
 
-const DosenTaskManagement = ({ courseId, courseName, classId, className, onNavigateToGroupManagement }) => {
+const DosenTaskManagement = ({ 
+  courseId, 
+  courseName, 
+  classId, 
+  className, 
+  onNavigateToGroupManagement,
+  onNavigateToGroups,
+  onNavigateToGrading,
+  onNavigateToExport
+}) => {
   const [activeView, setActiveView] = useState('list'); // 'list', 'create', 'edit', 'detail'
   const [selectedTask, setSelectedTask] = useState(null);
   
@@ -31,6 +40,71 @@ const DosenTaskManagement = ({ courseId, courseName, classId, className, onNavig
       student_choice: 'Pilihan Mahasiswa'
     };
     return methodMap[groupFormation] || 'Tidak Diketahui';
+  };
+
+  // Export data function
+  const handleExportData = async (task) => {
+    try {
+      // Create CSV content
+      const csvRows = [];
+      
+      // Header
+      csvRows.push(['Tugas Besar', task.title]);
+      csvRows.push(['Deskripsi', task.description]);
+      csvRows.push(['Tanggal Mulai', task.startDate ? new Date(task.startDate).toLocaleDateString('id-ID') : 'N/A']);
+      csvRows.push(['Deadline', task.endDate ? new Date(task.endDate).toLocaleDateString('id-ID') : 'N/A']);
+      csvRows.push(['Sistem Pengelompokan', formatSistemPengelompokan(task.groupFormation)]);
+      csvRows.push(['Ukuran Kelompok', `${task.minGroupSize} - ${task.maxGroupSize} orang`]);
+      csvRows.push([]);
+      
+      // Komponen Penilaian
+      csvRows.push(['Komponen Penilaian']);
+      csvRows.push(['Nama', 'Bobot (%)', 'Deadline']);
+      if (task.components && task.components.length > 0) {
+        task.components.forEach(comp => {
+          csvRows.push([
+            comp.name || comp.nama || '',
+            comp.weight || comp.bobot || 0,
+            comp.deadline ? new Date(comp.deadline).toLocaleDateString('id-ID') : 'N/A'
+          ]);
+        });
+      } else {
+        csvRows.push(['Tidak ada komponen penilaian']);
+      }
+      csvRows.push([]);
+      
+      // Deliverables
+      csvRows.push(['Deliverables']);
+      if (task.deliverables && task.deliverables.length > 0) {
+        task.deliverables.forEach((item, index) => {
+          csvRows.push([`${index + 1}. ${item}`]);
+        });
+      } else {
+        csvRows.push(['Tidak ada deliverables']);
+      }
+      
+      // Convert to CSV string
+      const csvContent = csvRows.map(row => 
+        row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')
+      ).join('\n');
+      
+      // Create blob and download
+      const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `Tugas_Besar_${task.title.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Show success message
+      alert('Data berhasil diekspor!');
+    } catch (error) {
+      console.error('Error exporting data:', error);
+      alert('Gagal mengekspor data: ' + error.message);
+    }
   };
   // Load tugas besar when component mounts
   useEffect(() => {
@@ -50,13 +124,27 @@ const DosenTaskManagement = ({ courseId, courseName, classId, className, onNavig
           title: task.judul || task.title || 'Untitled',
           description: task.deskripsi || task.description || '',
           startDate: task.tanggal_mulai || task.startDate || '',
-          endDate: task.tanggal_selesai || task.endDate || '',
+          endDate: task.tanggal_selesai || task.deadline || task.endDate || '',
           status: task.status || 'active',
           groupFormation: task.grouping_method || task.group_formation || task.groupFormation || 'manual',
           minGroupSize: task.min_group_size || task.minGroupSize || 3,
           maxGroupSize: task.max_group_size || task.maxGroupSize || 5,
           totalGroups: task.total_groups || task.totalGroups || 0,
-          components: (typeof task.komponen === 'string' ? JSON.parse(task.komponen) : task.komponen) || task.components || [],
+          components: (() => {
+            // Parse components from database (handle both string JSON and object)
+            if (task.komponen) {
+              if (typeof task.komponen === 'string') {
+                try {
+                  return JSON.parse(task.komponen);
+                } catch (e) {
+                  return [];
+                }
+              } else if (Array.isArray(task.komponen)) {
+                return task.komponen;
+              }
+            }
+            return task.components || [];
+          })(),
           deliverables: (typeof task.deliverable === 'string' ? JSON.parse(task.deliverable) : task.deliverable) || task.deliverables || [],
           createdAt: task.created_at || task.createdAt || '',
           updatedAt: task.updated_at || task.updatedAt || '',
@@ -178,14 +266,23 @@ const DosenTaskManagement = ({ courseId, courseName, classId, className, onNavig
             <h3 className="text-xl font-semibold">{task.title}</h3>
             <StatusBadge status={task.status} />
           </div>
-          <p className="text-gray-600 mb-4 line-clamp-2">{task.description}</p>
+          <p className="text-gray-600 mb-4 whitespace-pre-wrap">{task.description}</p>
           
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
             <div className="flex items-center gap-2">
               <Calendar className="text-gray-400" size={16} />
               <div>
                 <p className="text-sm text-gray-600">Deadline</p>
-                <p className="font-medium">{task.endDate ? new Date(task.endDate).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A'}</p>
+                <p className="font-medium">
+                  {task.endDate || task.tanggal_selesai || task.deadline 
+                    ? new Date(task.endDate || task.tanggal_selesai || task.deadline).toLocaleDateString('id-ID', { 
+                        timeZone: 'Asia/Jakarta', 
+                        year: 'numeric', 
+                        month: 'short', 
+                        day: 'numeric' 
+                      }) 
+                    : 'N/A'}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -274,22 +371,58 @@ const DosenTaskManagement = ({ courseId, courseName, classId, className, onNavig
           return date.toISOString().split('T')[0];
         };
 
+        // Parse components from database (handle both string JSON and object)
+        let parsedComponents = [];
+        if (selectedTask.komponen) {
+          if (typeof selectedTask.komponen === 'string') {
+            try {
+              parsedComponents = JSON.parse(selectedTask.komponen);
+            } catch (e) {
+              parsedComponents = [];
+            }
+          } else if (Array.isArray(selectedTask.komponen)) {
+            parsedComponents = selectedTask.komponen;
+          }
+        } else if (selectedTask.components) {
+          parsedComponents = Array.isArray(selectedTask.components) ? selectedTask.components : [];
+        }
+        
+        // If no components exist, use empty array (don't add default)
+        if (parsedComponents.length === 0) {
+          parsedComponents = [];
+        }
+        
+        // Parse deliverables from database
+        let parsedDeliverables = [];
+        if (selectedTask.deliverable) {
+          if (typeof selectedTask.deliverable === 'string') {
+            try {
+              parsedDeliverables = JSON.parse(selectedTask.deliverable);
+            } catch (e) {
+              parsedDeliverables = [];
+            }
+          } else if (Array.isArray(selectedTask.deliverable)) {
+            parsedDeliverables = selectedTask.deliverable;
+          }
+        } else if (selectedTask.deliverables) {
+          parsedDeliverables = Array.isArray(selectedTask.deliverables) ? selectedTask.deliverables : [];
+        }
+        
         // Map API data to form format
         return {
           title: selectedTask.judul || selectedTask.title || '',
           description: selectedTask.deskripsi || selectedTask.description || '',
           startDate: formatDateForInput(selectedTask.tanggal_mulai || selectedTask.startDate),
-          endDate: formatDateForInput(selectedTask.tanggal_selesai || selectedTask.endDate),
+          endDate: formatDateForInput(selectedTask.tanggal_selesai || selectedTask.endDate || selectedTask.deadline),
           groupFormation: selectedTask.grouping_method || selectedTask.group_formation || selectedTask.groupFormation || 'manual',
           minGroupSize: selectedTask.min_group_size || selectedTask.minGroupSize || 3,
           maxGroupSize: selectedTask.max_group_size || selectedTask.maxGroupSize || 5,
-          components: (selectedTask.components || [
-            { name: 'Proposal', weight: 20, deadline: '' }
-          ]).map(comp => ({
-            ...comp,
+          components: parsedComponents.map(comp => ({
+            name: comp.name || comp.nama || '',
+            weight: comp.weight || comp.bobot || 0,
             deadline: comp.deadline ? formatDateForInput(comp.deadline) : ''
           })),
-          deliverables: selectedTask.deliverables || ['']
+          deliverables: parsedDeliverables.length > 0 ? parsedDeliverables : ['']
         };
       } else {
         // Default values for new task
@@ -330,12 +463,14 @@ const DosenTaskManagement = ({ courseId, courseName, classId, className, onNavig
 
         if (isEdit && selectedTask) {
           // Update existing task
-          await updateTugasBesar(courseId, selectedTask.id, tugasData);} else {
+          await updateTugasBesar(courseId, selectedTask.id, tugasData);
+        } else {
           // Create new task - Ensure classId is required
           if (!classId) {
-            throw new Error('Class ID is required for creating tugas besar');
+            throw new Error('Class ID is required for creating tugas besar. Silakan kembali ke halaman Mata Kuliah dan pilih kelas terlebih dahulu.');
           }
-          await createTugasBesar(courseId, tugasData);}
+          await createTugasBesar(courseId, tugasData);
+        }
 
         // Reload the task list to show updated data
         await loadTugasBesar();
@@ -758,7 +893,9 @@ const DosenTaskManagement = ({ courseId, courseName, classId, className, onNavig
                 </button>
                 <button 
                   onClick={() => {
-                    if (onNavigateToGroupManagement) {
+                    if (onNavigateToGroups) {
+                      onNavigateToGroups(selectedTask.id, selectedTask.title);
+                    } else if (onNavigateToGroupManagement) {
                       onNavigateToGroupManagement(selectedTask.id, selectedTask.title);
                     }
                   }}
@@ -767,11 +904,23 @@ const DosenTaskManagement = ({ courseId, courseName, classId, className, onNavig
                   <Users size={16} />
                   Kelola Kelompok
                 </button>
-                <button className="w-full bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2">
+                <button 
+                  onClick={() => {
+                    if (onNavigateToGrading) {
+                      onNavigateToGrading(selectedTask.id, selectedTask.title);
+                    }
+                  }}
+                  className="w-full bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
+                >
                   <FileText size={16} />
                   Lihat Penilaian
                 </button>
-                <button className="w-full bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2">
+                <button 
+                  onClick={() => {
+                    handleExportData(selectedTask);
+                  }}
+                  className="w-full bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2"
+                >
                   <Download size={16} />
                   Export Data
                 </button>

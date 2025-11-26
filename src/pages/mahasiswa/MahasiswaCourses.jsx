@@ -132,7 +132,7 @@ const MahasiswaCourses = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {courses.map((course) => (
             <CourseCard 
-              key={course.id} 
+              key={`${course.id}-${course.classId || course.class}`} 
               course={course} 
               onSelect={() => handleCourseSelect(course)} 
             />
@@ -175,14 +175,17 @@ const CourseCard = ({ course, onSelect }) => (
         <div className="inline-block bg-white bg-opacity-20 text-white text-xs px-3 py-1 rounded-full font-medium">
           {course.semester}
         </div>
-        <div className="text-right">
-          {course.averageGrade && (
-            <div className="flex items-center justify-end text-white text-xs">
-              <Star size={12} className="mr-1" />
+        {course.averageGrade && (
+          <div className="text-right">
+            <div className="flex items-center justify-end text-white text-xs mb-1">
+              <span>Nilai Saya</span>
+            </div>
+            <div className="flex items-center justify-end text-white text-lg font-bold">
+              <Star size={14} className="mr-1" />
               <span>{course.averageGrade}</span>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
       
       {/* Course Title & Code */}

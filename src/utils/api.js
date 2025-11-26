@@ -63,6 +63,10 @@ export const getDosenCourses = () => {
   return api.get('/auth/dosen/courses');
 };
 
+export const getDosenClasses = () => {
+  return api.get('/auth/dosen/classes');
+};
+
 // Admin API calls
 export const getUsers = () => {
   return api.get('/admin/users');

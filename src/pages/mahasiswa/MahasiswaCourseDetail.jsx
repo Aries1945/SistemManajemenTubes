@@ -7,7 +7,7 @@ import {
   RefreshCw, Plus, Settings, CheckSquare, XCircle, Clock3,
   ChevronLeft, BookOpenIcon, X, Info, UserPlus, UserMinus
 } from 'lucide-react';
-import { getTugasBesarByCourse, getCourseDetail } from '../../utils/mahasiswaApi';
+import { getTugasBesarByCourse, getCourseDetail, getPenilaianTugasBesar } from '../../utils/mahasiswaApi';
 import { getAvailableGroups, joinGroup, leaveStudentGroup, getCurrentGroup } from '../../utils/kelompokApi';
 
 // Utility functions - moved to top level so they can be used by all components
@@ -60,6 +60,7 @@ const MahasiswaCourseDetail = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showGroupModal, setShowGroupModal] = useState(false);
   const [selectedTugasForGroup, setSelectedTugasForGroup] = useState(null);
+  const [tugasBesarNilai, setTugasBesarNilai] = useState([]); // Store nilai from visible tugas besar
 
   useEffect(() => {
     loadCourseDetail();
@@ -70,11 +71,19 @@ const MahasiswaCourseDetail = () => {
       setLoading(true);
       setError('');
       
+      console.log('Loading course detail for courseId:', courseId);
+      
       // Load course detail first
       const courseResponse = await getCourseDetail(courseId);
       
+      console.log('Course response:', courseResponse);
+      
       if (courseResponse && courseResponse.success) {
         const courseData = courseResponse.course;
+        
+        if (!courseData) {
+          throw new Error('Data mata kuliah tidak ditemukan dalam response');
+        }
         
         // Set course information from API
         setCourse({
@@ -83,18 +92,14 @@ const MahasiswaCourseDetail = () => {
           code: courseData.course_code,
           lecturer: courseData.dosen_name || 'Belum ditentukan',
           lecturerNip: courseData.dosen_nip,
-          lecturerDept: courseData.dosen_departemen,
+          lecturerDept: null,
           class: courseData.class_name || 'A',
           classId: courseData.class_id,
-          schedule: courseData.jadwal || 'Jadwal akan diumumkan',
           semester: `${courseData.semester} ${courseData.tahun_ajaran}`,
           sks: courseData.sks || 3,
-          room: courseData.ruangan || 'Belum ditentukan',
           capacity: courseData.kapasitas || 0,
           totalStudents: courseData.kapasitas || 0, // Could be enhanced with actual count
-          averageGrade: 0, // Could be calculated from submissions
-          myGrade: courseData.nilai_akhir || 0,
-          attendance: 95, // Mock data - could be enhanced
+          myGrade: courseData.nilai_akhir || null,
           totalTasks: 0, // Will be updated from tugas besar
           completedTasks: 0, // Calculate based on submissions
           pendingTasks: 0, // Will be updated from tugas besar
@@ -118,6 +123,9 @@ const MahasiswaCourseDetail = () => {
             totalTasks: tugasResponse.tugasBesar.length,
             pendingTasks: tugasResponse.tugasBesar.length // All tasks are pending by default
           }));
+
+          // Load penilaian for all tugas besar that are visible
+          loadTugasBesarNilai(tugasResponse.tugasBesar);
         } else {
           setTugasBesar([]);
         }
@@ -128,7 +136,9 @@ const MahasiswaCourseDetail = () => {
         setTugasBesar([]);
       }
     } catch (err) {
-      setError('Gagal memuat detail mata kuliah: ' + err.message);
+      console.error('Error loading course detail:', err);
+      const errorMessage = err.response?.data?.error || err.message || 'Server error';
+      setError('Gagal memuat detail mata kuliah: ' + errorMessage);
       setTugasBesar([]);
       setCourse(null);
     } finally {
@@ -138,6 +148,38 @@ const MahasiswaCourseDetail = () => {
 
   const handleRefresh = () => {
     loadCourseDetail();
+  };
+
+  const loadTugasBesarNilai = async (tugasBesarList) => {
+    const nilaiList = [];
+    
+    for (const tugas of tugasBesarList) {
+      try {
+        const response = await getPenilaianTugasBesar(tugas.id);
+        if (response && response.success && response.visible && response.data && response.data.average !== null) {
+          nilaiList.push({
+            tugasId: tugas.id,
+            tugasTitle: tugas.title || tugas.judul,
+            nilai: response.data.average
+          });
+        }
+      } catch (error) {
+        console.error(`Error loading penilaian for tugas ${tugas.id}:`, error);
+      }
+    }
+    
+    setTugasBesarNilai(nilaiList);
+    
+    // Calculate average nilai from all visible tugas besar
+    if (nilaiList.length > 0) {
+      const totalNilai = nilaiList.reduce((sum, item) => sum + item.nilai, 0);
+      const averageNilai = totalNilai / nilaiList.length;
+      
+      setCourse(prev => ({
+        ...prev,
+        myGrade: averageNilai.toFixed(1)
+      }));
+    }
   };
 
   const handleViewTugasDetail = (tugas) => {
@@ -376,49 +418,6 @@ const MahasiswaCourseDetail = () => {
 
   const CourseOverview = () => (
     <div className="space-y-6">
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-green-50 p-4 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-green-600 text-sm font-medium">Nilai Saya</p>
-              <p className="text-2xl font-bold text-green-700">{course.myGrade}</p>
-            </div>
-            <Star className="text-green-600" size={32} />
-          </div>
-        </div>
-        
-        <div className="bg-blue-50 p-4 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-blue-600 text-sm font-medium">Kehadiran</p>
-              <p className="text-2xl font-bold text-blue-700">{course.attendance}%</p>
-            </div>
-            <CheckCircle className="text-blue-600" size={32} />
-          </div>
-        </div>
-        
-        <div className="bg-purple-50 p-4 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-purple-600 text-sm font-medium">Tugas Selesai</p>
-              <p className="text-2xl font-bold text-purple-700">{course.completedTasks}/{course.totalTasks}</p>
-            </div>
-            <FileText className="text-purple-600" size={32} />
-          </div>
-        </div>
-
-        <div className="bg-orange-50 p-4 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-orange-600 text-sm font-medium">Rata-rata Kelas</p>
-              <p className="text-2xl font-bold text-orange-700">{course.averageGrade}</p>
-            </div>
-            <Target className="text-orange-600" size={32} />
-          </div>
-        </div>
-      </div>
-
       {/* Course Information */}
       <div className="bg-gray-50 p-6 rounded-lg">
         <h4 className="text-lg font-semibold mb-4">Informasi Mata Kuliah</h4>
@@ -427,30 +426,16 @@ const MahasiswaCourseDetail = () => {
             <p className="text-sm text-gray-600 mb-1">Dosen Pengampu</p>
             <p className="font-medium flex items-center">
               <User className="h-4 w-4 mr-2 text-gray-500" />
-              {course.lecturer}
+              {course.lecturer || 'Belum ditentukan'}
             </p>
             {course.lecturerNip && (
               <p className="text-xs text-gray-500 mt-1">NIP: {course.lecturerNip}</p>
-            )}
-            {course.lecturerDept && (
-              <p className="text-xs text-gray-500">Departemen: {course.lecturerDept}</p>
             )}
           </div>
           <div>
             <p className="text-sm text-gray-600 mb-1">Kelas</p>
             <p className="font-medium">{course.class}</p>
             <p className="text-xs text-gray-500 mt-1">ID Kelas: {course.classId}</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-600 mb-1">Jadwal</p>
-            <p className="font-medium flex items-center">
-              <Calendar className="h-4 w-4 mr-2 text-gray-500" />
-              {course.schedule}
-            </p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-600 mb-1">Ruangan</p>
-            <p className="font-medium">{course.room}</p>
           </div>
           <div>
             <p className="text-sm text-gray-600 mb-1">SKS</p>
@@ -523,8 +508,8 @@ const MahasiswaCourseDetail = () => {
         
         {tugasBesar.length > 0 ? (
           <div className="space-y-4">
-            {tugasBesar.map((tugas) => (
-              <TugasBesarCard key={tugas.id} tugas={tugas} />
+            {tugasBesar.map((tugas, idx) => (
+              <TugasBesarCard key={`tugas-${tugas.id}-${idx}`} tugas={tugas} />
             ))}
           </div>
         ) : (
@@ -633,27 +618,34 @@ const MahasiswaCourseDetail = () => {
                   <span className="ml-2 text-xs">• {course.lecturerDept}</span>
                 )}
               </div>
-              {course.schedule && (
-                <div className="flex items-center text-sm text-green-100">
-                  <Calendar className="h-4 w-4 mr-1" />
-                  <span>{course.schedule}</span>
-                  {course.room && course.room !== 'Belum ditentukan' && (
-                    <span className="ml-2">• {course.room}</span>
-                  )}
-                </div>
+            </div>
+          </div>
+          {(course.myGrade || tugasBesarNilai.length > 0) && (
+            <div className="text-right">
+              <p className="text-green-100 text-sm">Nilai Saya</p>
+              <span className="text-3xl font-bold">
+                {course.myGrade || (tugasBesarNilai.length > 0 
+                  ? (tugasBesarNilai.reduce((sum, item) => sum + item.nilai, 0) / tugasBesarNilai.length).toFixed(1)
+                  : '-')}
+              </span>
+              <div className="flex items-center justify-end mt-1">
+                <Star className="h-4 w-4 text-yellow-300 mr-1" />
+                <span className="text-sm text-green-100">
+                  {(() => {
+                    const nilai = parseFloat(course.myGrade || (tugasBesarNilai.length > 0 
+                      ? (tugasBesarNilai.reduce((sum, item) => sum + item.nilai, 0) / tugasBesarNilai.length).toFixed(1)
+                      : 0));
+                    return nilai >= 85 ? 'A' : nilai >= 80 ? 'A-' : nilai >= 75 ? 'B+' : nilai >= 70 ? 'B' : nilai >= 65 ? 'B-' : nilai >= 60 ? 'C+' : nilai >= 55 ? 'C' : nilai >= 50 ? 'C-' : nilai >= 45 ? 'D' : nilai >= 0 ? 'E' : '-';
+                  })()}
+                </span>
+              </div>
+              {tugasBesarNilai.length > 0 && (
+                <p className="text-green-200 text-xs mt-1">
+                  Dari {tugasBesarNilai.length} tugas besar
+                </p>
               )}
             </div>
-          </div>
-          <div className="text-right">
-            <p className="text-green-100 text-sm">Nilai Saya</p>
-            <span className="text-3xl font-bold">{course.myGrade || '0'}</span>
-            <div className="flex items-center justify-end mt-1">
-              <Star className="h-4 w-4 text-yellow-300 mr-1" />
-              <span className="text-sm text-green-100">
-                {course.myGrade >= 85 ? 'A' : course.myGrade >= 80 ? 'A-' : course.myGrade >= 75 ? 'B+' : course.myGrade >= 70 ? 'B' : 'C'}
-              </span>
-            </div>
-          </div>
+          )}
         </div>
         
         {/* Status Enrollment */}
@@ -682,8 +674,36 @@ const MahasiswaCourseDetail = () => {
         </div>
       </div>
 
-      {/* Course Overview Content */}
-      <CourseOverview />
+      {/* Tab Navigation */}
+      <div className="border-b border-gray-200 mb-6">
+        <nav className="flex space-x-8">
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'overview'
+                ? 'border-green-600 text-green-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Overview
+          </button>
+          <button
+            onClick={() => setActiveTab('kelompok')}
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'kelompok'
+                ? 'border-green-600 text-green-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <Users className="h-4 w-4 inline mr-2" />
+            Kelompok Saya
+          </button>
+        </nav>
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === 'overview' && <CourseOverview />}
+      {activeTab === 'kelompok' && <KelompokSaya tugasBesar={tugasBesar} course={course} />}
 
       {/* Tugas Besar Detail Modal */}
       {showDetailModal && selectedTugas && (
@@ -714,7 +734,33 @@ const TugasBesarDetailModal = ({
   course, 
   handleJoinKelompok 
 }) => {
-  // Debugging: log tugas data in modal
+  const [penilaian, setPenilaian] = useState(null);
+  const [loadingPenilaian, setLoadingPenilaian] = useState(false);
+  const [penilaianVisible, setPenilaianVisible] = useState(false);
+
+  useEffect(() => {
+    if (tugas?.id) {
+      loadPenilaian();
+    }
+  }, [tugas?.id]);
+
+  const loadPenilaian = async () => {
+    try {
+      setLoadingPenilaian(true);
+      const response = await getPenilaianTugasBesar(tugas.id);
+      if (response && response.success) {
+        setPenilaianVisible(response.visible);
+        if (response.visible && response.data) {
+          setPenilaian(response.data);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading penilaian:', error);
+      setPenilaianVisible(false);
+    } finally {
+      setLoadingPenilaian(false);
+    }
+  };
 
   const parseJSONData = (data) => {
     // If data is already an array (JSONB from PostgreSQL), return it directly
@@ -925,6 +971,70 @@ const TugasBesarDetailModal = ({
                     )}
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Penilaian Section - Only show if visible */}
+          {penilaianVisible && penilaian && (
+            <div className="border-t border-gray-200 pt-6">
+              <h3 className="text-lg font-semibold mb-4 flex items-center">
+                <Star className="h-5 w-5 mr-2 text-yellow-600" />
+                Penilaian Saya
+              </h3>
+              
+              {penilaian.nilai && penilaian.nilai.length > 0 ? (
+                <div className="space-y-3">
+                  {penilaian.nilai.map((item, idx) => (
+                    <div key={idx} className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-lg border border-green-200">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="font-semibold text-gray-900">{item.komponen_nama}</p>
+                          <p className="text-sm text-gray-600">Bobot: {item.bobot}%</p>
+                          {item.catatan && (
+                            <p className="text-xs text-gray-500 mt-1">Catatan: {item.catatan}</p>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <p className="text-2xl font-bold text-green-700">{item.nilai}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {penilaian.average !== null && (
+                    <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-4 rounded-lg text-white mt-4">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="text-sm opacity-90">Nilai Rata-rata</p>
+                          <p className="text-xs opacity-75">Berdasarkan bobot komponen</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-3xl font-bold">{penilaian.average.toFixed(1)}</p>
+                          <p className="text-sm opacity-90">
+                            {penilaian.average >= 85 ? 'A' : penilaian.average >= 80 ? 'A-' : penilaian.average >= 75 ? 'B+' : penilaian.average >= 70 ? 'B' : penilaian.average >= 65 ? 'B-' : penilaian.average >= 60 ? 'C+' : penilaian.average >= 55 ? 'C' : penilaian.average >= 50 ? 'C-' : penilaian.average >= 45 ? 'D' : 'E'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <p className="text-yellow-800 text-sm">
+                    Belum ada nilai yang diberikan untuk tugas besar ini.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {!penilaianVisible && !loadingPenilaian && (
+            <div className="border-t border-gray-200 pt-6">
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <p className="text-gray-600 text-sm">
+                  Penilaian belum ditampilkan oleh dosen.
+                </p>
               </div>
             </div>
           )}
@@ -1162,8 +1272,8 @@ const GroupSelectionModal = ({ tugas, onClose, courseId }) => {
               <div>
                 <h4 className="text-lg font-semibold text-gray-900 mb-4">Kelompok Tersedia</h4>
                 <div className="grid gap-4">
-                  {availableGroups.map((group) => (
-                    <div key={group.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                  {availableGroups.map((group, idx) => (
+                    <div key={`group-${group.id}-${idx}`} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                       <div className="flex items-center justify-between mb-3">
                         <h5 className="text-lg font-medium">{group.nama_kelompok}</h5>
                         <div className="flex items-center space-x-2">
@@ -1238,6 +1348,145 @@ const GroupSelectionModal = ({ tugas, onClose, courseId }) => {
           >
             Tutup
           </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Component untuk menampilkan daftar kelompok mahasiswa
+const KelompokSaya = ({ tugasBesar, course }) => {
+  const [myGroups, setMyGroups] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    loadMyGroups();
+  }, [tugasBesar]);
+
+  const loadMyGroups = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      const groupsData = [];
+      
+      // Load group for each tugas besar
+      for (const tugas of tugasBesar) {
+        try {
+          const response = await getCurrentGroup(tugas.id);
+          if (response && response.kelompok) {
+            groupsData.push({
+              tugas: tugas,
+              kelompok: response.kelompok
+            });
+          }
+        } catch (err) {
+          console.error(`Error loading group for tugas ${tugas.id}:`, err);
+        }
+      }
+      
+      setMyGroups(groupsData);
+    } catch (err) {
+      console.error('Error loading my groups:', err);
+      setError('Gagal memuat data kelompok');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="text-center py-12">
+        <RefreshCw className="h-8 w-8 text-gray-400 mx-auto mb-4 animate-spin" />
+        <p className="text-gray-600">Memuat data kelompok...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <p className="text-red-800">{error}</p>
+      </div>
+    );
+  }
+
+  if (myGroups.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Belum Ada Kelompok</h3>
+        <p className="text-gray-500">
+          Anda belum terdaftar di kelompok manapun untuk tugas besar di mata kuliah ini.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white border border-gray-200 rounded-lg p-6">
+        <h3 className="text-lg font-semibold mb-4">Daftar Kelompok Saya</h3>
+        
+        <div className="space-y-4">
+          {myGroups.map((item, idx) => (
+            <div key={`group-${item.tugas.id}-${idx}`} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+              <div className="flex justify-between items-start mb-3">
+                <div>
+                  <h4 className="text-lg font-semibold text-gray-900 mb-1">
+                    {item.kelompok.nama_kelompok}
+                  </h4>
+                  <p className="text-sm text-gray-600 mb-2">
+                    Tugas Besar: <span className="font-medium">{item.tugas.title || item.tugas.judul}</span>
+                  </p>
+                  <div className="flex items-center gap-4 text-sm text-gray-500">
+                    <span className="flex items-center">
+                      <Users className="h-4 w-4 mr-1" />
+                      {item.kelompok.members?.length || 0} anggota
+                    </span>
+                    <span className="flex items-center">
+                      <Settings className="h-4 w-4 mr-1" />
+                      {formatGroupingMethod(item.tugas.grouping_method)}
+                    </span>
+                  </div>
+                </div>
+                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                  item.kelompok.members?.length >= (item.tugas.min_group_size || 2)
+                    ? 'bg-green-100 text-green-800'
+                    : 'bg-yellow-100 text-yellow-800'
+                }`}>
+                  {item.kelompok.members?.length >= (item.tugas.min_group_size || 2) ? 'Lengkap' : 'Belum Lengkap'}
+                </span>
+              </div>
+              
+              {item.kelompok.members && item.kelompok.members.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <h5 className="text-sm font-medium text-gray-700 mb-2">Anggota Kelompok:</h5>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {item.kelompok.members.map((member, memberIdx) => (
+                      <div key={`member-${member.id || memberIdx}`} className="flex items-center space-x-2 bg-gray-50 rounded-lg p-2">
+                        <User className="h-4 w-4 text-gray-400" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900">
+                            {member.nama_lengkap || member.name || 'Nama tidak tersedia'}
+                            {member.is_leader && (
+                              <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full">
+                                Ketua
+                              </span>
+                            )}
+                          </p>
+                          {member.nim && (
+                            <p className="text-xs text-gray-500">NIM: {member.nim}</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       </div>
     </div>

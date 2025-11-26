@@ -6,6 +6,8 @@ import LoginPage from './pages/loginPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import DosenDashboard from './pages/dosen/DosenDashboard';
 import MahasiswaDashboard from './pages/mahasiswa/MahasiswaDashboard';
+import MahasiswaProfile from './pages/mahasiswa/MahasiswaProfile';
+import MahasiswaSettings from './pages/mahasiswa/MahasiswaSettings';
 
 function App() {
   return (
@@ -39,6 +41,24 @@ function App() {
             element={
               <RouteGuard allowedRoles={['mahasiswa']}>
                 <MahasiswaDashboard />
+              </RouteGuard>
+            } 
+          />
+          
+          <Route 
+            path="/mahasiswa/profile" 
+            element={
+              <RouteGuard allowedRoles={['mahasiswa']}>
+                <MahasiswaProfile />
+              </RouteGuard>
+            } 
+          />
+          
+          <Route 
+            path="/mahasiswa/settings" 
+            element={
+              <RouteGuard allowedRoles={['mahasiswa']}>
+                <MahasiswaSettings />
               </RouteGuard>
             } 
           />

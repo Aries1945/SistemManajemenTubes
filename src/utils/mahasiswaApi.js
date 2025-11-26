@@ -49,13 +49,32 @@ const makeRequest = async (url, options = {}) => {
     
     if (response.status === 403) {
       // 403 = Token valid but access denied - DON'T clear tokens
-      const errorData = await response.json();
+      let errorData;
+      try {
+        errorData = await response.json();
+      } catch (e) {
+        errorData = { error: 'Forbidden' };
+      }
       console.error('Access denied (403):', errorData.error || 'Forbidden');
       throw new Error(errorData.error || 'Access denied to this resource');
     }
     
-    const errorData = await response.json();
-    throw new Error(errorData.error || 'Request failed');
+    // Handle 500 and other errors
+    let errorData;
+    try {
+      errorData = await response.json();
+    } catch (e) {
+      // If response is not JSON, try to get text
+      try {
+        const text = await response.text();
+        errorData = { error: text || `Server error (${response.status})` };
+      } catch (e2) {
+        errorData = { error: `Server error (${response.status})` };
+      }
+    }
+    
+    console.error(`API Error (${response.status}):`, errorData);
+    throw new Error(errorData.error || `Request failed with status ${response.status}`);
   }
 
   return response.json();
@@ -96,4 +115,9 @@ export const joinKelompok = (tugasBesarId, kelompokId) => {
   return makeRequest(`/auth/mahasiswa/tugas-besar/${tugasBesarId}/kelompok/${kelompokId}/join`, {
     method: 'POST'
   });
+};
+
+// Get penilaian (grades) for a tugas besar (only if visible)
+export const getPenilaianTugasBesar = (tugasBesarId) => {
+  return makeRequest(`/auth/mahasiswa/tugas-besar/${tugasBesarId}/penilaian`);
 };

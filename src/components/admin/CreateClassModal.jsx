@@ -9,9 +9,7 @@ const CreateClassModal = ({ isOpen, onClose, onSubmit, courseId, initialData }) 
     nama: '',
     kode: '',
     dosen_id: '',
-    kapasitas: 40,
-    ruangan: '',
-    jadwal: ''
+    kapasitas: 40
   });
   
   const [dosenList, setDosenList] = useState([]);
@@ -27,9 +25,7 @@ const CreateClassModal = ({ isOpen, onClose, onSubmit, courseId, initialData }) 
           nama: initialData.nama || '',
           kode: initialData.kode || '',
           dosen_id: initialData.dosen_id || '',
-          kapasitas: initialData.kapasitas || 40,
-          ruangan: initialData.ruangan || '',
-          jadwal: initialData.jadwal || ''
+          kapasitas: initialData.kapasitas || 40
         });
       } else {
         // Reset form for new class
@@ -37,9 +33,7 @@ const CreateClassModal = ({ isOpen, onClose, onSubmit, courseId, initialData }) 
           nama: '',
           kode: '',
           dosen_id: '',
-          kapasitas: 40,
-          ruangan: '',
-          jadwal: ''
+          kapasitas: 40
         });
       }
     }
@@ -153,7 +147,7 @@ const CreateClassModal = ({ isOpen, onClose, onSubmit, courseId, initialData }) 
             </select>
           </div>
           
-          <div className="mb-4">
+          <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Kapasitas
             </label>
@@ -163,34 +157,6 @@ const CreateClassModal = ({ isOpen, onClose, onSubmit, courseId, initialData }) 
               value={formData.kapasitas}
               onChange={handleChange}
               min="1"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            />
-          </div>
-          
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Ruangan
-            </label>
-            <input
-              type="text"
-              name="ruangan"
-              value={formData.ruangan}
-              onChange={handleChange}
-              placeholder="9.1.1"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            />
-          </div>
-          
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Jadwal
-            </label>
-            <input
-              type="text"
-              name="jadwal"
-              value={formData.jadwal}
-              onChange={handleChange}
-              placeholder="Senin, 08:00-10:00"
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
             />
           </div>
