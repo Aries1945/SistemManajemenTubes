@@ -458,7 +458,7 @@ const ClassCard = ({ classData, onSelect }) => {
           </div>
           {isPengampuOnly && (
             <div className="mt-3 text-xs text-white text-opacity-90 bg-black/20 rounded-lg px-3 py-2">
-              Anda tercatat sebagai dosen pengampu. Kelas ini diajar oleh {classData.dosenName || 'dosen lain'}.
+              Anda tercatat sebagai dosen koordinator. Kelas ini diajar oleh {classData.dosenName || 'dosen lain'}.
             </div>
           )}
         </div>
