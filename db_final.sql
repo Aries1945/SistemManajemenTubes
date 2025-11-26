@@ -1,0 +1,364 @@
+-- ============================================
+-- DATABASE FINAL - Sistem Manajemen Tugas Besar
+-- ============================================
+-- File ini berisi schema lengkap database untuk sistem manajemen tugas besar
+-- Mencakup semua tabel, constraints, indexes, triggers, dan data default
+-- 
+-- PERINGATAN: Script ini akan menghapus semua tabel yang ada!
+-- Pastikan untuk backup database sebelum menjalankan script ini
+--
+-- Cara menjalankan:
+-- 1. Buka pgAdmin atau psql
+-- 2. Connect ke database Anda
+-- 3. Copy-paste seluruh isi file ini dan execute
+-- Atau: psql -U your_user -d your_database -f db_final.sql
+-- ============================================
+
+-- Drop semua tabel (dengan CASCADE untuk menghapus dependencies)
+DROP TABLE IF EXISTS nilai CASCADE;
+DROP TABLE IF EXISTS komponen_penilaian CASCADE;
+DROP TABLE IF EXISTS kelompok_members CASCADE;
+DROP TABLE IF EXISTS anggota_kelompok CASCADE;
+DROP TABLE IF EXISTS kelompok_tugas CASCADE;
+DROP TABLE IF EXISTS kelompok CASCADE;
+DROP TABLE IF EXISTS tugas_besar CASCADE;
+DROP TABLE IF EXISTS class_enrollments CASCADE;
+DROP TABLE IF EXISTS classes CASCADE;
+DROP TABLE IF EXISTS courses CASCADE;
+DROP TABLE IF EXISTS course_name CASCADE;
+DROP TABLE IF EXISTS mahasiswa_profiles CASCADE;
+DROP TABLE IF EXISTS dosen_profiles CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+
+-- Drop type jika ada
+DROP TYPE IF EXISTS user_role CASCADE;
+
+-- ============================================
+-- CREATE TYPES
+-- ============================================
+
+CREATE TYPE user_role AS ENUM (
+    'admin',
+    'dosen',
+    'mahasiswa'
+);
+
+-- ============================================
+-- CREATE TABLES
+-- ============================================
+
+-- 1. Users table (untuk authentication)
+-- Note: is_active TIDAK ada di sini, ada di profile tables
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    role VARCHAR(50) NOT NULL CHECK (role IN ('admin', 'dosen', 'mahasiswa')),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 2. Dosen Profiles
+-- Note: TIDAK ada kolom departemen, is_active ada di sini
+CREATE TABLE dosen_profiles (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    nip VARCHAR(50) NOT NULL UNIQUE,
+    nama_lengkap VARCHAR(255) NOT NULL,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id)
+);
+
+-- 3. Mahasiswa Profiles
+-- Note: TIDAK ada kolom angkatan, is_active ada di sini
+-- Note: Kolom di database tetap bernama 'nim' (bukan npm)
+CREATE TABLE mahasiswa_profiles (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    nim VARCHAR(50) NOT NULL UNIQUE,
+    nama_lengkap VARCHAR(255) NOT NULL,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id)
+);
+
+-- 4. Course Name (Master data mata kuliah)
+CREATE TABLE course_name (
+    id SERIAL PRIMARY KEY,
+    kode VARCHAR(20) NOT NULL UNIQUE,
+    nama VARCHAR(255) NOT NULL,
+    sks INTEGER NOT NULL,
+    deskripsi TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 5. Courses (Mata kuliah yang ditawarkan dengan dosen koordinator)
+CREATE TABLE courses (
+    id SERIAL PRIMARY KEY,
+    course_name_id INTEGER REFERENCES course_name(id),
+    dosen_id INTEGER REFERENCES users(id),
+    semester VARCHAR(50) NOT NULL,
+    tahun_ajaran VARCHAR(20) NOT NULL,
+    status VARCHAR(20) DEFAULT 'active',
+    deskripsi TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 6. Classes (Kelas untuk setiap course)
+-- Note: TIDAK ada kolom ruangan dan jadwal
+CREATE TABLE classes (
+    id SERIAL PRIMARY KEY,
+    course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    dosen_id INTEGER REFERENCES users(id),
+    nama VARCHAR(100) NOT NULL,
+    kode VARCHAR(20),
+    kapasitas INTEGER DEFAULT 40,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 7. Class Enrollments (Pendaftaran mahasiswa ke kelas)
+CREATE TABLE class_enrollments (
+    id SERIAL PRIMARY KEY,
+    class_id INTEGER NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+    mahasiswa_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status VARCHAR(20) DEFAULT 'active',
+    nilai_akhir DECIMAL(5,2),
+    enrolled_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(class_id, mahasiswa_id)
+);
+
+-- 8. Tugas Besar (Projects/Assignments)
+CREATE TABLE tugas_besar (
+    id SERIAL PRIMARY KEY,
+    course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    class_id INTEGER NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+    dosen_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    judul VARCHAR(255) NOT NULL,
+    deskripsi TEXT,
+    tanggal_mulai DATE NOT NULL,
+    tanggal_selesai DATE NOT NULL,
+    komponen JSONB DEFAULT '[]' NOT NULL,
+    deliverable JSONB DEFAULT '[]' NOT NULL,
+    grouping_method VARCHAR(20) DEFAULT 'manual' NOT NULL,
+    student_choice_enabled BOOLEAN DEFAULT FALSE NOT NULL,
+    max_group_size INTEGER DEFAULT 4 NOT NULL CHECK (max_group_size > 0),
+    min_group_size INTEGER DEFAULT 2 NOT NULL CHECK (min_group_size > 0),
+    penilaian_visible BOOLEAN DEFAULT FALSE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT valid_group_sizes CHECK (min_group_size <= max_group_size),
+    CONSTRAINT valid_dates CHECK (tanggal_mulai <= tanggal_selesai),
+    CONSTRAINT valid_grouping_method CHECK (grouping_method IN ('manual', 'automatic', 'student_choice', 'random'))
+);
+
+-- 9. Kelompok (Groups for tugas besar)
+CREATE TABLE kelompok (
+    id SERIAL PRIMARY KEY,
+    tugas_besar_id INTEGER NOT NULL REFERENCES tugas_besar(id) ON DELETE CASCADE,
+    nama_kelompok VARCHAR(100) NOT NULL,
+    created_by INTEGER REFERENCES users(id),
+    creation_method VARCHAR(20) DEFAULT 'manual',
+    max_members INTEGER DEFAULT 4,
+    is_student_choice BOOLEAN DEFAULT FALSE,
+    leader_id INTEGER REFERENCES users(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 10. Kelompok Members (Group membership)
+CREATE TABLE kelompok_members (
+    id SERIAL PRIMARY KEY,
+    kelompok_id INTEGER NOT NULL REFERENCES kelompok(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    is_leader BOOLEAN DEFAULT FALSE,
+    joined_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(kelompok_id, user_id)
+);
+
+-- 11. Komponen Penilaian (Assessment components)
+CREATE TABLE komponen_penilaian (
+    id SERIAL PRIMARY KEY,
+    tugas_besar_id INTEGER NOT NULL REFERENCES tugas_besar(id) ON DELETE CASCADE,
+    nama VARCHAR(100) NOT NULL,
+    bobot NUMERIC(5,2) NOT NULL,
+    deskripsi TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 12. Nilai (Grades)
+CREATE TABLE nilai (
+    id SERIAL PRIMARY KEY,
+    komponen_id INTEGER NOT NULL REFERENCES komponen_penilaian(id) ON DELETE CASCADE,
+    mahasiswa_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    nilai NUMERIC(5,2) NOT NULL,
+    catatan TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================
+-- CREATE INDEXES (untuk performa)
+-- ============================================
+
+-- Users indexes
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_role ON users(role);
+
+-- Profile indexes
+CREATE INDEX idx_dosen_profiles_user_id ON dosen_profiles(user_id);
+CREATE INDEX idx_dosen_profiles_nip ON dosen_profiles(nip);
+CREATE INDEX idx_mahasiswa_profiles_user_id ON mahasiswa_profiles(user_id);
+CREATE INDEX idx_mahasiswa_profiles_nim ON mahasiswa_profiles(nim);
+
+-- Course indexes
+CREATE INDEX idx_courses_dosen_id ON courses(dosen_id);
+CREATE INDEX idx_courses_course_name_id ON courses(course_name_id);
+CREATE INDEX idx_classes_course_id ON classes(course_id);
+CREATE INDEX idx_classes_dosen_id ON classes(dosen_id);
+CREATE INDEX idx_class_enrollments_class_id ON class_enrollments(class_id);
+CREATE INDEX idx_class_enrollments_mahasiswa_id ON class_enrollments(mahasiswa_id);
+
+-- Tugas besar indexes
+CREATE INDEX idx_tugas_besar_course_id ON tugas_besar(course_id);
+CREATE INDEX idx_tugas_besar_class_id ON tugas_besar(class_id);
+CREATE INDEX idx_tugas_besar_dosen_id ON tugas_besar(dosen_id);
+CREATE INDEX idx_tugas_besar_grouping_method ON tugas_besar(grouping_method);
+CREATE INDEX idx_tugas_besar_dates ON tugas_besar(tanggal_mulai, tanggal_selesai);
+
+-- Kelompok indexes
+CREATE INDEX idx_kelompok_tugas_besar_id ON kelompok(tugas_besar_id);
+CREATE INDEX idx_kelompok_created_by ON kelompok(created_by);
+CREATE INDEX idx_kelompok_leader_id ON kelompok(leader_id);
+CREATE INDEX idx_kelompok_members_kelompok_id ON kelompok_members(kelompok_id);
+CREATE INDEX idx_kelompok_members_user_id ON kelompok_members(user_id);
+CREATE INDEX idx_kelompok_members_leader ON kelompok_members(is_leader);
+
+-- Penilaian indexes
+CREATE INDEX idx_komponen_penilaian_tugas_id ON komponen_penilaian(tugas_besar_id);
+CREATE INDEX idx_nilai_mahasiswa_id ON nilai(mahasiswa_id);
+CREATE INDEX idx_nilai_komponen_id ON nilai(komponen_id);
+
+-- ============================================
+-- CREATE TRIGGERS & FUNCTIONS
+-- ============================================
+
+-- Function: Ensure grouping consistency
+CREATE OR REPLACE FUNCTION ensure_grouping_consistency()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.grouping_method = 'student_choice' THEN
+        NEW.student_choice_enabled = true;
+    ELSE
+        NEW.student_choice_enabled = false;
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger: Grouping consistency
+CREATE TRIGGER trigger_grouping_consistency
+    BEFORE INSERT OR UPDATE ON tugas_besar
+    FOR EACH ROW
+    EXECUTE FUNCTION ensure_grouping_consistency();
+
+-- Function: Validate group size
+CREATE OR REPLACE FUNCTION validate_group_size()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.min_group_size > NEW.max_group_size THEN
+        RAISE EXCEPTION 'Minimum group size (%) cannot be greater than maximum group size (%)', 
+                      NEW.min_group_size, NEW.max_group_size;
+    END IF;
+    
+    IF NEW.min_group_size <= 0 OR NEW.max_group_size <= 0 THEN
+        RAISE EXCEPTION 'Group sizes must be positive integers';
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger: Validate group size
+CREATE TRIGGER trigger_validate_group_size
+    BEFORE INSERT OR UPDATE ON tugas_besar
+    FOR EACH ROW
+    EXECUTE FUNCTION validate_group_size();
+
+-- ============================================
+-- INSERT DEFAULT ADMIN USER
+-- ============================================
+-- Password: admin123
+-- Hash: $2b$10$3euPcmQFCiblsZeEu5s7p.9wvofPnMIHxHuhwJXIzPUhMjZVwjW0K
+
+INSERT INTO users (email, password_hash, role)
+VALUES (
+    'admin@unpar.ac.id',
+    '$2b$10$PvLWU4/ngoH9guyhp1fOYOZAlHQ7Gb5eqVbRm7/hHotmfwrXWW/BS',
+    'admin'
+)
+ON CONFLICT (email) DO NOTHING;
+
+-- ============================================
+-- COMMENTS (untuk dokumentasi)
+-- ============================================
+
+COMMENT ON TABLE users IS 'Tabel untuk authentication dan user management';
+COMMENT ON TABLE dosen_profiles IS 'Profile dosen, tidak ada kolom departemen';
+COMMENT ON TABLE mahasiswa_profiles IS 'Profile mahasiswa, tidak ada kolom angkatan';
+COMMENT ON TABLE course_name IS 'Master data mata kuliah (daftar mata kuliah yang tersedia)';
+COMMENT ON TABLE courses IS 'Mata kuliah yang ditawarkan dengan dosen koordinator';
+COMMENT ON TABLE classes IS 'Kelas untuk setiap course, tidak ada kolom ruangan dan jadwal';
+COMMENT ON TABLE class_enrollments IS 'Pendaftaran mahasiswa ke kelas';
+COMMENT ON TABLE tugas_besar IS 'Tugas besar/project dengan JSONB komponen dan deliverable';
+COMMENT ON TABLE kelompok IS 'Kelompok untuk tugas besar';
+COMMENT ON TABLE kelompok_members IS 'Anggota kelompok dengan support untuk leader';
+COMMENT ON TABLE komponen_penilaian IS 'Komponen penilaian untuk tugas besar';
+COMMENT ON TABLE nilai IS 'Nilai/grade untuk mahasiswa per komponen penilaian';
+
+COMMENT ON COLUMN tugas_besar.penilaian_visible IS 'Controls whether grades/penilaian are visible to students. Default is FALSE (hidden).';
+COMMENT ON COLUMN tugas_besar.class_id IS 'ID kelas yang terkait dengan tugas besar ini';
+COMMENT ON COLUMN tugas_besar.komponen IS 'JSONB array untuk komponen penilaian: [{"name": "Proposal", "weight": 20, "deadline": "2025-10-25"}]';
+COMMENT ON COLUMN tugas_besar.deliverable IS 'JSONB array untuk deliverable yang harus dikumpulkan';
+COMMENT ON COLUMN kelompok.creation_method IS 'Method pembuatan kelompok: manual, automatic, student_choice, random';
+COMMENT ON COLUMN kelompok_members.is_leader IS 'Flag untuk menandai leader kelompok';
+
+-- ============================================
+-- VERIFICATION QUERIES (uncomment untuk verifikasi)
+-- ============================================
+
+-- SELECT 'users' as table_name, COUNT(*) as row_count FROM users
+-- UNION ALL
+-- SELECT 'dosen_profiles', COUNT(*) FROM dosen_profiles
+-- UNION ALL
+-- SELECT 'mahasiswa_profiles', COUNT(*) FROM mahasiswa_profiles
+-- UNION ALL
+-- SELECT 'course_name', COUNT(*) FROM course_name
+-- UNION ALL
+-- SELECT 'courses', COUNT(*) FROM courses
+-- UNION ALL
+-- SELECT 'classes', COUNT(*) FROM classes
+-- UNION ALL
+-- SELECT 'class_enrollments', COUNT(*) FROM class_enrollments
+-- UNION ALL
+-- SELECT 'tugas_besar', COUNT(*) FROM tugas_besar
+-- UNION ALL
+-- SELECT 'kelompok', COUNT(*) FROM kelompok
+-- UNION ALL
+-- SELECT 'kelompok_members', COUNT(*) FROM kelompok_members
+-- UNION ALL
+-- SELECT 'komponen_penilaian', COUNT(*) FROM komponen_penilaian
+-- UNION ALL
+-- SELECT 'nilai', COUNT(*) FROM nilai;
+
+-- SELECT column_name, data_type, is_nullable, column_default
+-- FROM information_schema.columns
+-- WHERE table_name = 'tugas_besar'
+-- ORDER BY ordinal_position;
+
+-- ============================================
+-- END OF DATABASE SCHEMA
+-- ============================================
+
