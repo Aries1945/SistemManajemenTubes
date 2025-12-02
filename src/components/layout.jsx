@@ -14,6 +14,7 @@ import {
   GraduationCap
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import LogoIF2 from '../assets/LogoIF2.png';
 
 const Layout = ({ children }) => {
   const navigate = useNavigate();
@@ -104,9 +105,14 @@ const Layout = ({ children }) => {
               )}
             </button>
             <div className="flex items-center space-x-3">
-              <div className="bg-gradient-to-br from-blue-600 to-indigo-600 p-3 rounded-xl shadow-lg">
-                <GraduationCap className="h-7 w-7 text-white" />
+              <div className="flex items-center justify-center h-10 w-10 rounded-lg overflow-hidden hover:opacity-90 transition-opacity duration-300">
+                <img 
+                  src={LogoIF2} 
+                  alt="Logo IF" 
+                  className="h-full w-full object-contain"
+                />
               </div>
+              <div className="h-8 w-px bg-gray-200/60"></div>
               <div>
                 <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                   Portal Dosen

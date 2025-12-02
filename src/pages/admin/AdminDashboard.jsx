@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Shield, Bell, LogOut, BarChart3, Users, BookOpen, ClipboardList, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Toaster, toast } from 'react-hot-toast';
+import LogoIF2 from '../../assets/LogoIF2.png';
 
 // Hooks
 import { useAdminData } from '../../hooks/useAdminData';
@@ -270,9 +271,14 @@ const AdminDashboard = () => {
           <div className="flex justify-between h-16">
             <div className="flex items-center">
               <div className="flex items-center space-x-3">
-                <div className="p-2 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-xl shadow-lg">
-                  <Shield className="h-6 w-6 text-white" />
+                <div className="flex items-center justify-center h-10 w-10 rounded-lg overflow-hidden hover:opacity-90 transition-opacity duration-300">
+                  <img 
+                    src={LogoIF2} 
+                    alt="Logo IF" 
+                    className="h-full w-full object-contain"
+                  />
                 </div>
+                <div className="h-8 w-px bg-gray-200/60"></div>
                 <div>
                   <h1 className="text-xl font-bold text-gray-900">Portal Administrator</h1>
                   <p className="text-xs text-gray-500">Sistem Manajemen Tugas Besar</p>

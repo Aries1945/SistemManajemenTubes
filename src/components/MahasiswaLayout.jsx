@@ -17,6 +17,7 @@ import {
   GraduationCap
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import LogoIF2 from '../assets/LogoIF2.png';
 
 const MahasiswaLayout = ({ children }) => {
   const navigate = useNavigate();
@@ -99,9 +100,14 @@ const MahasiswaLayout = ({ children }) => {
               </button>
               
               <div className="flex items-center cursor-pointer group" onClick={() => navigate('/mahasiswa/dashboard')}>
-                <div className="bg-gradient-to-br from-green-600 to-emerald-600 p-3 rounded-xl shadow-lg group-hover:shadow-xl transition-shadow">
-                  <GraduationCap className="h-7 w-7 text-white" />
+                <div className="flex items-center justify-center h-10 w-10 rounded-lg overflow-hidden hover:opacity-90 transition-opacity duration-300">
+                  <img 
+                    src={LogoIF2} 
+                    alt="Logo IF" 
+                    className="h-full w-full object-contain"
+                  />
                 </div>
+                <div className="h-8 w-px bg-gray-200/60 ml-3"></div>
                 <div className="ml-3">
                   <h1 className="text-xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
                     Portal Mahasiswa
