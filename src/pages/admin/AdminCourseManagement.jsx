@@ -275,7 +275,6 @@ const AdminCourseManagement = () => {
 
     const handleSubmit = (e) => {
       e.preventDefault();
-      console.log('Form data:', formData);
       setActiveView('list');
     };
 
@@ -671,9 +670,7 @@ const AdminCourseManagement = () => {
   };
 
   const handleDeleteCourse = (courseId) => {
-    if (window.confirm('Apakah Anda yakin ingin menghapus mata kuliah ini?')) {
-      console.log('Delete course:', courseId);
-      // Handle delete logic
+    if (window.confirm('Apakah Anda yakin ingin menghapus mata kuliah ini?')) {// Handle delete logic
     }
   };
 

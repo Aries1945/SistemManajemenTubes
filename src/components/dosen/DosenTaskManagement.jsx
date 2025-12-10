@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 import { 
   Plus, Edit, Trash2, Eye, Calendar, Users, 
@@ -6,82 +6,228 @@ import {
   Download, Upload, Settings
 } from 'lucide-react';
 
-const DosenTaskManagement = ({ courseId, courseName }) => {
+// Import API functions
+import { 
+  getTugasBesar, 
+  createTugasBesar, 
+  updateTugasBesar, 
+  deleteTugasBesar
+} from '../../utils/tugasBesarApi';
+
+const DosenTaskManagement = ({ 
+  courseId, 
+  courseName, 
+  classId, 
+  className, 
+  onNavigateToGroupManagement,
+  onNavigateToGroups,
+  onNavigateToGrading,
+  onNavigateToExport,
+  canManageClass = true,
+  isPengampu = false
+}) => {
   const [activeView, setActiveView] = useState('list'); // 'list', 'create', 'edit', 'detail'
   const [selectedTask, setSelectedTask] = useState(null);
+  
+  // API Integration states
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Sample data - akan diganti dengan data dari API
-  const tasks = [
-    {
-      id: 1,
-      title: 'Sistem E-Commerce',
-      description: 'Membuat aplikasi e-commerce menggunakan framework modern dengan fitur lengkap',
-      course: courseName,
-      courseId: courseId,
-      startDate: '2024-10-01',
-      endDate: '2024-12-15',
-      status: 'active',
-      groupFormation: 'manual', // 'manual', 'auto', 'student-choice'
-      minGroupSize: 3,
-      maxGroupSize: 5,
-      totalGroups: 8,
-      components: [
-        { id: 1, name: 'Proposal', weight: 20, deadline: '2024-10-15' },
-        { id: 2, name: 'Progress 1', weight: 25, deadline: '2024-11-15' },
-        { id: 3, name: 'Progress 2', weight: 25, deadline: '2024-12-01' },
-        { id: 4, name: 'Final Presentation', weight: 30, deadline: '2024-12-15' }
-      ],
-      deliverables: [
-        'Source code lengkap',
-        'Dokumentasi teknis',
-        'User manual',
-        'Presentation slides'
-      ],
-      createdAt: '2024-09-15',
-      updatedAt: '2024-09-20'
-    },
-    {
-      id: 2,
-      title: 'Database Design Project',
-      description: 'Merancang dan mengimplementasikan database untuk sistem informasi',
-      course: courseName,
-      courseId: courseId,
-      startDate: '2024-09-15',
-      endDate: '2024-11-30',
-      status: 'completed',
-      groupFormation: 'auto',
-      minGroupSize: 2,
-      maxGroupSize: 4,
-      totalGroups: 7,
-      components: [
-        { id: 1, name: 'ERD Design', weight: 30, deadline: '2024-10-01' },
-        { id: 2, name: 'Implementation', weight: 40, deadline: '2024-11-15' },
-        { id: 3, name: 'Testing & Documentation', weight: 30, deadline: '2024-11-30' }
-      ],
-      deliverables: [
-        'ERD Diagram',
-        'SQL Scripts',
-        'Database documentation'
-      ],
-      createdAt: '2024-09-01',
-      updatedAt: '2024-11-30'
+  // Helpers function
+  const formatSistemPengelompokan = (groupFormation) => {
+    const methodMap = {
+      manual: 'Manual',
+      automatic: 'Otomatis',
+      student_choice: 'Pilihan Mahasiswa'
+    };
+    return methodMap[groupFormation] || 'Tidak Diketahui';
+  };
+
+  // Export data function
+  const handleExportData = async (task) => {
+    try {
+      // Create CSV content
+      const csvRows = [];
+      
+      // Header
+      csvRows.push(['Tugas Besar', task.title]);
+      csvRows.push(['Deskripsi', task.description]);
+      csvRows.push(['Tanggal Mulai', task.startDate ? new Date(task.startDate).toLocaleDateString('id-ID') : 'N/A']);
+      csvRows.push(['Deadline', task.endDate ? new Date(task.endDate).toLocaleDateString('id-ID') : 'N/A']);
+      csvRows.push(['Sistem Pengelompokan', formatSistemPengelompokan(task.groupFormation)]);
+      csvRows.push(['Ukuran Kelompok', `${task.minGroupSize} - ${task.maxGroupSize} orang`]);
+      csvRows.push([]);
+      
+      // Komponen Penilaian
+      csvRows.push(['Komponen Penilaian']);
+      csvRows.push(['Nama', 'Bobot (%)', 'Deadline']);
+      if (task.components && task.components.length > 0) {
+        task.components.forEach(comp => {
+          csvRows.push([
+            comp.name || comp.nama || '',
+            comp.weight || comp.bobot || 0,
+            comp.deadline ? new Date(comp.deadline).toLocaleDateString('id-ID') : 'N/A'
+          ]);
+        });
+      } else {
+        csvRows.push(['Tidak ada komponen penilaian']);
+      }
+      csvRows.push([]);
+      
+      // Deliverables
+      csvRows.push(['Deliverables']);
+      if (task.deliverables && task.deliverables.length > 0) {
+        task.deliverables.forEach((item, index) => {
+          csvRows.push([`${index + 1}. ${item}`]);
+        });
+      } else {
+        csvRows.push(['Tidak ada deliverables']);
+      }
+      
+      // Convert to CSV string
+      const csvContent = csvRows.map(row => 
+        row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')
+      ).join('\n');
+      
+      // Create blob and download
+      const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `Tugas_Besar_${task.title.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Show success message
+      alert('Data berhasil diekspor!');
+    } catch (error) {
+      console.error('Error exporting data:', error);
+      alert('Gagal mengekspor data: ' + error.message);
     }
-  ];
+  };
+  // Load tugas besar when component mounts
+  useEffect(() => {
+    loadTugasBesar();
+  }, [courseId, classId]);
 
-  const TaskList = () => (
+  const loadTugasBesar = async () => {
+    try {
+      setLoading(true);
+      setError(null);// NEW: Pass classId to filter by specific class
+      const response = await getTugasBesar(courseId, classId);
+      
+      // Transform API data to UI format
+      const transformedTasks = (response.tugasBesar || []).map(task => {
+        const transformedTask = {
+          id: task.id,
+          title: task.judul || task.title || 'Untitled',
+          description: task.deskripsi || task.description || '',
+          startDate: task.tanggal_mulai || task.startDate || '',
+          endDate: task.tanggal_selesai || task.deadline || task.endDate || '',
+          status: task.status || 'active',
+          groupFormation: task.grouping_method || task.group_formation || task.groupFormation || 'manual',
+          minGroupSize: task.min_group_size || task.minGroupSize || 3,
+          maxGroupSize: task.max_group_size || task.maxGroupSize || 5,
+          totalGroups: task.total_groups || task.totalGroups || 0,
+          components: (() => {
+            // Parse components from database (handle both string JSON and object)
+            if (task.komponen) {
+              if (typeof task.komponen === 'string') {
+                try {
+                  return JSON.parse(task.komponen);
+                } catch (e) {
+                  return [];
+                }
+              } else if (Array.isArray(task.komponen)) {
+                return task.komponen;
+              }
+            }
+            return task.components || [];
+          })(),
+          deliverables: (typeof task.deliverable === 'string' ? JSON.parse(task.deliverable) : task.deliverable) || task.deliverables || [],
+          createdAt: task.created_at || task.createdAt || '',
+          updatedAt: task.updated_at || task.updatedAt || '',
+          course: courseName,
+          courseId: courseId
+        };
+        
+        return transformedTask;
+      });
+      
+      setTasks(transformedTasks);
+    } catch (err) {
+      console.error('Error loading tugas besar:', err);
+      setError(err.message);
+      // Set empty array as fallback
+      setTasks([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const isReadOnly = !canManageClass;
+  const readOnlyMessage = isPengampu
+    ? 'Anda terdaftar sebagai dosen pengampu untuk kelas ini sehingga hanya dapat melihat data.'
+    : 'Hak akses kelas ini bersifat baca saja.';
+
+  const guardReadOnlyAction = () => {
+    if (!isReadOnly) return false;
+    alert(readOnlyMessage);
+    return true;
+  };
+
+  const TaskList = () => {
+    if (loading) {
+      return (
+        <div className="flex justify-center items-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center">
+            <AlertCircle className="h-5 w-5 text-red-600 mr-2" />
+            <span className="text-red-800">Error: {error}</span>
+          </div>
+          <button 
+            onClick={loadTugasBesar}
+            className="mt-2 text-sm text-red-600 hover:text-red-800 underline"
+          >
+            Coba lagi
+          </button>
+        </div>
+      );
+    }
+
+    return (
     <div className="space-y-6">
+      {isReadOnly && (
+        <div className="bg-yellow-50 border border-yellow-200 text-yellow-900 px-4 py-3 rounded-lg text-sm">
+          {readOnlyMessage} Hubungi dosen pengajar kelas ini apabila perlu mengubah tugas besar.
+        </div>
+      )}
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Tugas Besar</h2>
           <p className="text-gray-600">{courseName}</p>
         </div>
-        <button 
-          onClick={() => setActiveView('create')}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition-colors"
-        >
-          <Plus size={20} />
-          Buat Tugas Besar
-        </button>
+        {!isReadOnly && (
+          <div className="flex gap-2">
+            <button 
+              onClick={() => setActiveView('create')}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition-colors"
+            >
+              <Plus size={20} />
+              Buat Tugas Besar
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="grid gap-6">
@@ -89,17 +235,28 @@ const DosenTaskManagement = ({ courseId, courseName }) => {
           <TaskCard 
             key={task.id} 
             task={task} 
+            readOnly={isReadOnly}
             onView={() => {
               setSelectedTask(task);
               setActiveView('detail');
             }}
             onEdit={() => {
+              if (guardReadOnlyAction()) return;
               setSelectedTask(task);
               setActiveView('edit');
             }}
-            onDelete={(id) => {
-              // Handle delete
-              console.log('Delete task:', id);
+            onDelete={async (id) => {
+              if (guardReadOnlyAction()) return;
+              // Handle delete with confirmation
+              if (window.confirm('Apakah Anda yakin ingin menghapus tugas besar ini?')) {
+                try {
+                  await deleteTugasBesar(courseId, id);
+                  await loadTugasBesar(); // Reload list after delete
+                } catch (error) {
+                  console.error('Error deleting tugas besar:', error);
+                  alert('Gagal menghapus tugas besar: ' + error.message);
+                }
+              }
             }}
           />
         ))}
@@ -112,18 +269,21 @@ const DosenTaskManagement = ({ courseId, courseName }) => {
           <p className="text-gray-600 mb-4">
             Mulai dengan membuat tugas besar pertama untuk mata kuliah ini.
           </p>
-          <button 
-            onClick={() => setActiveView('create')}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Buat Tugas Besar
-          </button>
+          {!isReadOnly && (
+            <button 
+              onClick={() => setActiveView('create')}
+              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Buat Tugas Besar
+            </button>
+          )}
         </div>
       )}
     </div>
-  );
+    );
+  }; // End TaskList function
 
-  const TaskCard = ({ task, onView, onEdit, onDelete }) => (
+  const TaskCard = ({ task, onView, onEdit, onDelete, readOnly = false }) => (
     <div className="bg-white p-6 rounded-lg shadow border hover:shadow-lg transition-shadow">
       <div className="flex justify-between items-start mb-4">
         <div className="flex-1">
@@ -131,35 +291,44 @@ const DosenTaskManagement = ({ courseId, courseName }) => {
             <h3 className="text-xl font-semibold">{task.title}</h3>
             <StatusBadge status={task.status} />
           </div>
-          <p className="text-gray-600 mb-4 line-clamp-2">{task.description}</p>
+          <p className="text-gray-600 mb-4 whitespace-pre-wrap">{task.description}</p>
           
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
             <div className="flex items-center gap-2">
               <Calendar className="text-gray-400" size={16} />
               <div>
                 <p className="text-sm text-gray-600">Deadline</p>
-                <p className="font-medium">{task.endDate}</p>
+                <p className="font-medium">
+                  {task.endDate || task.tanggal_selesai || task.deadline 
+                    ? new Date(task.endDate || task.tanggal_selesai || task.deadline).toLocaleDateString('id-ID', { 
+                        timeZone: 'Asia/Jakarta', 
+                        year: 'numeric', 
+                        month: 'short', 
+                        day: 'numeric' 
+                      }) 
+                    : 'N/A'}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <Users className="text-gray-400" size={16} />
               <div>
                 <p className="text-sm text-gray-600">Kelompok</p>
-                <p className="font-medium">{task.totalGroups}</p>
+                <p className="font-medium">{task.totalGroups || 0}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <FileText className="text-gray-400" size={16} />
               <div>
                 <p className="text-sm text-gray-600">Komponen</p>
-                <p className="font-medium">{task.components.length}</p>
+                <p className="font-medium">{task.components?.length || 0}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <Settings className="text-gray-400" size={16} />
               <div>
-                <p className="text-sm text-gray-600">Formasi</p>
-                <p className="font-medium capitalize">{task.groupFormation}</p>
+                <p className="text-sm text-gray-600">Sistem Pengelompokan</p>
+                <p className="font-medium">{formatSistemPengelompokan(task.groupFormation)}</p>
               </div>
             </div>
           </div>
@@ -168,7 +337,8 @@ const DosenTaskManagement = ({ courseId, courseName }) => {
       
       <div className="flex justify-between items-center">
         <div className="text-sm text-gray-500">
-          Dibuat: {task.createdAt} • Diupdate: {task.updatedAt}
+          Dibuat: {task.createdAt ? new Date(task.createdAt).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }) : 'N/A'} • 
+          Diupdate: {task.updatedAt ? new Date(task.updatedAt).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }) : 'N/A'}
         </div>
         <div className="flex gap-2">
           <button 
@@ -178,20 +348,24 @@ const DosenTaskManagement = ({ courseId, courseName }) => {
           >
             <Eye size={16} />
           </button>
-          <button 
-            onClick={onEdit}
-            className="text-green-600 hover:text-green-800 p-2 rounded transition-colors"
-            title="Edit"
-          >
-            <Edit size={16} />
-          </button>
-          <button 
-            onClick={() => onDelete(task.id)}
-            className="text-red-600 hover:text-red-800 p-2 rounded transition-colors"
-            title="Hapus"
-          >
-            <Trash2 size={16} />
-          </button>
+          {!readOnly && (
+            <>
+              <button 
+                onClick={onEdit}
+                className="text-green-600 hover:text-green-800 p-2 rounded transition-colors"
+                title="Edit"
+              >
+                <Edit size={16} />
+              </button>
+              <button 
+                onClick={() => onDelete(task.id)}
+                className="text-red-600 hover:text-red-800 p-2 rounded transition-colors"
+                title="Hapus"
+              >
+                <Trash2 size={16} />
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -217,27 +391,128 @@ const DosenTaskManagement = ({ courseId, courseName }) => {
   };
 
   const TaskForm = ({ isEdit = false }) => {
-    const [formData, setFormData] = useState(
-      isEdit && selectedTask ? selectedTask : {
-        title: '',
-        description: '',
-        startDate: '',
-        endDate: '',
-        groupFormation: 'manual',
-        minGroupSize: 3,
-        maxGroupSize: 5,
-        components: [
-          { name: 'Proposal', weight: 20, deadline: '' }
-        ],
-        deliverables: ['']
-      }
-    );
+    const [formData, setFormData] = useState(() => {
+      if (isEdit && selectedTask) {
+        // Convert date format for HTML input (YYYY-MM-DD)
+        const formatDateForInput = (dateStr) => {
+          if (!dateStr) return '';
+          const date = new Date(dateStr);
+          return date.toISOString().split('T')[0];
+        };
 
-    const handleSubmit = (e) => {
+        // Parse components from database (handle both string JSON and object)
+        let parsedComponents = [];
+        if (selectedTask.komponen) {
+          if (typeof selectedTask.komponen === 'string') {
+            try {
+              parsedComponents = JSON.parse(selectedTask.komponen);
+            } catch (e) {
+              parsedComponents = [];
+            }
+          } else if (Array.isArray(selectedTask.komponen)) {
+            parsedComponents = selectedTask.komponen;
+          }
+        } else if (selectedTask.components) {
+          parsedComponents = Array.isArray(selectedTask.components) ? selectedTask.components : [];
+        }
+        
+        // If no components exist, use empty array (don't add default)
+        if (parsedComponents.length === 0) {
+          parsedComponents = [];
+        }
+        
+        // Parse deliverables from database
+        let parsedDeliverables = [];
+        if (selectedTask.deliverable) {
+          if (typeof selectedTask.deliverable === 'string') {
+            try {
+              parsedDeliverables = JSON.parse(selectedTask.deliverable);
+            } catch (e) {
+              parsedDeliverables = [];
+            }
+          } else if (Array.isArray(selectedTask.deliverable)) {
+            parsedDeliverables = selectedTask.deliverable;
+          }
+        } else if (selectedTask.deliverables) {
+          parsedDeliverables = Array.isArray(selectedTask.deliverables) ? selectedTask.deliverables : [];
+        }
+        
+        // Map API data to form format
+        return {
+          title: selectedTask.judul || selectedTask.title || '',
+          description: selectedTask.deskripsi || selectedTask.description || '',
+          startDate: formatDateForInput(selectedTask.tanggal_mulai || selectedTask.startDate),
+          endDate: formatDateForInput(selectedTask.tanggal_selesai || selectedTask.endDate || selectedTask.deadline),
+          groupFormation: selectedTask.grouping_method || selectedTask.group_formation || selectedTask.groupFormation || 'manual',
+          minGroupSize: selectedTask.min_group_size || selectedTask.minGroupSize || 3,
+          maxGroupSize: selectedTask.max_group_size || selectedTask.maxGroupSize || 5,
+          components: parsedComponents.map(comp => ({
+            name: comp.name || comp.nama || '',
+            weight: comp.weight || comp.bobot || 0,
+            deadline: comp.deadline ? formatDateForInput(comp.deadline) : ''
+          })),
+          deliverables: parsedDeliverables.length > 0 ? parsedDeliverables : ['']
+        };
+      } else {
+        // Default values for new task
+        return {
+          title: '',
+          description: '',
+          startDate: '',
+          endDate: '',
+          groupFormation: 'manual',
+          minGroupSize: 3,
+          maxGroupSize: 5,
+          components: [
+            { name: 'Proposal', weight: 20, deadline: '' }
+          ],
+          deliverables: ['']
+        };
+      }
+    });
+    const [submitting, setSubmitting] = useState(false);
+
+    const handleSubmit = async (e) => {
       e.preventDefault();
-      // Handle form submission
-      console.log('Form data:', formData);
-      setActiveView('list');
+      
+      try {
+        setSubmitting(true);// Prepare data for API - match backend expectations
+        const tugasData = {
+          title: formData.title,
+          description: formData.description,
+          deadline: formData.endDate,
+          startDate: formData.startDate,
+          groupFormation: formData.groupFormation,
+          minGroupSize: formData.minGroupSize,
+          maxGroupSize: formData.maxGroupSize,
+          components: formData.components,
+          deliverables: formData.deliverables,
+          class_id: classId // NEW: Include classId in tugas data
+        };
+
+        if (isEdit && selectedTask) {
+          // Update existing task
+          await updateTugasBesar(courseId, selectedTask.id, tugasData);
+        } else {
+          // Create new task - Ensure classId is required
+          if (!classId) {
+            throw new Error('Class ID is required for creating tugas besar. Silakan kembali ke halaman Mata Kuliah dan pilih kelas terlebih dahulu.');
+          }
+          await createTugasBesar(courseId, tugasData);
+        }
+
+        // Reload the task list to show updated data
+        await loadTugasBesar();
+        
+        // Navigate back to list view
+        setActiveView('list');
+        
+      } catch (error) {
+        console.error('Error saving tugas besar:', error);
+        alert('Gagal menyimpan tugas besar: ' + error.message);
+      } finally {
+        setSubmitting(false);
+      }
     };
 
     const addComponent = () => {
@@ -362,40 +637,75 @@ const DosenTaskManagement = ({ courseId, courseName }) => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="manual">Manual (Dosen yang menentukan)</option>
-                <option value="auto">Otomatis (Sistem yang menentukan)</option>
-                <option value="student-choice">Pilihan Mahasiswa</option>
+                <option value="automatic">Otomatis (Sistem yang menentukan)</option>
+                <option value="student_choice">Pilihan Mahasiswa</option>
               </select>
+              <p className="text-xs text-gray-500 mt-1">
+                {formData.groupFormation === 'automatic' 
+                  ? 'Sistem akan menghitung ukuran kelompok optimal secara otomatis berdasarkan jumlah mahasiswa' 
+                  : formData.groupFormation === 'manual'
+                  ? 'Dosen akan membentuk kelompok secara manual'
+                  : 'Mahasiswa dapat memilih kelompok mereka sendiri dengan batasan yang ditentukan'
+                }
+              </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Minimal Anggota per Kelompok
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  max="10"
-                  value={formData.minGroupSize}
-                  onChange={(e) => setFormData({ ...formData, minGroupSize: parseInt(e.target.value) })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
+            {formData.groupFormation !== 'automatic' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Minimal Anggota per Kelompok
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={formData.minGroupSize}
+                    onChange={(e) => setFormData({ ...formData, minGroupSize: parseInt(e.target.value) })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Maksimal Anggota per Kelompok
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={formData.maxGroupSize}
+                    onChange={(e) => setFormData({ ...formData, maxGroupSize: parseInt(e.target.value) })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
               </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Maksimal Anggota per Kelompok
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  max="10"
-                  value={formData.maxGroupSize}
-                  onChange={(e) => setFormData({ ...formData, maxGroupSize: parseInt(e.target.value) })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
+            )}
+
+            {formData.groupFormation === 'automatic' && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <div className="bg-blue-100 p-2 rounded-lg">
+                    <Settings className="text-blue-600" size={20} />
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-blue-900 mb-2">Pembentukan Kelompok Otomatis</h4>
+                    <p className="text-sm text-blue-700 mb-2">
+                      Sistem akan secara otomatis menghitung ukuran kelompok yang optimal berdasarkan:
+                    </p>
+                    <ul className="text-xs text-blue-600 space-y-1">
+                      <li>• Jumlah total mahasiswa yang terdaftar</li>
+                      <li>• Algoritma pembagian yang menghasilkan kelompok seimbang</li>
+                      <li>• Ukuran kelompok ideal (3-5 anggota per kelompok)</li>
+                      <li>• Meminimalkan sisa mahasiswa yang tidak terbagi</li>
+                    </ul>
+                    <p className="text-xs text-blue-600 mt-2 font-medium">
+                      Ukuran kelompok akan ditentukan saat proses pembentukan kelompok di menu Manajemen Kelompok.
+                    </p>
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Assessment Components */}
@@ -484,9 +794,13 @@ const DosenTaskManagement = ({ courseId, courseName }) => {
             </button>
             <button
               type="submit"
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              disabled={submitting}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-blue-400 disabled:cursor-not-allowed flex items-center gap-2"
             >
-              {isEdit ? 'Update Tugas' : 'Buat Tugas'}
+              {submitting && (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              )}
+              {submitting ? 'Menyimpan...' : (isEdit ? 'Update Tugas' : 'Buat Tugas')}
             </button>
           </div>
         </form>
@@ -523,17 +837,20 @@ const DosenTaskManagement = ({ courseId, courseName }) => {
             <div className="bg-white p-6 rounded-lg shadow border">
               <h3 className="text-lg font-semibold mb-4">Komponen Penilaian</h3>
               <div className="space-y-3">
-                {selectedTask.components.map((component, index) => (
+                {(selectedTask.components || []).map((component, index) => (
                   <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded">
                     <div>
                       <p className="font-medium">{component.name}</p>
-                      <p className="text-sm text-gray-600">Deadline: {component.deadline}</p>
+                      <p className="text-sm text-gray-600">Deadline: {component.deadline ? new Date(component.deadline).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', year: 'numeric', month: 'short', day: 'numeric' }) : 'Belum diatur'}</p>
                     </div>
                     <div className="text-right">
                       <p className="font-semibold text-blue-600">{component.weight}%</p>
                     </div>
                   </div>
                 ))}
+                {(!selectedTask.components || selectedTask.components.length === 0) && (
+                  <p className="text-gray-500 text-center py-4">Belum ada komponen penilaian</p>
+                )}
               </div>
             </div>
 
@@ -541,12 +858,15 @@ const DosenTaskManagement = ({ courseId, courseName }) => {
             <div className="bg-white p-6 rounded-lg shadow border">
               <h3 className="text-lg font-semibold mb-4">Deliverables</h3>
               <ul className="space-y-2">
-                {selectedTask.deliverables.map((item, index) => (
+                {(selectedTask.deliverables || []).map((item, index) => (
                   <li key={index} className="flex items-center gap-2">
                     <CheckCircle className="text-green-600" size={16} />
                     <span>{item}</span>
                   </li>
                 ))}
+                {(!selectedTask.deliverables || selectedTask.deliverables.length === 0) && (
+                  <p className="text-gray-500 text-center py-4">Belum ada deliverables</p>
+                )}
               </ul>
             </div>
           </div>
@@ -563,19 +883,26 @@ const DosenTaskManagement = ({ courseId, courseName }) => {
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Periode</p>
-                  <p className="font-medium">{selectedTask.startDate} - {selectedTask.endDate}</p>
+                  <p className="font-medium">
+                    {new Date(selectedTask.startDate).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' })} - {new Date(selectedTask.endDate).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' })}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Formasi Kelompok</p>
-                  <p className="font-medium capitalize">{selectedTask.groupFormation}</p>
+                  <p className="text-sm text-gray-600">Sistem Pengelompokan</p>
+                  <p className="font-medium">{formatSistemPengelompokan(selectedTask.groupFormation)}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Ukuran Kelompok</p>
-                  <p className="font-medium">{selectedTask.minGroupSize} - {selectedTask.maxGroupSize} orang</p>
+                  <p className="font-medium">
+                    {selectedTask.groupFormation === 'automatic' 
+                      ? 'Otomatis (ditentukan sistem)' 
+                      : `${selectedTask.minGroupSize} - ${selectedTask.maxGroupSize} orang`
+                    }
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Total Kelompok</p>
-                  <p className="font-medium">{selectedTask.totalGroups}</p>
+                  <p className="font-medium">{selectedTask.totalGroups || 0}</p>
                 </div>
               </div>
             </div>
@@ -584,24 +911,47 @@ const DosenTaskManagement = ({ courseId, courseName }) => {
             <div className="bg-white p-6 rounded-lg shadow border">
               <h3 className="text-lg font-semibold mb-4">Aksi</h3>
               <div className="space-y-2">
+                {!isReadOnly && (
+                  <button 
+                    onClick={() => {
+                      setActiveView('edit');
+                    }}
+                    className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                  >
+                    <Edit size={16} />
+                    Edit Tugas
+                  </button>
+                )}
                 <button 
                   onClick={() => {
-                    setActiveView('edit');
+                    if (onNavigateToGroups) {
+                      onNavigateToGroups(selectedTask.id, selectedTask.title);
+                    } else if (onNavigateToGroupManagement) {
+                      onNavigateToGroupManagement(selectedTask.id, selectedTask.title);
+                    }
                   }}
-                  className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                  className={`w-full px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${isReadOnly ? 'bg-green-100 text-green-800 cursor-pointer' : 'bg-green-600 text-white hover:bg-green-700'}`}
                 >
-                  <Edit size={16} />
-                  Edit Tugas
-                </button>
-                <button className="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2">
                   <Users size={16} />
-                  Kelola Kelompok
+                  {isReadOnly ? 'Lihat Kelompok' : 'Kelola Kelompok'}
                 </button>
-                <button className="w-full bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2">
+                <button 
+                  onClick={() => {
+                    if (onNavigateToGrading) {
+                      onNavigateToGrading(selectedTask.id, selectedTask.title);
+                    }
+                  }}
+                  className={`w-full px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${isReadOnly ? 'bg-purple-100 text-purple-800 cursor-pointer' : 'bg-purple-600 text-white hover:bg-purple-700'}`}
+                >
                   <FileText size={16} />
                   Lihat Penilaian
                 </button>
-                <button className="w-full bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2">
+                <button 
+                  onClick={() => {
+                    handleExportData(selectedTask);
+                  }}
+                  className="w-full bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2"
+                >
                   <Download size={16} />
                   Export Data
                 </button>
@@ -612,6 +962,11 @@ const DosenTaskManagement = ({ courseId, courseName }) => {
       </div>
     );
   };
+
+  // Prevent edit/create views when read-only
+  if (isReadOnly && (activeView === 'create' || activeView === 'edit')) {
+    return <TaskList />;
+  }
 
   // Render based on active view
   switch (activeView) {

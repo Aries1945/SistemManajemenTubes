@@ -1,262 +1,264 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Users, FileText, Clock, CheckCircle, AlertTriangle } from 'lucide-react';
+import { BookOpen, Users, FileText, TrendingUp, ChevronRight, User, Calendar, Star, RefreshCw, AlertCircle } from 'lucide-react';
+import { getMahasiswaCourses } from '../../utils/mahasiswaApi';
 
 const MahasiswaCourses = () => {
   const navigate = useNavigate();
+  
+  // State untuk API data
+  const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  // Sample data - akan diganti dengan data dari API
-  const courses = [
-    { 
-      id: 1, 
-      name: 'Pemrograman Web', 
-      code: 'IF123',
-      lecturer: 'Dr. John Doe',
-      sks: 3,
-      schedule: [
-        { day: 'Senin', time: '08:00-10:00', room: 'Lab A' },
-        { day: 'Rabu', time: '10:00-12:00', room: 'Lab A' }
-      ],
-      groupStatus: 'joined',
-      groupName: 'Kelompok Alpha',
-      groupMembers: ['Alice Johnson', 'Bob Smith', 'Charlie Brown'],
-      activeTasks: 2,
-      completedTasks: 1,
-      nextDeadline: '2024-11-15',
-      averageGrade: 88.5
-    },
-    { 
-      id: 2, 
-      name: 'Basis Data', 
-      code: 'IF234',
-      lecturer: 'Dr. Jane Smith',
-      sks: 3,
-      schedule: [
-        { day: 'Selasa', time: '13:00-15:00', room: 'Ruang 201' },
-        { day: 'Kamis', time: '13:00-15:00', room: 'Ruang 201' }
-      ],
-      groupStatus: 'not_joined',
-      groupName: null,
-      groupMembers: [],
-      activeTasks: 1,
-      completedTasks: 0,
-      nextDeadline: '2024-11-20',
-      averageGrade: null
-    },
-    { 
-      id: 3, 
-      name: 'Rekayasa Perangkat Lunak', 
-      code: 'IF345',
-      lecturer: 'Dr. Bob Wilson',
-      sks: 3,
-      schedule: [
-        { day: 'Senin', time: '13:00-15:00', room: 'Ruang 102' },
-        { day: 'Kamis', time: '08:00-10:00', room: 'Ruang 102' }
-      ],
-      groupStatus: 'joined',
-      groupName: 'Kelompok Beta',
-      groupMembers: ['Alice Johnson', 'Diana Prince', 'Edward Norton', 'Fiona Green'],
-      activeTasks: 3,
-      completedTasks: 2,
-      nextDeadline: '2024-12-01',
-      averageGrade: 89.2
+  // Load courses data dari API
+  useEffect(() => {
+    loadCourses();
+  }, []);
+
+  const loadCourses = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      const response = await getMahasiswaCourses();
+      
+      if (response && response.success) {
+        // Transform API data to match component expectations
+        const transformedCourses = response.courses.map(course => ({
+          id: course.course_id,
+          name: course.course_name,
+          code: course.course_code,
+          lecturer: course.dosen_name || 'Belum ditentukan',
+          class: course.class_name || 'A',
+          classId: course.class_id,
+          schedule: 'Jadwal akan diumumkan', // Could be enhanced with real schedule data
+          semester: `${course.semester} ${course.tahun_ajaran}`,
+          sks: course.sks,
+          totalTasks: 0, // Will be updated when we have task count data
+          completedTasks: 0,
+          pendingTasks: 0,
+          averageGrade: course.nilai_akhir || null,
+          taskProgress: 0, // Will be calculated based on tasks
+          status: course.enrollment_status || 'active',
+          students: 45, // Default value, could be enhanced with real student count
+          enrolledAt: course.enrolled_at,
+          courseDescription: course.course_description
+        }));
+        
+        setCourses(transformedCourses);
+      } else {
+        setCourses([]);
+      }
+    } catch (err) {
+      setError('Gagal memuat data mata kuliah: ' + err.message);
+      setCourses([]);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  // Handle course selection
+  const handleCourseSelect = (course) => {
+    navigate(`/mahasiswa/dashboard/courses/${course.id}`);
+  };
+
+  // Handle refresh
+  const handleRefresh = () => {
+    loadCourses();
+  };
 
   return (
     <div className="p-6">
+      {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Mata Kuliah Saya</h1>
-          <p className="text-gray-600">Semester Ganjil 2024/2025</p>
+          <h1 className="text-2xl font-bold text-gray-900">Mata Kuliah</h1>
+          <p className="text-gray-600">Daftar mata kuliah yang Anda ambil semester ini</p>
+        </div>
+        <div className="flex items-center space-x-3">
+          {!loading && (
+            <>
+              <div className="text-sm text-gray-500">
+                <span className="font-medium">{courses.length}</span> mata kuliah terdaftar
+              </div>
+              <div className="text-sm text-gray-500">
+                <span className="font-medium">{courses.reduce((sum, course) => sum + course.sks, 0)}</span> total SKS
+              </div>
+            </>
+          )}
+          <button
+            onClick={handleRefresh}
+            disabled={loading}
+            className="flex items-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg font-medium transition-colors"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            <span>{loading ? 'Memuat...' : 'Refresh'}</span>
+          </button>
         </div>
       </div>
-      
-      <div className="space-y-6">
-        {courses.map(course => (
-          <CourseCard 
-            key={course.id} 
-            course={course} 
-            onSelect={() => navigate(`/student/courses/${course.id}`)}
-          />
-        ))}
-      </div>
 
-      {courses.length === 0 && (
+      {/* Loading State */}
+      {loading && (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <RefreshCw className="h-8 w-8 animate-spin text-green-600 mx-auto mb-4" />
+            <p className="text-gray-600">Memuat data mata kuliah...</p>
+          </div>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && !loading && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center">
+            <AlertCircle className="h-5 w-5 text-red-600 mr-2" />
+            <div>
+              <h3 className="text-sm font-medium text-red-800">Gagal memuat data</h3>
+              <p className="text-sm text-red-600 mt-1">{error}</p>
+            </div>
+          </div>
+          <button 
+            onClick={handleRefresh}
+            className="mt-3 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+          >
+            Coba Lagi
+          </button>
+        </div>
+      )}
+
+      {/* Courses Grid */}
+      {!loading && !error && courses.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {courses.map((course) => (
+            <CourseCard 
+              key={`${course.id}-${course.classId || course.class}`} 
+              course={course} 
+              onSelect={() => handleCourseSelect(course)} 
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Empty State */}
+      {!loading && !error && courses.length === 0 && (
         <div className="text-center py-12">
-          <BookOpen size={64} className="mx-auto mb-4 text-gray-400" />
+          <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">Belum ada mata kuliah</h3>
           <p className="text-gray-600">Anda belum terdaftar di mata kuliah manapun semester ini.</p>
+          <p className="text-gray-500 text-sm mt-2">
+            Silakan hubungi admin atau bagian akademik untuk registrasi mata kuliah.
+          </p>
         </div>
       )}
     </div>
   );
 };
 
-const CourseCard = ({ course, onSelect }) => {
-  const getGroupStatusBadge = (status) => {
-    switch (status) {
-      case 'joined':
-        return (
-          <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
-            <CheckCircle size={14} />
-            Bergabung
-          </span>
-        );
-      case 'not_joined':
-        return (
-          <span className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-medium">
-            <AlertTriangle size={14} />
-            Belum Bergabung
-          </span>
-        );
-      case 'pending':
-        return (
-          <span className="inline-flex items-center gap-1 px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium">
-            <Clock size={14} />
-            Pending
-          </span>
-        );
-      default:
-        return null;
-    }
-  };
-
-  const getUrgencyColor = (deadline) => {
-    const today = new Date();
-    const deadlineDate = new Date(deadline);
-    const diffTime = deadlineDate - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+const CourseCard = ({ course, onSelect }) => (
+  <div 
+    onClick={onSelect}
+    className="bg-gradient-to-br from-green-400 to-green-600 rounded-xl p-6 cursor-pointer hover:from-green-500 hover:to-green-700 transition-all duration-200 shadow-lg hover:shadow-xl relative overflow-hidden min-h-[280px]"
+  >
+    {/* Background Pattern */}
+    <div className="absolute inset-0 opacity-10">
+      <div className="absolute top-4 right-4 w-8 h-8 border-2 border-white rounded-sm"></div>
+      <div className="absolute top-8 right-8 w-6 h-6 border-2 border-white rounded-sm"></div>
+      <div className="absolute bottom-4 left-4 w-10 h-10 border-2 border-white rounded-sm"></div>
+      <div className="absolute bottom-8 left-8 w-4 h-4 border-2 border-white rounded-sm"></div>
+    </div>
     
-    if (diffDays <= 3) return 'text-red-600';
-    if (diffDays <= 7) return 'text-yellow-600';
-    return 'text-green-600';
-  };
-
-  return (
-    <div className="bg-white rounded-lg shadow border overflow-hidden">
+    {/* Content */}
+    <div className="relative z-10 h-full flex flex-col">
       {/* Header */}
-      <div className="p-6 border-b border-gray-200">
-        <div className="flex justify-between items-start">
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-2">
-              <h3 className="text-xl font-semibold text-gray-900">{course.name}</h3>
-              {getGroupStatusBadge(course.groupStatus)}
-            </div>
-            <p className="text-gray-600 mb-2">{course.code} • {course.sks} SKS • {course.lecturer}</p>
-            
-            {/* Schedule */}
-            <div className="flex flex-wrap gap-2 mb-3">
-              {course.schedule.map((schedule, index) => (
-                <span key={index} className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-sm">
-                  {schedule.day} {schedule.time} ({schedule.room})
-                </span>
-              ))}
-            </div>
-
-            {/* Group Info */}
-            {course.groupName && (
-              <div className="mb-3">
-                <p className="text-sm font-medium text-gray-700 mb-1">
-                  Kelompok: {course.groupName}
-                </p>
-                <div className="flex flex-wrap gap-1">
-                  {course.groupMembers.map((member, index) => (
-                    <span key={index} className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs">
-                      {member}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-          
+      <div className="flex justify-between items-start mb-4">
+        <div className="inline-block bg-white bg-opacity-20 text-white text-xs px-3 py-1 rounded-full font-medium">
+          {course.semester}
+        </div>
+        {course.averageGrade && (
           <div className="text-right">
-            <button 
-              onClick={onSelect}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-            >
-              Lihat Detail
-            </button>
+            <div className="flex items-center justify-end text-white text-xs mb-1">
+              <span>Nilai Saya</span>
+            </div>
+            <div className="flex items-center justify-end text-white text-lg font-bold">
+              <Star size={14} className="mr-1" />
+              <span>{course.averageGrade}</span>
+            </div>
           </div>
+        )}
+      </div>
+      
+      {/* Course Title & Code */}
+      <div className="mb-4">
+        <h3 className="text-white font-bold text-xl mb-1 leading-tight">
+          {course.name}
+        </h3>
+        <div className="text-white text-opacity-80 text-sm mb-2">
+          Kelas {course.class}
+        </div>
+        <div className="text-white text-opacity-90 text-sm">
+          <span className="font-semibold">{course.code}</span>
+          <span className="mx-2">•</span>
+          <span>{course.sks} SKS</span>
         </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="p-6">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          {/* Active Tasks */}
-          <div className="text-center">
-            <div className="bg-yellow-50 rounded-lg p-4">
-              <div className="flex items-center justify-center mb-2">
-                <Clock className="text-yellow-600" size={24} />
-              </div>
-              <p className="text-2xl font-bold text-yellow-600 mb-1">{course.activeTasks}</p>
-              <p className="text-sm text-gray-600">Tugas Aktif</p>
-            </div>
-          </div>
-
-          {/* Completed Tasks */}
-          <div className="text-center">
-            <div className="bg-green-50 rounded-lg p-4">
-              <div className="flex items-center justify-center mb-2">
-                <CheckCircle className="text-green-600" size={24} />
-              </div>
-              <p className="text-2xl font-bold text-green-600 mb-1">{course.completedTasks}</p>
-              <p className="text-sm text-gray-600">Selesai</p>
-            </div>
-          </div>
-
-          {/* Next Deadline */}
-          <div className="text-center">
-            <div className="bg-blue-50 rounded-lg p-4">
-              <div className="flex items-center justify-center mb-2">
-                <FileText className="text-blue-600" size={24} />
-              </div>
-              <p className={`text-sm font-bold mb-1 ${getUrgencyColor(course.nextDeadline)}`}>
-                {course.nextDeadline}
-              </p>
-              <p className="text-sm text-gray-600">Deadline Terdekat</p>
-            </div>
-          </div>
-
-          {/* Average Grade */}
-          <div className="text-center">
-            <div className="bg-purple-50 rounded-lg p-4">
-              <div className="flex items-center justify-center mb-2">
-                <Users className="text-purple-600" size={24} />
-              </div>
-              <p className="text-2xl font-bold text-purple-600 mb-1">
-                {course.averageGrade ? course.averageGrade : '-'}
-              </p>
-              <p className="text-sm text-gray-600">Rata-rata Nilai</p>
-            </div>
-          </div>
+      {/* Course Details */}
+      <div className="text-white text-opacity-90 mb-4 space-y-2">
+        <div className="flex items-center text-sm">
+          <User size={14} className="mr-2" />
+          <span className="truncate">{course.lecturer}</span>
+        </div>
+        <div className="flex items-center text-xs">
+          <Calendar size={12} className="mr-2" />
+          <span className="truncate">{course.schedule}</span>
         </div>
       </div>
 
-      {/* Action Buttons */}
-      {course.groupStatus === 'not_joined' && (
-        <div className="px-6 pb-6">
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="text-yellow-600 mt-1" size={20} />
-              <div className="flex-1">
-                <p className="text-yellow-800 font-medium">Belum bergabung kelompok</p>
-                <p className="text-yellow-700 text-sm mt-1">
-                  Anda perlu bergabung dengan kelompok untuk mengerjakan tugas besar.
-                </p>
-              </div>
-              <button className="bg-yellow-600 text-white px-3 py-1 rounded text-sm hover:bg-yellow-700 transition-colors">
-                Cari Kelompok
-              </button>
-            </div>
+      {/* Progress Section */}
+      <div className="mb-4">
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-white text-sm opacity-90">Progress Tugas</span>
+          <span className="text-white text-sm font-semibold">{course.taskProgress}%</span>
+        </div>
+        <div className="w-full bg-white bg-opacity-20 rounded-full h-2">
+          <div 
+            className="bg-white h-2 rounded-full transition-all" 
+            style={{ width: `${course.taskProgress}%` }}
+          ></div>
+        </div>
+      </div>
+
+      {/* Stats Row */}
+      <div className="flex items-center justify-between text-white text-opacity-90 text-sm mt-auto">
+        <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-1">
+            <Users size={14} />
+            <span>{course.students}</span>
+          </div>
+          <div className="flex items-center space-x-1">
+            <FileText size={14} />
+            <span>{course.totalTasks}</span>
+          </div>
+          <div className="flex items-center space-x-1">
+            <TrendingUp size={14} />
+            <span>{course.completedTasks}</span>
           </div>
         </div>
-      )}
+        
+        <div className="flex items-center">
+          <ChevronRight size={16} />
+        </div>
+      </div>
+
+      {/* Status indicator */}
+      <div className="absolute top-2 left-2">
+        <div className={`w-2 h-2 rounded-full ${
+          course.status === 'active' ? 'bg-green-300' : 'bg-yellow-300'
+        }`}></div>
+      </div>
     </div>
-  );
-};
-
+  </div>
+);
 
 export default MahasiswaCourses;
