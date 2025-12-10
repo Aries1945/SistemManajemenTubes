@@ -688,6 +688,17 @@ const MahasiswaCourseDetail = () => {
             Overview
           </button>
           <button
+            onClick={() => setActiveTab('nilai')}
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'nilai'
+                ? 'border-green-600 text-green-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <Award className="h-4 w-4 inline mr-2" />
+            Nilai Saya
+          </button>
+          <button
             onClick={() => setActiveTab('kelompok')}
             className={`py-4 px-1 border-b-2 font-medium text-sm ${
               activeTab === 'kelompok'
@@ -703,6 +714,7 @@ const MahasiswaCourseDetail = () => {
 
       {/* Tab Content */}
       {activeTab === 'overview' && <CourseOverview />}
+      {activeTab === 'nilai' && <NilaiSaya tugasBesarNilai={tugasBesarNilai} course={course} />}
       {activeTab === 'kelompok' && <KelompokSaya tugasBesar={tugasBesar} course={course} />}
 
       {/* Tugas Besar Detail Modal */}
@@ -1348,6 +1360,197 @@ const GroupSelectionModal = ({ tugas, onClose, courseId }) => {
           >
             Tutup
           </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Component untuk menampilkan nilai mahasiswa
+const NilaiSaya = ({ tugasBesarNilai, course }) => {
+  // Calculate average grade
+  const averageGrade = tugasBesarNilai.length > 0 
+    ? (tugasBesarNilai.reduce((sum, item) => sum + item.nilai, 0) / tugasBesarNilai.length).toFixed(1)
+    : course.myGrade || 0;
+
+  // Get grade letter
+  const getGradeLetter = (nilai) => {
+    const nilaiNum = parseFloat(nilai);
+    if (nilaiNum >= 85) return { letter: 'A', color: 'text-green-600', bgColor: 'bg-green-100' };
+    if (nilaiNum >= 80) return { letter: 'A-', color: 'text-green-600', bgColor: 'bg-green-100' };
+    if (nilaiNum >= 75) return { letter: 'B+', color: 'text-blue-600', bgColor: 'bg-blue-100' };
+    if (nilaiNum >= 70) return { letter: 'B', color: 'text-blue-600', bgColor: 'bg-blue-100' };
+    if (nilaiNum >= 65) return { letter: 'B-', color: 'text-blue-600', bgColor: 'bg-blue-100' };
+    if (nilaiNum >= 60) return { letter: 'C+', color: 'text-yellow-600', bgColor: 'bg-yellow-100' };
+    if (nilaiNum >= 55) return { letter: 'C', color: 'text-yellow-600', bgColor: 'bg-yellow-100' };
+    if (nilaiNum >= 50) return { letter: 'C-', color: 'text-yellow-600', bgColor: 'bg-yellow-100' };
+    if (nilaiNum >= 45) return { letter: 'D', color: 'text-orange-600', bgColor: 'bg-orange-100' };
+    if (nilaiNum >= 0) return { letter: 'E', color: 'text-red-600', bgColor: 'bg-red-100' };
+    return { letter: '-', color: 'text-gray-600', bgColor: 'bg-gray-100' };
+  };
+
+  const gradeInfo = getGradeLetter(averageGrade);
+
+  return (
+    <div className="space-y-6">
+      {/* Overall Grade Card */}
+      <div className="bg-gradient-to-br from-green-600 to-green-700 rounded-lg shadow-lg p-6 text-white">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-medium text-green-100 mb-2">Nilai Akhir</h3>
+            <div className="flex items-baseline gap-4">
+              <span className="text-5xl font-bold">{averageGrade}</span>
+              <span className={`text-2xl font-bold px-4 py-2 rounded-lg ${gradeInfo.bgColor} ${gradeInfo.color}`}>
+                {gradeInfo.letter}
+              </span>
+            </div>
+            {tugasBesarNilai.length > 0 && (
+              <p className="text-green-100 text-sm mt-3">
+                <Award className="h-4 w-4 inline mr-1" />
+                Rata-rata dari {tugasBesarNilai.length} tugas besar
+              </p>
+            )}
+          </div>
+          <div className="text-center">
+            <Star className="h-20 w-20 text-yellow-300 mx-auto mb-2" />
+            <p className="text-sm text-green-100">
+              {parseFloat(averageGrade) >= 70 ? 'Luar Biasa!' : parseFloat(averageGrade) >= 60 ? 'Bagus!' : 'Tetap Semangat!'}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Grade Details */}
+      {tugasBesarNilai.length > 0 ? (
+        <div className="bg-white border border-gray-200 rounded-lg p-6">
+          <h3 className="text-lg font-semibold mb-4 flex items-center">
+            <FileText className="h-5 w-5 mr-2 text-gray-600" />
+            Detail Nilai per Tugas Besar
+          </h3>
+          
+          <div className="space-y-3">
+            {tugasBesarNilai.map((item, idx) => {
+              const itemGrade = getGradeLetter(item.nilai);
+              return (
+                <div 
+                  key={`nilai-${item.tugasId}-${idx}`} 
+                  className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <h4 className="font-medium text-gray-900 mb-1">
+                        {item.tugasTitle}
+                      </h4>
+                      <p className="text-xs text-gray-500">
+                        Tugas Besar #{idx + 1}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <div className="text-2xl font-bold text-gray-900">
+                          {item.nilai.toFixed(1)}
+                        </div>
+                        <div className={`text-xs font-medium px-2 py-1 rounded ${itemGrade.bgColor} ${itemGrade.color} mt-1`}>
+                          Grade {itemGrade.letter}
+                        </div>
+                      </div>
+                      <div className="w-12 h-12 flex items-center justify-center">
+                        {item.nilai >= 70 ? (
+                          <CheckCircle className="h-8 w-8 text-green-500" />
+                        ) : item.nilai >= 50 ? (
+                          <AlertCircle className="h-8 w-8 text-yellow-500" />
+                        ) : (
+                          <XCircle className="h-8 w-8 text-red-500" />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Grade Summary Stats */}
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div className="bg-green-50 rounded-lg p-3">
+                <p className="text-xs text-gray-600 mb-1">Nilai Tertinggi</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {Math.max(...tugasBesarNilai.map(item => item.nilai)).toFixed(1)}
+                </p>
+              </div>
+              <div className="bg-blue-50 rounded-lg p-3">
+                <p className="text-xs text-gray-600 mb-1">Nilai Terendah</p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {Math.min(...tugasBesarNilai.map(item => item.nilai)).toFixed(1)}
+                </p>
+              </div>
+              <div className="bg-purple-50 rounded-lg p-3">
+                <p className="text-xs text-gray-600 mb-1">Rata-rata</p>
+                <p className="text-2xl font-bold text-purple-600">
+                  {averageGrade}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="text-center py-12 bg-white border border-gray-200 rounded-lg">
+          <Award className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Belum Ada Nilai</h3>
+          <p className="text-gray-500">
+            Nilai tugas besar belum tersedia atau belum dipublikasikan oleh dosen.
+          </p>
+        </div>
+      )}
+
+      {/* Grade Scale Reference */}
+      <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
+        <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+          <Info className="h-4 w-4 mr-2" />
+          Skala Penilaian
+        </h3>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
+          <div className="bg-green-100 text-green-700 px-3 py-2 rounded text-center">
+            <div className="font-bold">A</div>
+            <div>85-100</div>
+          </div>
+          <div className="bg-green-100 text-green-700 px-3 py-2 rounded text-center">
+            <div className="font-bold">A-</div>
+            <div>80-84</div>
+          </div>
+          <div className="bg-blue-100 text-blue-700 px-3 py-2 rounded text-center">
+            <div className="font-bold">B+</div>
+            <div>75-79</div>
+          </div>
+          <div className="bg-blue-100 text-blue-700 px-3 py-2 rounded text-center">
+            <div className="font-bold">B</div>
+            <div>70-74</div>
+          </div>
+          <div className="bg-blue-100 text-blue-700 px-3 py-2 rounded text-center">
+            <div className="font-bold">B-</div>
+            <div>65-69</div>
+          </div>
+          <div className="bg-yellow-100 text-yellow-700 px-3 py-2 rounded text-center">
+            <div className="font-bold">C+</div>
+            <div>60-64</div>
+          </div>
+          <div className="bg-yellow-100 text-yellow-700 px-3 py-2 rounded text-center">
+            <div className="font-bold">C</div>
+            <div>55-59</div>
+          </div>
+          <div className="bg-yellow-100 text-yellow-700 px-3 py-2 rounded text-center">
+            <div className="font-bold">C-</div>
+            <div>50-54</div>
+          </div>
+          <div className="bg-orange-100 text-orange-700 px-3 py-2 rounded text-center">
+            <div className="font-bold">D</div>
+            <div>45-49</div>
+          </div>
+          <div className="bg-red-100 text-red-700 px-3 py-2 rounded text-center">
+            <div className="font-bold">E</div>
+            <div>0-44</div>
+          </div>
         </div>
       </div>
     </div>

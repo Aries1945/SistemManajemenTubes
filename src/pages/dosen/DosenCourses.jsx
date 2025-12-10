@@ -252,11 +252,11 @@ const DosenCourses = () => {
   return (
     <div className="space-y-6">
       {/* Header Section */}
-      <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl p-6 border border-gray-200/50">
+      <div className="bg-gradient-to-br from-white to-blue-50/30 rounded-2xl shadow-md p-6 border border-blue-100">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Kelas yang Diampu</h1>
-            <p className="text-gray-600">
+            <p className="text-gray-700">
               {user?.nama_lengkap ? `Selamat datang, ${user.nama_lengkap}` : 'Daftar kelas yang Anda ampu'} - Kelola tugas besar per kelas
             </p>
           </div>
@@ -264,23 +264,23 @@ const DosenCourses = () => {
             <button
               onClick={handleRefresh}
               disabled={refreshing}
-              className="flex items-center px-4 py-2 text-sm bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg disabled:opacity-50"
+              className="flex items-center px-5 py-2.5 text-sm bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all shadow-md hover:shadow-lg hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
             >
               <RefreshCw size={16} className={`mr-2 ${refreshing ? 'animate-spin' : ''}`} />
               {refreshing ? 'Memperbarui...' : 'Perbarui'}
             </button>
             <div className="flex flex-wrap gap-3">
-              <div className="bg-blue-50 px-4 py-2 rounded-lg border border-blue-200">
-                <div className="text-xs text-blue-600 font-medium">Kelas Diampu</div>
-                <div className="text-lg font-bold text-blue-900">{courses.length}</div>
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 px-5 py-3 rounded-xl border border-blue-200 shadow-sm">
+                <div className="text-xs text-blue-600 font-semibold mb-1">Kelas Diampu</div>
+                <div className="text-xl font-bold text-gray-900">{courses.length}</div>
               </div>
-              <div className="bg-green-50 px-4 py-2 rounded-lg border border-green-200">
-                <div className="text-xs text-green-600 font-medium">Total Mahasiswa</div>
-                <div className="text-lg font-bold text-green-900">{totalStats.totalStudents}</div>
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 px-5 py-3 rounded-xl border border-blue-200 shadow-sm">
+                <div className="text-xs text-blue-600 font-semibold mb-1">Total Mahasiswa</div>
+                <div className="text-xl font-bold text-gray-900">{totalStats.totalStudents}</div>
               </div>
-              <div className="bg-orange-50 px-4 py-2 rounded-lg border border-orange-200">
-                <div className="text-xs text-orange-600 font-medium">Perlu Dinilai</div>
-                <div className="text-lg font-bold text-orange-900">{totalStats.totalPendingGrading}</div>
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 px-5 py-3 rounded-xl border border-blue-200 shadow-sm">
+                <div className="text-xs text-blue-600 font-semibold mb-1">Perlu Dinilai</div>
+                <div className="text-xl font-bold text-gray-900">{totalStats.totalPendingGrading}</div>
               </div>
             </div>
           </div>
@@ -309,50 +309,50 @@ const DosenCourses = () => {
       {/* Summary Stats */}
       {courses.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white/80 backdrop-blur-md p-6 rounded-2xl shadow-xl border border-blue-200/50 hover:shadow-2xl transition-all">
+          <div className="bg-gradient-to-br from-white to-blue-50/30 p-6 rounded-2xl shadow-md border border-blue-100 hover:shadow-lg hover:-translate-y-1 transition-all">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-blue-600 text-sm font-medium mb-1">Total Mahasiswa</p>
-                <p className="text-3xl font-bold text-blue-700">{totalStats.totalStudents}</p>
+                <p className="text-blue-600 text-sm font-semibold mb-1">Total Mahasiswa</p>
+                <p className="text-3xl font-bold text-gray-900">{totalStats.totalStudents}</p>
               </div>
-              <div className="p-3 bg-blue-100 rounded-xl">
+              <div className="p-3 bg-blue-100 rounded-xl shadow-sm">
                 <Users className="text-blue-600" size={28} />
               </div>
             </div>
           </div>
           
-          <div className="bg-white/80 backdrop-blur-md p-6 rounded-2xl shadow-xl border border-green-200/50 hover:shadow-2xl transition-all">
+          <div className="bg-gradient-to-br from-white to-blue-50/30 p-6 rounded-2xl shadow-md border border-blue-100 hover:shadow-lg hover:-translate-y-1 transition-all">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-green-600 text-sm font-medium mb-1">Total Tugas Besar</p>
-                <p className="text-3xl font-bold text-green-700">{totalStats.totalTugasBesar}</p>
+                <p className="text-blue-600 text-sm font-semibold mb-1">Total Tugas Besar</p>
+                <p className="text-3xl font-bold text-gray-900">{totalStats.totalTugasBesar}</p>
               </div>
-              <div className="p-3 bg-green-100 rounded-xl">
-                <FileText className="text-green-600" size={28} />
+              <div className="p-3 bg-blue-100 rounded-xl shadow-sm">
+                <FileText className="text-blue-600" size={28} />
               </div>
             </div>
           </div>
           
-          <div className="bg-white/80 backdrop-blur-md p-6 rounded-2xl shadow-xl border border-orange-200/50 hover:shadow-2xl transition-all">
+          <div className="bg-gradient-to-br from-white to-blue-50/30 p-6 rounded-2xl shadow-md border border-blue-100 hover:shadow-lg hover:-translate-y-1 transition-all">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-orange-600 text-sm font-medium mb-1">Perlu Dinilai</p>
-                <p className="text-3xl font-bold text-orange-700">{totalStats.totalPendingGrading}</p>
+                <p className="text-blue-600 text-sm font-semibold mb-1">Perlu Dinilai</p>
+                <p className="text-3xl font-bold text-gray-900">{totalStats.totalPendingGrading}</p>
               </div>
-              <div className="p-3 bg-orange-100 rounded-xl">
-                <AlertTriangle className="text-orange-600" size={28} />
+              <div className="p-3 bg-blue-100 rounded-xl shadow-sm">
+                <AlertTriangle className="text-blue-600" size={28} />
               </div>
             </div>
           </div>
           
-          <div className="bg-white/80 backdrop-blur-md p-6 rounded-2xl shadow-xl border border-purple-200/50 hover:shadow-2xl transition-all">
+          <div className="bg-gradient-to-br from-white to-blue-50/30 p-6 rounded-2xl shadow-md border border-blue-100 hover:shadow-lg hover:-translate-y-1 transition-all">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-purple-600 text-sm font-medium mb-1">Rata-rata Progress</p>
-                <p className="text-3xl font-bold text-purple-700">{totalStats.averageProgress}%</p>
+                <p className="text-blue-600 text-sm font-semibold mb-1">Rata-rata Progress</p>
+                <p className="text-3xl font-bold text-gray-900">{totalStats.averageProgress}%</p>
               </div>
-              <div className="p-3 bg-purple-100 rounded-xl">
-                <TrendingUp className="text-purple-600" size={28} />
+              <div className="p-3 bg-blue-100 rounded-xl shadow-sm">
+                <TrendingUp className="text-blue-600" size={28} />
               </div>
             </div>
           </div>
@@ -396,25 +396,19 @@ const ClassCard = ({ classData, onSelect }) => {
   return (
     <div 
       onClick={onSelect}
-      className="bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 rounded-2xl p-6 cursor-pointer hover:from-blue-600 hover:via-indigo-600 hover:to-purple-700 transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-[1.02] relative overflow-hidden min-h-[400px] group"
+      className="bg-gradient-to-br from-white via-blue-50/20 to-white rounded-2xl p-6 cursor-pointer hover:shadow-lg transition-all duration-300 shadow-md border border-blue-100 hover:border-blue-200 relative overflow-hidden min-h-[400px] group hover:-translate-y-1"
     >
-      {/* Background Pattern */}
-      <div className="absolute inset-0 opacity-10">
-        <div className="absolute top-4 right-4 w-8 h-8 border-2 border-white rounded-sm"></div>
-        <div className="absolute top-8 right-8 w-6 h-6 border-2 border-white rounded-sm"></div>
-        <div className="absolute bottom-4 left-4 w-10 h-10 border-2 border-white rounded-sm"></div>
-        <div className="absolute bottom-8 left-8 w-4 h-4 border-2 border-white rounded-sm"></div>
-      </div>
-      
+      {/* Subtle accent */}
+      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-blue-600 to-blue-500"></div>
       {/* Content */}
       <div className="relative z-10 h-full flex flex-col">
         {/* Header */}
         <div className="flex justify-between items-start mb-4">
           <div className="flex items-center space-x-2">
-            <div className="inline-block bg-white bg-opacity-20 text-white text-xs px-3 py-1 rounded-full font-medium">
+            <div className="inline-block bg-blue-50 text-blue-700 text-xs px-3 py-1 rounded-full font-medium border border-blue-200">
               {classData.semester}
             </div>
-            <div className="inline-block bg-yellow-400 bg-opacity-90 text-yellow-900 text-xs px-2 py-1 rounded-full font-bold">
+            <div className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full font-bold border border-blue-200">
               {classData.className}
             </div>
             {roleBadgeLabel && (
@@ -425,7 +419,7 @@ const ClassCard = ({ classData, onSelect }) => {
           </div>
           <div className="text-right">
             {classData.pendingGrading > 0 && (
-              <div className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+              <div className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full border border-red-200">
                 {classData.pendingGrading} perlu dinilai
               </div>
             )}
@@ -434,47 +428,47 @@ const ClassCard = ({ classData, onSelect }) => {
         
         {/* Course & Class Title */}
         <div className="mb-4">
-          <h3 className="text-white font-bold text-xl mb-1 leading-tight">
+          <h3 className="text-gray-900 font-bold text-xl mb-1 leading-tight">
             {classData.courseName}
           </h3>
-          <div className="text-white text-opacity-80 text-sm mb-2">
-            <span className="bg-white bg-opacity-20 px-2 py-1 rounded-md font-semibold">
+          <div className="text-gray-700 text-sm mb-2">
+            <span className="bg-blue-50 px-2 py-1 rounded-md font-semibold border border-blue-100">
               Kelas {classData.className}
             </span>
           </div>
-          <div className="text-white text-opacity-90 text-sm mb-2">
+          <div className="text-gray-700 text-sm mb-2">
             <span className="font-semibold">{classData.courseCode}</span>
             <span className="mx-2">•</span>
             <span>{classData.sks} SKS</span>
           </div>
           {/* Dosen Information */}
-          <div className="text-white text-opacity-80 text-sm">
+          <div className="text-gray-700 text-sm">
             <span className="mr-1">👨‍🏫</span>
             <span className="font-medium">{classData.dosenName}</span>
           </div>
-          <div className="text-white text-opacity-70 text-xs mt-2">
+          <div className="text-gray-600 text-xs mt-2">
             <p className="uppercase tracking-wide text-[10px] mb-1">Dosen Pengampu</p>
             <p className="font-semibold">{classData.courseCoordinatorName || 'Belum ditentukan'}</p>
           </div>
           {isPengampuOnly && (
-            <div className="mt-3 text-xs text-white text-opacity-90 bg-black/20 rounded-lg px-3 py-2">
+            <div className="mt-3 text-xs text-gray-700 bg-blue-50 rounded-lg px-3 py-2 border border-blue-100">
               Anda tercatat sebagai dosen koordinator. Kelas ini diajar oleh {classData.dosenName || 'dosen lain'}.
             </div>
           )}
         </div>
 
         {/* Class Details */}
-        <div className="text-white text-opacity-90 mb-4 space-y-2">
+        <div className="text-gray-700 mb-4 space-y-2">
           <div className="flex items-center text-sm">
-            <Users size={14} className="mr-2" />
+            <Users size={14} className="mr-2 text-blue-600" />
             <span>{classData.studentCount || classData.students || 0} mahasiswa</span>
           </div>
           <div className="flex items-center text-sm">
-            <FileText size={14} className="mr-2" />
+            <FileText size={14} className="mr-2 text-blue-600" />
             <span>{classData.tugasBesar || 0} tugas besar</span>
           </div>
           <div className="flex items-center text-sm">
-            <User size={14} className="mr-2" />
+            <User size={14} className="mr-2 text-blue-600" />
             <span>{classData.activeGroups || 0} kelompok aktif</span>
           </div>
           {classData.schedule && (
@@ -488,40 +482,40 @@ const ClassCard = ({ classData, onSelect }) => {
         {/* Progress Section */}
         <div className="mb-4">
           <div className="flex justify-between items-center mb-2">
-            <span className="text-white text-sm opacity-90">Progress Semester</span>
-            <span className="text-white text-sm font-semibold">{classData.progress || 0}%</span>
+            <span className="text-gray-900 text-sm font-medium">Progress Semester</span>
+            <span className="text-gray-700 text-sm font-semibold">{classData.progress || 0}%</span>
           </div>
-          <div className="w-full bg-white bg-opacity-20 rounded-full h-2">
+          <div className="w-full bg-blue-100 rounded-full h-2">
             <div 
-              className="bg-white h-2 rounded-full transition-all duration-500" 
+              className="bg-blue-600 h-2 rounded-full transition-all duration-500" 
               style={{ width: `${classData.progress || 0}%` }}
             ></div>
           </div>
         </div>
 
         {/* Stats Row */}
-        <div className="flex items-center justify-between text-white text-opacity-90 text-sm mt-auto">
+        <div className="flex items-center justify-between text-gray-700 text-sm mt-auto">
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-1" title="Tugas Besar">
-              <FileText size={14} />
+              <FileText size={14} className="text-blue-600" />
               <span>{classData.tugasBesar || 0}</span>
             </div>
             <div className="flex items-center space-x-1" title="Perlu Dinilai">
-              <AlertTriangle size={14} />
+              <AlertTriangle size={14} className="text-blue-600" />
               <span>{classData.pendingGrading || 0}</span>
             </div>
             <div className="flex items-center space-x-1" title="Kelompok Aktif">
-              <TrendingUp size={14} />
+              <TrendingUp size={14} className="text-blue-600" />
               <span>{classData.activeGroups || 0}</span>
             </div>
             <div className="flex items-center space-x-1" title="Total Mahasiswa">
-              <Users size={14} />
+              <Users size={14} className="text-blue-600" />
               <span>{classData.studentCount || classData.students || 0}</span>
             </div>
           </div>
           
           <div className="flex items-center">
-            <ChevronRight size={16} />
+            <ChevronRight size={16} className="text-blue-600" />
           </div>
         </div>
       </div>

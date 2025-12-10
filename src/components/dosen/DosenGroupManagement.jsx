@@ -1168,20 +1168,6 @@ const DosenGroupManagement = ({ courseId, classId, courseName = 'Pemrograman Web
                           <Eye size={14} />
                           Detail
                         </button>
-                        <button
-                          onClick={() => {
-                            showConfirm(
-                              'Konfirmasi Hapus',
-                              `Apakah Anda yakin ingin menghapus kelompok "${groupName}"? Tindakan ini tidak dapat dibatalkan.`,
-                              () => handleDeleteGroup(group.id)
-                            );
-                          }}
-                          className="bg-red-100 text-red-700 px-3 py-2 rounded-lg hover:bg-red-200 transition-colors flex items-center gap-2 text-sm"
-                          title="Hapus Kelompok"
-                        >
-                          <Trash2 size={14} />
-                          Hapus
-                        </button>
                       </div>
                     </div>
                   </div>
@@ -1734,7 +1720,7 @@ const DosenGroupManagement = ({ courseId, classId, courseName = 'Pemrograman Web
           </div>
 
           {/* Modal Footer */}
-          <div className="flex justify-between items-center p-6 bg-gray-50 border-t border-gray-200">
+          <div className="flex justify-end items-center p-6 bg-gray-50 border-t border-gray-200">
             <button
               onClick={() => {
                 setSelectedGroup(null);
@@ -1743,22 +1729,6 @@ const DosenGroupManagement = ({ courseId, classId, courseName = 'Pemrograman Web
               className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
             >
               Tutup
-            </button>
-            <button
-              onClick={() => {
-                showConfirm(
-                  'Konfirmasi Hapus',
-                  `Apakah Anda yakin ingin menghapus kelompok "${groupName}"? Tindakan ini tidak dapat dibatalkan.`,
-                  () => {
-                    handleDeleteGroup(selectedGroup.id);
-                    setSelectedGroup(null); // Close modal after delete
-                  }
-                );
-              }}
-              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
-            >
-              <Trash2 size={16} />
-              Hapus Kelompok
             </button>
           </div>
         </div>

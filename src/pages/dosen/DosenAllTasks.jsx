@@ -148,15 +148,15 @@ const DosenAllTasks = () => {
   return (
     <div className="space-y-6">
       {/* Header Section */}
-      <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl p-6 border border-gray-200/50">
+      <div className="bg-gradient-to-br from-white to-blue-50/30 rounded-2xl shadow-md p-6 border border-blue-100">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Semua Tugas Besar</h1>
-          <p className="text-gray-600">Daftar semua tugas besar dari semua kelas yang Anda ajar</p>
+          <p className="text-gray-700">Daftar semua tugas besar dari semua kelas yang Anda ajar</p>
         </div>
       </div>
 
       {/* Search and Filter */}
-      <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl p-6 border border-gray-200/50">
+      <div className="bg-gradient-to-br from-white to-blue-50/30 rounded-2xl shadow-md p-6 border border-blue-100">
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
@@ -165,7 +165,7 @@ const DosenAllTasks = () => {
               placeholder="Cari tugas besar, mata kuliah, atau kelas..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
           <div className="flex items-center gap-2">
@@ -173,7 +173,7 @@ const DosenAllTasks = () => {
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="px-4 py-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="all">Semua Status</option>
               <option value="active">Aktif</option>
@@ -194,10 +194,10 @@ const DosenAllTasks = () => {
       )}
 
       {filteredTasks.length === 0 ? (
-        <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl p-12 border border-gray-200/50 text-center">
-          <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+        <div className="bg-gradient-to-br from-white to-blue-50/30 rounded-2xl shadow-md p-12 border border-blue-100 text-center">
+          <FileText className="h-16 w-16 text-blue-300 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-gray-900 mb-2">Tidak ada tugas besar</h3>
-          <p className="text-gray-600">
+          <p className="text-gray-700">
             {searchTerm || filterStatus !== 'all' 
               ? 'Tidak ada tugas besar yang sesuai dengan filter'
               : 'Belum ada tugas besar yang dibuat untuk kelas Anda'}
@@ -208,10 +208,10 @@ const DosenAllTasks = () => {
           {filteredTasks.map((task) => {
             const status = getTaskStatus(task);
             const statusConfig = {
-              active: { color: 'bg-green-100 text-green-800', icon: CheckCircle, label: 'Aktif' },
-              urgent: { color: 'bg-orange-100 text-orange-800', icon: Clock, label: 'Mendesak' },
-              overdue: { color: 'bg-red-100 text-red-800', icon: AlertCircle, label: 'Terlambat' },
-              unknown: { color: 'bg-gray-100 text-gray-800', icon: FileText, label: 'Tidak diketahui' }
+              active: { color: 'bg-blue-100 text-blue-800 border border-blue-200', icon: CheckCircle, label: 'Aktif' },
+              urgent: { color: 'bg-orange-100 text-orange-800 border border-orange-200', icon: Clock, label: 'Mendesak' },
+              overdue: { color: 'bg-red-100 text-red-800 border border-red-200', icon: AlertCircle, label: 'Terlambat' },
+              unknown: { color: 'bg-gray-100 text-gray-800 border border-gray-200', icon: FileText, label: 'Tidak diketahui' }
             };
             const config = statusConfig[status] || statusConfig.unknown;
             const StatusIcon = config.icon;
@@ -220,7 +220,7 @@ const DosenAllTasks = () => {
               <div
                 key={`${task.id}-${task.classId}`}
                 onClick={() => handleTaskClick(task)}
-                className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl p-6 border border-gray-200/50 hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 cursor-pointer group"
+                className="bg-gradient-to-br from-white to-blue-50/20 rounded-2xl shadow-md p-6 border border-blue-100 hover:shadow-lg hover:border-blue-200 hover:-translate-y-1 transition-all duration-300 cursor-pointer group"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -228,29 +228,29 @@ const DosenAllTasks = () => {
                       <h3 className="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
                         {task.judul}
                       </h3>
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 ${config.color}`}>
+                      <span className={`px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1 shadow-sm ${config.color}`}>
                         <StatusIcon className="h-4 w-4" />
                         {config.label}
                       </span>
                     </div>
                     
-                    <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-4">
-                      <div className="flex items-center gap-2">
-                        <BookOpen className="h-4 w-4" />
-                        <span>{task.courseName} - {task.className}</span>
+                    <div className="flex flex-wrap items-center gap-4 text-sm text-gray-700 mb-4">
+                      <div className="flex items-center gap-2 bg-blue-50 px-3 py-1.5 rounded-lg">
+                        <BookOpen className="h-4 w-4 text-blue-600" />
+                        <span className="font-medium">{task.courseName} - {task.className}</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4" />
-                        <span>Deadline: {formatDate(task.tanggal_selesai)}</span>
+                      <div className="flex items-center gap-2 bg-blue-50 px-3 py-1.5 rounded-lg">
+                        <Calendar className="h-4 w-4 text-blue-600" />
+                        <span className="font-medium">Deadline: {formatDate(task.tanggal_selesai)}</span>
                       </div>
                     </div>
 
                     {task.deskripsi && (
-                      <p className="text-gray-700 mb-4 line-clamp-2">{task.deskripsi}</p>
+                      <p className="text-gray-700 mb-4 line-clamp-2 bg-gray-50 p-3 rounded-lg">{task.deskripsi}</p>
                     )}
                   </div>
                   
-                  <ChevronRight className="h-6 w-6 text-gray-400 group-hover:text-blue-600 transition-colors flex-shrink-0 ml-4" />
+                  <ChevronRight className="h-6 w-6 text-gray-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all flex-shrink-0 ml-4" />
                 </div>
               </div>
             );

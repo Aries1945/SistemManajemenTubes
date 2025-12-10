@@ -83,25 +83,25 @@ const Layout = ({ children }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50">
+    <div className="min-h-screen bg-blue-50">
       {/* Top Header */}
-      <header className="bg-white/80 backdrop-blur-md shadow-lg border-b border-gray-200/50 fixed top-0 left-0 right-0 z-30">
+      <header className="bg-white shadow-sm border-b border-blue-100 fixed top-0 left-0 right-0 z-30">
         <div className="flex items-center justify-between px-6 py-4">
           <div className="flex items-center space-x-4">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="p-2 rounded-xl hover:bg-gray-100 transition-all duration-200 lg:block hidden"
+              className="p-2 rounded-xl hover:bg-blue-50 transition-all duration-200 lg:block hidden"
             >
-              <Menu className="h-6 w-6 text-gray-600" />
+              <Menu className="h-6 w-6 text-blue-700" />
             </button>
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="p-2 rounded-xl hover:bg-gray-100 transition-all duration-200 lg:hidden"
+              className="p-2 rounded-xl hover:bg-blue-50 transition-all duration-200 lg:hidden"
             >
               {isMobileMenuOpen ? (
-                <X className="h-6 w-6 text-gray-600" />
+                <X className="h-6 w-6 text-blue-700" />
               ) : (
-                <Menu className="h-6 w-6 text-gray-600" />
+                <Menu className="h-6 w-6 text-blue-700" />
               )}
             </button>
             <div className="flex items-center space-x-3">
@@ -112,24 +112,24 @@ const Layout = ({ children }) => {
                   className="h-full w-full object-contain"
                 />
               </div>
-              <div className="h-8 w-px bg-gray-200/60"></div>
+              <div className="h-8 w-px bg-blue-200"></div>
               <div>
-                <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                <h1 className="text-xl font-bold text-blue-900">
                   Portal Dosen
                 </h1>
-                <p className="text-xs text-gray-500 font-medium">Universitas Katolik Parahyangan</p>
+                <p className="text-xs text-blue-600 font-medium">Universitas Katolik Parahyangan</p>
               </div>
             </div>
           </div>
 
           <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-3 px-4 py-2 rounded-xl hover:bg-gray-50 transition-all duration-200 cursor-pointer group">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow">
+            <div className="flex items-center space-x-3 px-4 py-2 rounded-xl hover:bg-blue-50 transition-all duration-200 cursor-pointer group">
+              <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow">
                 <User className="h-5 w-5 text-white" />
               </div>
               <div className="hidden md:block">
-                <p className="text-sm font-semibold text-gray-900">{getUserDisplayName()}</p>
-                <p className="text-xs text-gray-500">{user?.role || 'Dosen'}</p>
+                <p className="text-sm font-semibold text-blue-900">{getUserDisplayName()}</p>
+                <p className="text-xs text-blue-600">{user?.role || 'Dosen'}</p>
               </div>
             </div>
           </div>
@@ -146,8 +146,8 @@ const Layout = ({ children }) => {
 
       {/* Sidebar */}
       <aside className={`
-        fixed top-16 left-0 h-[calc(100vh-4rem)] bg-white/90 backdrop-blur-md border-r border-gray-200/50 z-50
-        transition-all duration-300 ease-in-out shadow-xl
+        fixed top-16 left-0 h-[calc(100vh-4rem)] bg-white border-r border-blue-100 z-50
+        transition-all duration-300 ease-in-out shadow-sm
         ${isSidebarOpen ? 'w-64' : 'w-20'}
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
@@ -158,21 +158,21 @@ const Layout = ({ children }) => {
               onClick={() => handleNavigation(item.path)}
               className={`
                 w-full flex items-center space-x-3 px-4 py-3 rounded-xl
-                transition-all duration-200 transform hover:scale-105
+                transition-all duration-200
                 ${item.active 
-                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30' 
-                  : 'text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50'
+                  ? 'bg-blue-600 text-white shadow-sm' 
+                  : 'text-blue-700 hover:bg-blue-50'
                 }
               `}
             >
-              <item.icon className={`h-5 w-5 flex-shrink-0 ${item.active ? 'text-white' : 'text-gray-600'}`} />
+              <item.icon className={`h-5 w-5 flex-shrink-0 ${item.active ? 'text-white' : 'text-blue-600'}`} />
               {isSidebarOpen && (
                 <span className="font-semibold">{item.title}</span>
               )}
             </button>
           ))}
 
-          <div className="pt-6 mt-6 border-t border-gray-200">
+          <div className="pt-6 mt-6 border-t border-blue-100">
             <button
               onClick={(e) => {
                 e.preventDefault();
@@ -181,14 +181,14 @@ const Layout = ({ children }) => {
               }}
               className={`
                 w-full flex items-center space-x-3 px-4 py-3 rounded-xl
-                transition-all duration-200 transform hover:scale-105
+                transition-all duration-200
                 ${location.pathname === '/dosen/dashboard/settings'
-                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30'
-                  : 'text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-blue-700 hover:bg-blue-50'
                 }
               `}
             >
-              <Settings className={`h-5 w-5 flex-shrink-0 ${location.pathname === '/dosen/dashboard/settings' ? 'text-white' : 'text-gray-600'}`} />
+              <Settings className={`h-5 w-5 flex-shrink-0 ${location.pathname === '/dosen/dashboard/settings' ? 'text-white' : 'text-blue-600'}`} />
               {isSidebarOpen && (
                 <span className="font-semibold">Pengaturan</span>
               )}
@@ -198,7 +198,7 @@ const Layout = ({ children }) => {
               onClick={handleLogout}
               className={`
                 w-full flex items-center space-x-3 px-4 py-3 rounded-xl mt-2
-                text-red-600 hover:bg-red-50 transition-all duration-200 transform hover:scale-105
+                text-red-600 hover:bg-red-50 transition-all duration-200
               `}
             >
               <LogOut className="h-5 w-5 flex-shrink-0" />
