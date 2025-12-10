@@ -951,6 +951,20 @@ router.post('/tugas-besar/:tugasId/nilai', async (req, res) => {
     const dosenId = req.user.id;
     const { kelompok_id, komponen_index, nilai, catatan } = req.body;
 
+    // Validate nilai: must be between 0 and 100
+    if (nilai !== null && nilai !== undefined) {
+      const numNilai = parseFloat(nilai);
+      if (isNaN(numNilai)) {
+        return res.status(400).json({ error: 'Nilai harus berupa angka' });
+      }
+      if (numNilai < 0) {
+        return res.status(400).json({ error: 'Nilai tidak boleh kurang dari 0' });
+      }
+      if (numNilai > 100) {
+        return res.status(400).json({ error: 'Nilai tidak boleh lebih dari 100' });
+      }
+    }
+
     // Verify ownership
     const tugasCheck = await pool.query(
       'SELECT 1 FROM tugas_besar WHERE id = $1 AND dosen_id = $2',

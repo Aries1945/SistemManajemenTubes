@@ -582,31 +582,157 @@ const DosenGradingManagement = ({ courseId, courseName, taskId = null, classId =
       return initialGrades;
     });
 
+    const [validationErrors, setValidationErrors] = useState({});
+
     const handleGradeChange = (groupId, field, value) => {
-      setGrades(prev => ({
-        ...prev,
-        [groupId]: {
-          ...prev[groupId],
-          [field]: value
+      if (field === 'score') {
+        // Allow empty string for clearing the field
+        if (value === '' || value === null || value === undefined) {
+          setGrades(prev => ({
+            ...prev,
+            [groupId]: {
+              ...prev[groupId],
+              [field]: ''
+            }
+          }));
+          // Clear validation error for this field
+          setValidationErrors(prev => {
+            const newErrors = { ...prev };
+            delete newErrors[groupId];
+            return newErrors;
+          });
+          return;
         }
-      }));
+
+        // Filter: hanya izinkan angka dan satu titik desimal
+        // Hapus semua karakter yang bukan angka atau titik
+        let filteredValue = value.toString().replace(/[^0-9.]/g, '');
+        
+        // Hanya izinkan satu titik desimal
+        const parts = filteredValue.split('.');
+        if (parts.length > 2) {
+          filteredValue = parts[0] + '.' + parts.slice(1).join('');
+        }
+
+        // Jika kosong setelah filter, set ke empty string
+        if (filteredValue === '' || filteredValue === '.') {
+          setGrades(prev => ({
+            ...prev,
+            [groupId]: {
+              ...prev[groupId],
+              [field]: filteredValue === '.' ? '0.' : ''
+            }
+          }));
+          // Clear validation error
+          setValidationErrors(prev => {
+            const newErrors = { ...prev };
+            delete newErrors[groupId];
+            return newErrors;
+          });
+          return;
+        }
+
+        // Convert to number untuk validasi
+        const numValue = parseFloat(filteredValue);
+        
+        // Jika bukan angka valid, jangan update
+        if (isNaN(numValue)) {
+          return;
+        }
+
+        // Otomatis batasi ke maksimum 100 saat user mengetik
+        let finalValue = filteredValue;
+        if (numValue > 100) {
+          // Jika nilai lebih dari 100, langsung batasi ke 100
+          finalValue = '100';
+          setValidationErrors(prev => {
+            const newErrors = { ...prev };
+            delete newErrors[groupId];
+            return newErrors;
+          });
+        } else if (numValue < 0) {
+          // Jika negatif, set ke 0
+          finalValue = '0';
+          setValidationErrors(prev => ({
+            ...prev,
+            [groupId]: 'Nilai tidak boleh kurang dari 0'
+          }));
+        } else {
+          // Valid value, clear error
+          setValidationErrors(prev => {
+            const newErrors = { ...prev };
+            delete newErrors[groupId];
+            return newErrors;
+          });
+        }
+
+        // Update state dengan nilai yang sudah difilter dan dibatasi
+        setGrades(prev => ({
+          ...prev,
+          [groupId]: {
+            ...prev[groupId],
+            [field]: finalValue
+          }
+        }));
+      } else {
+        // For non-score fields (like feedback), just update normally
+        setGrades(prev => ({
+          ...prev,
+          [groupId]: {
+            ...prev[groupId],
+            [field]: value
+          }
+        }));
+      }
     };
 
     const handleSaveGrades = async () => {
       if (guardReadOnlyAction('menyimpan nilai')) return;
+      
+      // Validate all grades before saving
+      const errors = {};
+      let hasErrors = false;
+
+      Object.entries(grades).forEach(([groupId, gradeData]) => {
+        if (gradeData.score !== '' && gradeData.score !== null && gradeData.score !== undefined) {
+          const numValue = parseFloat(gradeData.score);
+          
+          if (isNaN(numValue)) {
+            errors[groupId] = 'Nilai harus berupa angka';
+            hasErrors = true;
+          } else if (numValue < 0) {
+            errors[groupId] = 'Nilai tidak boleh kurang dari 0';
+            hasErrors = true;
+          } else if (numValue > 100) {
+            errors[groupId] = 'Nilai tidak boleh lebih dari 100';
+            hasErrors = true;
+          }
+        }
+      });
+
+      if (hasErrors) {
+        setValidationErrors(errors);
+        alert('Terdapat nilai yang tidak valid. Silakan perbaiki nilai yang ditandai dengan warna merah sebelum menyimpan.');
+        return;
+      }
+
       try {
         setSaving(true);
         
         // Save grades for each group
         const savePromises = Object.entries(grades).map(async ([groupId, gradeData]) => {
-          if (gradeData.score) {
-            await saveNilai(
-              selectedTaskId,
-              parseInt(groupId),
-              selectedComponent.index,
-              parseFloat(gradeData.score),
-              gradeData.feedback || ''
-            );
+          if (gradeData.score && gradeData.score !== '') {
+            const numValue = parseFloat(gradeData.score);
+            // Double check before sending to API
+            if (numValue >= 0 && numValue <= 100) {
+              await saveNilai(
+                selectedTaskId,
+                parseInt(groupId),
+                selectedComponent.index,
+                numValue,
+                gradeData.feedback || ''
+              );
+            }
           }
         });
         
@@ -685,15 +811,102 @@ const DosenGradingManagement = ({ courseId, courseName, taskId = null, classId =
                       Nilai (0-100)
                     </label>
                     <input
-                      type="number"
-                      min="0"
-                      max="100"
+                      type="text"
+                      inputMode="decimal"
                       value={grades[group.id]?.score || ''}
                       onChange={(e) => handleGradeChange(group.id, 'score', e.target.value)}
-                      className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                      onKeyDown={(e) => {
+                        // Izinkan: angka, titik, backspace, delete, tab, escape, enter, arrow keys
+                        const allowedKeys = [
+                          'Backspace', 'Delete', 'Tab', 'Escape', 'Enter',
+                          'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
+                          'Home', 'End'
+                        ];
+                        
+                        // Izinkan Ctrl/Cmd + A, C, V, X, Z
+                        if (e.ctrlKey || e.metaKey) {
+                          if (['a', 'c', 'v', 'x', 'z'].includes(e.key.toLowerCase())) {
+                            return;
+                          }
+                        }
+                        
+                        // Izinkan angka 0-9
+                        if (e.key >= '0' && e.key <= '9') {
+                          return;
+                        }
+                        
+                        // Izinkan titik desimal (hanya satu)
+                        if (e.key === '.' && !e.target.value.includes('.')) {
+                          return;
+                        }
+                        
+                        // Izinkan tombol navigasi
+                        if (allowedKeys.includes(e.key)) {
+                          return;
+                        }
+                        
+                        // Blokir semua karakter lain (huruf, simbol, dll)
+                        e.preventDefault();
+                      }}
+                      onPaste={(e) => {
+                        e.preventDefault();
+                        const pastedText = e.clipboardData.getData('text');
+                        // Filter hanya angka dan titik desimal
+                        const filtered = pastedText.replace(/[^0-9.]/g, '');
+                        // Hanya izinkan satu titik desimal
+                        const parts = filtered.split('.');
+                        const cleanValue = parts.length > 2 
+                          ? parts[0] + '.' + parts.slice(1).join('') 
+                          : filtered;
+                        
+                        if (cleanValue) {
+                          handleGradeChange(group.id, 'score', cleanValue);
+                        }
+                      }}
+                      onBlur={(e) => {
+                        // Validate on blur and ensure value is within range
+                        const value = e.target.value;
+                        if (value !== '' && value !== null && value !== undefined) {
+                          const numValue = parseFloat(value);
+                          if (!isNaN(numValue)) {
+                            let finalValue = value;
+                            if (numValue < 0) {
+                              finalValue = '0';
+                              setValidationErrors(prev => ({
+                                ...prev,
+                                [group.id]: 'Nilai tidak boleh kurang dari 0'
+                              }));
+                              handleGradeChange(group.id, 'score', '0');
+                            } else if (numValue > 100) {
+                              finalValue = '100';
+                              setValidationErrors(prev => {
+                                const newErrors = { ...prev };
+                                delete newErrors[group.id];
+                                return newErrors;
+                              });
+                              handleGradeChange(group.id, 'score', '100');
+                            } else {
+                              // Clear error if valid
+                              setValidationErrors(prev => {
+                                const newErrors = { ...prev };
+                                delete newErrors[group.id];
+                                return newErrors;
+                              });
+                            }
+                          }
+                        }
+                      }}
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                        validationErrors[group.id] 
+                          ? 'border-red-500 bg-red-50' 
+                          : 'border-gray-300'
+                      } ${isReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                       disabled={isReadOnly}
-                      placeholder="Masukkan nilai"
+                      placeholder="Masukkan nilai (0-100)"
                     />
+                    {validationErrors[group.id] && (
+                      <p className="mt-1 text-sm text-red-600">{validationErrors[group.id]}</p>
+                    )}
                   </div>
                   
                   <div>
