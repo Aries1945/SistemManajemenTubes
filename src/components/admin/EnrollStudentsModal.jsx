@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../utils/api';
-import { X, Search, CheckCircle, User } from 'lucide-react';
+import { X, Search, CheckCircle, User, Filter } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 const EnrollStudentsModal = ({ isOpen, onClose, classId, className }) => {
@@ -8,12 +8,17 @@ const EnrollStudentsModal = ({ isOpen, onClose, classId, className }) => {
   const [enrolledStudents, setEnrolledStudents] = useState([]);
   const [courseEnrolledStudents, setCourseEnrolledStudents] = useState([]); // Students enrolled in other classes for same course
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterByNPM, setFilterByNPM] = useState(false);
+  const [selectedStudents, setSelectedStudents] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   
   useEffect(() => {
     if (isOpen && classId) {
       fetchData();
+      setSelectedStudents([]); // Reset selections when modal opens
+      setSearchQuery(''); // Reset search
+      setFilterByNPM(false); // Reset filter
     }
   }, [isOpen, classId]);
   
@@ -101,10 +106,87 @@ const EnrollStudentsModal = ({ isOpen, onClose, classId, className }) => {
       toast.error(errorMessage);
     }
   };
+
+  const handleBulkEnroll = async () => {
+    if (selectedStudents.length === 0) {
+      toast.error('Pilih minimal satu mahasiswa');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const enrollPromises = selectedStudents.map(studentId =>
+        api.post(`/admin/classes/${classId}/enrollments`, {
+          mahasiswa_id: studentId
+        })
+      );
+
+      await Promise.all(enrollPromises);
+      
+      // Refresh all data
+      await fetchData();
+      
+      // Clear selections
+      setSelectedStudents([]);
+      
+      // Clear any previous error
+      setError('');
+      
+      toast.success(`${selectedStudents.length} mahasiswa berhasil didaftarkan`);
+    } catch (err) {
+      console.error('Error bulk enrolling students:', err);
+      const errorMessage = err.response?.data?.error || 'Gagal mendaftarkan beberapa mahasiswa';
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSelectStudent = (studentId) => {
+    setSelectedStudents(prev => {
+      if (prev.includes(studentId)) {
+        return prev.filter(id => id !== studentId);
+      } else {
+        return [...prev, studentId];
+      }
+    });
+  };
+
+  const handleSelectAll = () => {
+    const availableStudents = filteredStudents.filter(
+      student => !isStudentEnrolled(student.id)
+    );
+    
+    if (selectedStudents.length === availableStudents.length) {
+      // Deselect all
+      setSelectedStudents([]);
+    } else {
+      // Select all available students
+      setSelectedStudents(availableStudents.map(s => s.id));
+    }
+  };
   
   const filteredStudents = students
     .filter(student => {
+      // Exclude students who are enrolled in other classes for the same course
+      // They should not be shown at all
+      const enrolledInOther = isStudentEnrolledInOtherCourse(student.id);
+      const enrolledInThis = isStudentEnrolled(student.id);
+      
+      // Only exclude if enrolled in OTHER class (not this one)
+      if (enrolledInOther && !enrolledInThis) {
+        return false;
+      }
+      
       const searchLower = searchQuery.toLowerCase();
+      
+      // If filterByNPM is enabled, only search by NPM/NIM
+      if (filterByNPM) {
+        return ((student.npm || student.nim)?.toLowerCase().includes(searchLower));
+      }
+      
+      // Otherwise, search by all fields
       return (
         (student.nama_lengkap?.toLowerCase().includes(searchLower)) ||
         ((student.npm || student.nim)?.toLowerCase().includes(searchLower)) ||
@@ -112,21 +194,16 @@ const EnrollStudentsModal = ({ isOpen, onClose, classId, className }) => {
       );
     })
     .sort((a, b) => {
-      // Sort by enrollment status: available students first, then enrolled in other classes
+      // Sort by enrollment status: available students first, then enrolled students
       const aEnrolledInThis = isStudentEnrolled(a.id);
       const bEnrolledInThis = isStudentEnrolled(b.id);
-      const aEnrolledInOther = isStudentEnrolledInOtherCourse(a.id);
-      const bEnrolledInOther = isStudentEnrolledInOtherCourse(b.id);
       
       // Priority order:
-      // 1. Students not enrolled anywhere (available)
+      // 1. Students not enrolled (available)
       // 2. Students enrolled in this class
-      // 3. Students enrolled in other classes for the same course (disabled)
       
       if (aEnrolledInThis && !bEnrolledInThis) return 1;
       if (!aEnrolledInThis && bEnrolledInThis) return -1;
-      if (!aEnrolledInOther && bEnrolledInOther) return -1;
-      if (aEnrolledInOther && !bEnrolledInOther) return 1;
       
       // If same status, sort alphabetically
       return (a.nama_lengkap || '').localeCompare(b.nama_lengkap || '');
@@ -161,11 +238,11 @@ const EnrollStudentsModal = ({ isOpen, onClose, classId, className }) => {
           </div>
         )}
         
-        <div className="flex items-center mb-4">
+        <div className="flex items-center gap-2 mb-4">
           <div className="relative flex-grow">
             <input
               type="text"
-              placeholder="Cari mahasiswa berdasarkan nama atau NIM..."
+              placeholder={filterByNPM ? "Cari berdasarkan NPM..." : "Cari mahasiswa berdasarkan nama atau NIM..."}
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-md"
@@ -174,16 +251,51 @@ const EnrollStudentsModal = ({ isOpen, onClose, classId, className }) => {
               <Search size={18} />
             </div>
           </div>
+          <button
+            onClick={() => setFilterByNPM(!filterByNPM)}
+            className={`px-4 py-2 rounded-md flex items-center gap-2 whitespace-nowrap transition-colors ${
+              filterByNPM 
+                ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+            title={filterByNPM ? "Filter aktif: Hanya NPM" : "Klik untuk filter hanya NPM"}
+          >
+            <Filter size={16} />
+            {filterByNPM ? 'NPM Only' : 'Semua'}
+          </button>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 overflow-y-auto flex-grow">
           {/* Available Students */}
           <div className="border rounded-lg">
             <div className="bg-gray-50 p-3 border-b">
-              <h3 className="font-semibold">Daftar Mahasiswa</h3>
-              <p className="text-xs text-gray-600 mt-1">
-                Mahasiswa dapat terdaftar di banyak kelas, termasuk kelas yang berbeda untuk mata kuliah yang sama
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-semibold">Daftar Mahasiswa</h3>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={
+                      selectedStudents.length > 0 &&
+                      selectedStudents.length === filteredStudents.filter(s => !isStudentEnrolled(s.id)).length
+                    }
+                    onChange={handleSelectAll}
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-700">Pilih Semua</span>
+                </label>
+              </div>
+              <p className="text-xs text-gray-600">
+                Mahasiswa hanya dapat terdaftar di satu kelas untuk setiap mata kuliah
               </p>
+              {selectedStudents.length > 0 && (
+                <button
+                  onClick={handleBulkEnroll}
+                  disabled={isLoading}
+                  className="mt-2 w-full px-3 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                >
+                  {isLoading ? 'Mendaftarkan...' : `Daftarkan ${selectedStudents.length} Mahasiswa`}
+                </button>
+              )}
             </div>
             <div className="overflow-y-auto max-h-96 p-2">
               {isLoading ? (
@@ -192,8 +304,6 @@ const EnrollStudentsModal = ({ isOpen, onClose, classId, className }) => {
                 <ul className="space-y-2">
                   {filteredStudents.map(student => {
                     const enrolledInThis = isStudentEnrolled(student.id);
-                    const enrolledInOther = isStudentEnrolledInOtherCourse(student.id);
-                    const otherClassName = getOtherClassName(student.id);
                     
                     return (
                       <li 
@@ -201,21 +311,26 @@ const EnrollStudentsModal = ({ isOpen, onClose, classId, className }) => {
                         className={`flex justify-between items-center p-3 rounded-md ${
                           enrolledInThis 
                             ? 'bg-green-50 text-green-700' 
+                            : selectedStudents.includes(student.id)
+                            ? 'bg-blue-50 border-2 border-blue-300'
                             : 'bg-gray-50 hover:bg-gray-100'
                         }`}
                       >
                         <div className="flex items-center flex-grow">
+                          {!enrolledInThis && (
+                            <input
+                              type="checkbox"
+                              checked={selectedStudents.includes(student.id)}
+                              onChange={() => handleSelectStudent(student.id)}
+                              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 mr-3"
+                            />
+                          )}
                           <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center mr-3">
                             <User size={20} className="text-gray-600" />
                           </div>
                           <div className="flex-grow">
                             <p className="font-medium">{student.nama_lengkap || 'Unnamed'}</p>
                             <p className="text-sm text-gray-600">{student.npm || student.nim || 'No NPM'}</p>
-                            {enrolledInOther && !enrolledInThis && (
-                              <p className="text-xs text-blue-600 mt-1">
-                                Juga terdaftar di: {otherClassName}
-                              </p>
-                            )}
                           </div>
                         </div>
                         
