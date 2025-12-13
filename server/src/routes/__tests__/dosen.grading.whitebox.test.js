@@ -209,6 +209,12 @@ const saveNilaiForGroup = async (tugasId, kelompokId, komponenIndex, nilai, cata
  * Simulasi update visibility penilaian
  */
 const updatePenilaianVisibilityHandler = async (tugasId, penilaianVisible, dosenId, tasks) => {
+  // Check if tugas besar exists first
+  const tugas = tasks.find(t => t.id === tugasId);
+  if (!tugas) {
+    return { success: false, error: 'Tugas besar not found', status: 404 };
+  }
+
   // Verify ownership
   const hasOwnership = await verifyDosenOwnership(tugasId, dosenId, tasks);
   
@@ -217,11 +223,6 @@ const updatePenilaianVisibilityHandler = async (tugasId, penilaianVisible, dosen
   }
 
   // Update visibility
-  const tugas = tasks.find(t => t.id === tugasId);
-  if (!tugas) {
-    return { success: false, error: 'Tugas besar not found', status: 404 };
-  }
-
   tugas.penilaian_visible = penilaianVisible;
 
   return {
@@ -235,6 +236,12 @@ const updatePenilaianVisibilityHandler = async (tugasId, penilaianVisible, dosen
  * Simulasi get grading data dengan ownership check
  */
 const getGradingDataHandler = async (tugasId, dosenId, tasks, courses) => {
+  // Check if tugas besar exists first
+  const tugas = tasks.find(t => t.id === tugasId);
+  if (!tugas) {
+    return { success: false, error: 'Tugas besar not found', status: 404 };
+  }
+
   // Verify ownership (dosen pengajar atau pengampu)
   const hasOwnership = await verifyCourseDosenOwnership(tugasId, dosenId, tasks, courses);
   
@@ -244,11 +251,6 @@ const getGradingDataHandler = async (tugasId, dosenId, tasks, courses) => {
       error: 'Access denied. You can only view penilaian untuk tugas besar yang Anda ajar atau mata kuliah yang Anda pengampu.',
       status: 403
     };
-  }
-
-  const tugas = tasks.find(t => t.id === tugasId);
-  if (!tugas) {
-    return { success: false, error: 'Tugas besar not found', status: 404 };
   }
 
   const komponen = parseKomponen(tugas.komponen);

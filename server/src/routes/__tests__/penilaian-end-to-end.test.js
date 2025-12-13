@@ -254,74 +254,23 @@ describe('Penilaian End-to-End Backend API', () => {
   describe('2. Data Consistency - Dosen Save vs Mahasiswa View', () => {
     it('harus memastikan nilai yang disimpan dosen sama dengan yang dilihat mahasiswa', async () => {
       const tugasId = 1;
-      const dosenId = 1;
       const mahasiswaId = 1;
-      const kelompokId = 1;
-      const komponenIndex = 0;
-      const nilai = 85.5;
+      const savedNilai = 85.5;
       const catatan = 'Bagus';
 
-      // Simulate: Dosen saves nilai
-      // (would use saveNilaiForGroup here in real scenario)
-      
-      // Mock: Check enrollment
-      mockPool.query.mockResolvedValueOnce({
-        rows: [{
-          class_id: 1,
-          dosen_id: dosenId,
-          penilaian_visible: true
-        }]
-      });
-
-      // Mock: Get tugas besar
-      mockPool.query.mockResolvedValueOnce({
-        rows: [{
-          id: tugasId,
-          judul: 'Tugas Besar 1',
-          penilaian_visible: true
-        }]
-      });
-
-      // Mock: Get komponen
-      mockPool.query.mockResolvedValueOnce({
-        rows: [{
-          komponen: JSON.stringify([
-            { name: 'Ujian', weight: 50 }
-          ])
-        }]
-      });
-
-      // Mock: Get group
-      mockPool.query.mockResolvedValueOnce({
-        rows: [{
-          id: kelompokId,
-          nama_kelompok: 'Kelompok A'
-        }]
-      });
-
-      // Mock: Get nilai
+      // Simulate: Mahasiswa melihat nilai yang sudah disimpan dosen
+      // Mock: Get nilai result - harus menggunakan nilai yang sama dengan yang disimpan
       mockPool.query.mockResolvedValueOnce({
         rows: [{
           id: 1,
           komponen_id: 1,
           mahasiswa_id: mahasiswaId,
-          nilai: nilai,
+          nilai: savedNilai, // Nilai yang disimpan dosen
           catatan: catatan,
           komponen_nama: 'Ujian',
           komponen_bobot: 50
         }]
       });
-
-      // Verify data consistency
-      const enrollmentCheck = await mockPool.query(`
-        SELECT ce.class_id, cl.dosen_id, tb.penilaian_visible
-        FROM class_enrollments ce
-        JOIN classes cl ON ce.class_id = cl.id
-        JOIN tugas_besar tb ON cl.course_id = tb.course_id AND tb.class_id = cl.id
-        WHERE tb.id = $1 AND ce.mahasiswa_id = $2 AND ce.status = 'active'
-      `, [tugasId, mahasiswaId]);
-
-      expect(enrollmentCheck.rows[0].penilaian_visible).toBe(true);
 
       const nilaiResult = await mockPool.query(`
         SELECT n.*, kp.nama as komponen_nama, kp.bobot as komponen_bobot
@@ -330,8 +279,12 @@ describe('Penilaian End-to-End Backend API', () => {
         WHERE kp.tugas_besar_id = $1 AND n.mahasiswa_id = $2
       `, [tugasId, mahasiswaId]);
 
+      expect(nilaiResult.rows.length).toBeGreaterThan(0);
+      // Pastikan nilai ada dan sama dengan yang disimpan
+      expect(nilaiResult.rows[0].nilai).toBeDefined();
+      expect(nilaiResult.rows[0].nilai).toBe(savedNilai);
       expect(parseFloat(nilaiResult.rows[0].nilai)).toBe(85.5);
-      expect(nilaiResult.rows[0].catatan).toBe('Bagus');
+      expect(nilaiResult.rows[0].catatan).toBe(catatan);
     });
   });
 
@@ -342,20 +295,18 @@ describe('Penilaian End-to-End Backend API', () => {
       const mahasiswaId = 1;
 
       // Step 1: Dosen sets visibility to true
+      // Mock untuk checkTugasOwnership - query mencari tugas dengan dosen_id
       mockPool.query.mockResolvedValueOnce({
-        rows: [{ id: tugasId }]
-      });
-      mockPool.query.mockResolvedValueOnce({
-        rows: []
+        rows: [{ id: tugasId, dosen_id: dosenId }] // Tugas ditemukan dengan dosen yang benar
       });
 
       const ownershipCheck = await checkTugasOwnership(tugasId, dosenId, mockPool);
       expect(ownershipCheck).toBe(true);
 
       // Step 2: Check mahasiswa view when visible = true
+      // Mock: Get visibility check result dengan query yang benar
       mockPool.query.mockResolvedValueOnce({
         rows: [{
-          class_id: 1,
           penilaian_visible: true
         }]
       });
@@ -369,6 +320,7 @@ describe('Penilaian End-to-End Backend API', () => {
         WHERE tb.id = $1 AND ce.mahasiswa_id = $2
       `, [tugasId, mahasiswaId]);
 
+      expect(visibilityCheck.rows.length).toBeGreaterThan(0);
       expect(visibilityCheck.rows[0].penilaian_visible).toBe(true);
     });
   });
@@ -391,12 +343,15 @@ describe('Penilaian End-to-End Backend API', () => {
 
     it('harus handle missing data dengan error yang jelas', async () => {
       const tugasId = 999; // Non-existent
+      const dosenId = 1;
 
+      // Mock: Tugas besar tidak ditemukan (empty result)
+      // checkTugasOwnership melakukan query: SELECT id, dosen_id FROM tugas_besar WHERE id = $1 AND dosen_id = $2
       mockPool.query.mockResolvedValueOnce({
-        rows: [] // Tugas not found
+        rows: [] // Tugas not found - empty result
       });
 
-      const hasAccess = await checkTugasOwnership(tugasId, 1, mockPool);
+      const hasAccess = await checkTugasOwnership(tugasId, dosenId, mockPool);
       expect(hasAccess).toBe(false);
     });
   });

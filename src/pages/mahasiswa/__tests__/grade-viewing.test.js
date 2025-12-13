@@ -44,10 +44,15 @@ const calculateAverageFromNilaiList = (nilaiList) => {
   let totalWeight = 0;
 
   nilaiList.forEach((nilai) => {
-    const nilaiValue = parseFloat(nilai.nilai) || 0;
-    const bobot = parseFloat(nilai.bobot) || 0;
-    totalWeightedScore += nilaiValue * (bobot / 100);
-    totalWeight += bobot;
+    // Hanya hitung jika nilai ada (tidak null/undefined)
+    if (nilai.nilai !== null && nilai.nilai !== undefined) {
+      const nilaiValue = parseFloat(nilai.nilai);
+      const bobot = parseFloat(nilai.bobot) || 0;
+      if (!isNaN(nilaiValue) && bobot > 0) {
+        totalWeightedScore += nilaiValue * (bobot / 100);
+        totalWeight += bobot;
+      }
+    }
   });
 
   return totalWeight > 0 ? (totalWeightedScore / totalWeight * 100).toFixed(1) : null;

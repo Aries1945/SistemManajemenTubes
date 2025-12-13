@@ -10,6 +10,9 @@
 
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 
+// Mock import.meta.env - menggunakan process.env sebagai fallback
+const API_BASE_URL = process.env.VITE_API_BASE_URL || 'http://localhost:5001/api';
+
 // Mock localStorage
 const mockLocalStorage = {
   getItem: jest.fn(),
@@ -51,7 +54,7 @@ describe('Penilaian API Utilities - Whitebox Testing', () => {
         throw new Error('Authentication required. Please login again.');
       }
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/api'}${url}`, {
+      const response = await fetch(`${API_BASE_URL}${url}`, {
         ...options,
         headers: {
           'Content-Type': 'application/json',

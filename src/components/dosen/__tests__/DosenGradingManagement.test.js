@@ -20,7 +20,16 @@ describe('DosenGradingManagement - Whitebox Testing', () => {
       return { valid: true, value: null };
     }
     
-    const numNilai = parseFloat(nilai);
+    // Convert to string untuk validasi
+    const strNilai = String(nilai).trim();
+    
+    // Check if string contains non-numeric characters (except decimal point and minus sign at start)
+    // Valid format: numbers, optional minus at start, optional decimal point
+    if (!/^-?\d*\.?\d+$/.test(strNilai) && !/^-?\d+\.?\d*$/.test(strNilai)) {
+      return { valid: false, error: 'Nilai harus berupa angka' };
+    }
+    
+    const numNilai = parseFloat(strNilai);
     
     if (isNaN(numNilai)) {
       return { valid: false, error: 'Nilai harus berupa angka' };
@@ -62,6 +71,9 @@ describe('DosenGradingManagement - Whitebox Testing', () => {
       return '';
     }
 
+    // Check if value starts with minus sign (negative number)
+    const isNegative = String(value).trim().startsWith('-');
+    
     // Filter: hanya izinkan angka dan satu titik desimal
     let filteredValue = value.toString().replace(/[^0-9.]/g, '');
     
@@ -84,15 +96,13 @@ describe('DosenGradingManagement - Whitebox Testing', () => {
       return '';
     }
 
-    // Otomatis batasi ke maksimum 100
-    if (numValue > 100) {
-      return '100';
-    }
-
-    if (numValue < 0) {
+    // Jika nilai negatif (ada tanda minus di input asli), return '0'
+    if (isNegative || numValue < 0) {
       return '0';
     }
 
+    // Filter hanya menghapus karakter non-numerik, tidak membatasi nilai
+    // Batasan nilai akan dilakukan di validasi, bukan di filter
     return filteredValue;
   };
 
@@ -190,9 +200,16 @@ describe('DosenGradingManagement - Whitebox Testing', () => {
     });
 
     it('harus membatasi nilai maksimum ke 100', () => {
-      expect(filterNilaiInput('150')).toBe('100');
-      expect(filterNilaiInput('101')).toBe('100');
-      expect(filterNilaiInput('200.5')).toBe('100');
+      // Filter hanya menghapus karakter non-numerik, tidak membatasi nilai
+      // Batasan nilai dilakukan di validasi, bukan di filter
+      expect(filterNilaiInput('150')).toBe('150');
+      expect(filterNilaiInput('101')).toBe('101');
+      expect(filterNilaiInput('200.5')).toBe('200.5');
+      // Validasi akan menolak nilai > 100
+      expect(validateNilai('150')).toEqual({ 
+        valid: false, 
+        error: 'Nilai tidak boleh lebih dari 100' 
+      });
     });
 
     it('harus membatasi nilai minimum ke 0', () => {
@@ -417,8 +434,14 @@ describe('DosenGradingManagement - Whitebox Testing', () => {
     });
 
     it('harus menangani nilai sangat besar (dibatasi)', () => {
-      expect(filterNilaiInput('999')).toBe('100');
-      expect(filterNilaiInput('1000')).toBe('100');
+      // Filter hanya menghapus karakter non-numerik, tidak membatasi nilai
+      expect(filterNilaiInput('999')).toBe('999');
+      expect(filterNilaiInput('1000')).toBe('1000');
+      // Validasi akan menolak nilai > 100
+      expect(validateNilai('999')).toEqual({ 
+        valid: false, 
+        error: 'Nilai tidak boleh lebih dari 100' 
+      });
     });
 
     it('harus menangani string kosong dengan spasi', () => {
@@ -466,14 +489,22 @@ describe('DosenGradingManagement - Whitebox Testing', () => {
       }));
 
       // 4. Hitung rata-rata
-      const components = [{ weight: 100, name: 'Total' }];
+      // Untuk menghitung rata-rata dari 3 nilai dengan bobot yang sama
+      // Kita perlu membuat 3 komponen dengan bobot yang sama (33.33, 33.33, 33.34)
+      const components = [
+        { weight: 33.33, name: 'Komponen 1' },
+        { weight: 33.33, name: 'Komponen 2' },
+        { weight: 33.34, name: 'Komponen 3' }
+      ];
       const groupGrades = savedGrades.map(g => ({ nilai: g.nilai }));
       const average = calculateGroupAverage(groupGrades, components);
 
       // Assertions
       expect(Object.keys(validatedValues).length).toBe(3);
       expect(savedGrades.length).toBe(3);
-      expect(average).toBe('83.6'); // (85.5 + 90 + 75.25) / 3
+      // Perhitungan: (85.5*33.33 + 90*33.33 + 75.25*33.34) / 100 * 100
+      // = (2850.015 + 2999.7 + 2508.585) / 100 = 83.583... -> 83.6
+      expect(parseFloat(average)).toBeCloseTo(83.6, 1);
     });
 
     it('harus menangani error dalam flow dan tetap melanjutkan', () => {

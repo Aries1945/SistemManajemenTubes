@@ -22,7 +22,16 @@ const validateGradeInput = (score) => {
     return { valid: true, value: null };
   }
   
-  const numValue = parseFloat(score);
+  // Convert to string untuk validasi
+  const strScore = String(score).trim();
+  
+  // Check if string contains non-numeric characters (except decimal point and minus sign at start)
+  // Valid format: numbers, optional minus at start, optional decimal point
+  if (!/^-?\d*\.?\d+$/.test(strScore) && !/^-?\d+\.?\d*$/.test(strScore)) {
+    return { valid: false, error: 'Nilai harus berupa angka' };
+  }
+  
+  const numValue = parseFloat(strScore);
   
   if (isNaN(numValue)) {
     return { valid: false, error: 'Nilai harus berupa angka' };
@@ -429,7 +438,9 @@ describe('Dosen Grading Flow - Whitebox Testing', () => {
     it('harus menangani banyak kelompok sekaligus', () => {
       const grades = {};
       for (let i = 1; i <= 100; i++) {
-        grades[i] = { score: String(50 + i), feedback: `Feedback ${i}` };
+        // Gunakan nilai yang valid (0-100), misalnya 50 + (i % 50) untuk memastikan semua nilai <= 100
+        const validScore = 50 + (i % 50); // Nilai antara 50-99
+        grades[i] = { score: String(validScore), feedback: `Feedback ${i}` };
       }
 
       const validation = validateBatchGrades(grades);
