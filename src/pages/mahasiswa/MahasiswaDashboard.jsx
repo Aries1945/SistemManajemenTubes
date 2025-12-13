@@ -137,12 +137,10 @@ const DashboardOverview = ({
       </div>
 
       <div className="flex justify-between items-center pt-4 border-t border-gray-100">
-        {course.averageGrade && (
-          <div className="flex items-center text-xs text-gray-500">
-            <Star className="h-4 w-4 mr-1 text-yellow-500" />
-            <span>Nilai: {course.averageGrade}</span>
-          </div>
-        )}
+        <div className="flex items-center text-xs text-gray-500">
+          <Star className="h-4 w-4 mr-1 text-yellow-500" />
+          <span>Nilai: {course.averageGrade || 'NA'}</span>
+        </div>
         <button 
           onClick={() => navigate(`/mahasiswa/dashboard/courses/${course.id}`)}
           className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center"

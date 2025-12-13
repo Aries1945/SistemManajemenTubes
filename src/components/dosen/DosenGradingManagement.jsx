@@ -11,8 +11,10 @@ import {
   getTugasBesarForGrading, 
   getGradingData,
   saveNilai,
+  saveNilaiPerMahasiswa,
   updatePenilaianVisibility
 } from '../../utils/penilaianApi';
+import { getKelompok } from '../../utils/kelompokApi';
 
 const DosenGradingManagement = ({ courseId, courseName, taskId = null, classId = null, isReadOnly = false }) => {
   const [activeView, setActiveView] = useState('overview');
@@ -25,6 +27,7 @@ const DosenGradingManagement = ({ courseId, courseName, taskId = null, classId =
   const [tasks, setTasks] = useState([]);
   const [selectedTaskId, setSelectedTaskId] = useState(taskId);
   const [gradingData, setGradingData] = useState(null);
+  const [groupsWithMembers, setGroupsWithMembers] = useState([]); // Groups with full member details
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [updatingVisibility, setUpdatingVisibility] = useState(false);
@@ -52,10 +55,24 @@ const DosenGradingManagement = ({ courseId, courseName, taskId = null, classId =
   useEffect(() => {
     if (selectedTaskId) {
       loadGradingData(selectedTaskId);
+      loadGroupsWithMembers(selectedTaskId);
     } else {
       setGradingData(null);
+      setGroupsWithMembers([]);
     }
   }, [selectedTaskId]);
+
+  // Load groups with members for individual grading
+  const loadGroupsWithMembers = async (tugasId) => {
+    try {
+      const response = await getKelompok(tugasId);
+      if (response.success && response.data) {
+        setGroupsWithMembers(response.data);
+      }
+    } catch (err) {
+      console.error('Error loading groups with members:', err);
+    }
+  };
 
   const loadTasks = async () => {
     try {
@@ -460,12 +477,20 @@ const DosenGradingManagement = ({ courseId, courseName, taskId = null, classId =
                       <td className="px-4 py-3 text-center">
                         <button 
                           onClick={() => {
-                            setSelectedGroup(group);
-                            setActiveView('group-detail');
+                            if (guardReadOnlyAction('menginput nilai per anggota')) return;
+                            // Find group with members from groupsWithMembers
+                            const groupWithMembers = groupsWithMembers.find(g => g.id === group.id);
+                            if (groupWithMembers) {
+                              setSelectedGroup({ ...group, members: groupWithMembers.members });
+                            } else {
+                              setSelectedGroup(group);
+                            }
+                            setActiveView('input-individual-grades-group');
                           }}
-                          className="text-blue-600 hover:text-blue-800 text-sm font-medium hover:underline"
+                          className="text-blue-600 hover:text-blue-800 text-sm font-medium hover:underline flex items-center gap-1 mx-auto"
                         >
-                          Detail
+                          <Users size={16} />
+                          Input Nilai Per Anggota
                         </button>
                       </td>
                     </tr>
@@ -950,6 +975,327 @@ const DosenGradingManagement = ({ courseId, courseName, taskId = null, classId =
     );
   };
 
+  // Individual Grade Input for a Specific Group
+  const IndividualGradeInputForGroup = () => {
+    const [selectedComponentForGroup, setSelectedComponentForGroup] = useState(null);
+    const [individualGrades, setIndividualGrades] = useState({}); // { mahasiswaId: { score: '', feedback: '' } }
+    const [validationErrors, setValidationErrors] = useState({});
+
+    // Initialize grades when component is selected
+    useEffect(() => {
+      if (selectedComponentForGroup && gradingData && selectedGroup && selectedGroup.members) {
+        const initialGrades = {};
+        selectedGroup.members.forEach(member => {
+          const existingNilai = gradingData.nilai.find(n => 
+            n.mahasiswa_id === member.id && 
+            n.komponen_nama === selectedComponentForGroup.name
+          );
+          initialGrades[member.id] = {
+            score: existingNilai ? existingNilai.nilai.toString() : '',
+            feedback: existingNilai ? existingNilai.catatan || '' : ''
+          };
+        });
+        setIndividualGrades(initialGrades);
+      }
+    }, [selectedComponentForGroup, selectedGroup, gradingData]);
+
+    // Load members if not available
+    useEffect(() => {
+      if (selectedGroup && !selectedGroup.members) {
+        const groupWithMembers = groupsWithMembers.find(g => g.id === selectedGroup.id);
+        if (groupWithMembers) {
+          setSelectedGroup({ ...selectedGroup, members: groupWithMembers.members });
+        }
+      }
+    }, [selectedGroup, groupsWithMembers]);
+
+    const handleIndividualGradeChange = (mahasiswaId, field, value) => {
+      if (field === 'score') {
+        if (value === '' || value === null || value === undefined) {
+          setIndividualGrades(prev => ({
+            ...prev,
+            [mahasiswaId]: {
+              ...prev[mahasiswaId],
+              [field]: ''
+            }
+          }));
+          setValidationErrors(prev => {
+            const newErrors = { ...prev };
+            delete newErrors[mahasiswaId];
+            return newErrors;
+          });
+          return;
+        }
+
+        let filteredValue = value.toString().replace(/[^0-9.]/g, '');
+        const parts = filteredValue.split('.');
+        if (parts.length > 2) {
+          filteredValue = parts[0] + '.' + parts.slice(1).join('');
+        }
+
+        setIndividualGrades(prev => ({
+          ...prev,
+          [mahasiswaId]: {
+            ...prev[mahasiswaId] || { feedback: '' },
+            [field]: filteredValue
+          }
+        }));
+
+        const numValue = parseFloat(filteredValue);
+        if (!isNaN(numValue)) {
+          if (numValue < 0 || numValue > 100) {
+            setValidationErrors(prev => ({
+              ...prev,
+              [mahasiswaId]: 'Nilai harus antara 0-100'
+            }));
+          } else {
+            setValidationErrors(prev => {
+              const newErrors = { ...prev };
+              delete newErrors[mahasiswaId];
+              return newErrors;
+            });
+          }
+        }
+      } else {
+        setIndividualGrades(prev => ({
+          ...prev,
+          [mahasiswaId]: {
+            ...prev[mahasiswaId] || { score: '' },
+            [field]: value
+          }
+        }));
+      }
+    };
+
+    const handleSaveIndividualGrades = async () => {
+      if (!selectedComponentForGroup || !selectedTaskId) return;
+      if (guardReadOnlyAction('menyimpan nilai per anggota')) return;
+
+      // Validate all grades
+      const hasErrors = Object.keys(individualGrades).some(mahasiswaId => {
+        const grade = individualGrades[mahasiswaId];
+        if (grade.score && grade.score !== '') {
+          const numValue = parseFloat(grade.score);
+          return isNaN(numValue) || numValue < 0 || numValue > 100;
+        }
+        return false;
+      });
+
+      if (hasErrors) {
+        alert('Terdapat nilai yang tidak valid. Pastikan semua nilai antara 0-100.');
+        return;
+      }
+
+      try {
+        setSaving(true);
+
+        // Save grades for each student in the group
+        const savePromises = Object.entries(individualGrades).map(async ([mahasiswaId, gradeData]) => {
+          if (gradeData.score && gradeData.score !== '') {
+            const numValue = parseFloat(gradeData.score);
+            if (numValue >= 0 && numValue <= 100) {
+              await saveNilaiPerMahasiswa(
+                selectedTaskId,
+                parseInt(mahasiswaId),
+                selectedComponentForGroup.index,
+                numValue,
+                gradeData.feedback || ''
+              );
+            }
+          }
+        });
+
+        await Promise.all(savePromises);
+
+        // Reload grading data
+        await loadGradingData(selectedTaskId);
+        await loadGroupsWithMembers(selectedTaskId);
+
+        alert('Nilai per anggota berhasil disimpan!');
+        setActiveView('overview');
+      } catch (error) {
+        console.error('Error saving individual grades:', error);
+        alert('Gagal menyimpan nilai: ' + error.message);
+      } finally {
+        setSaving(false);
+      }
+    };
+
+    // Get existing nilai for a student and component
+    const getStudentGrade = (mahasiswaId, componentName) => {
+      if (!gradingData || !gradingData.nilai) return null;
+      return gradingData.nilai.find(n => 
+        n.mahasiswa_id === mahasiswaId && n.komponen_nama === componentName
+      );
+    };
+
+    if (!selectedGroup) {
+      return (
+        <div className="text-center py-12">
+          <p className="text-gray-500">Kelompok tidak ditemukan</p>
+          <button 
+            onClick={() => setActiveView('overview')}
+            className="mt-4 text-blue-600 hover:text-blue-800"
+          >
+            ← Kembali ke Overview
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => setActiveView('overview')}
+            className="text-blue-600 hover:text-blue-800"
+          >
+            ← Kembali
+          </button>
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">
+              Input Nilai Per Anggota: {selectedGroup.name || selectedGroup.nama_kelompok}
+            </h2>
+            <p className="text-gray-600">
+              {selectedGroup.members?.length || 0} anggota • Isi nilai untuk setiap anggota secara individual
+            </p>
+          </div>
+        </div>
+
+        {/* Component Selection */}
+        <div className="bg-white p-6 rounded-lg shadow border">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Pilih Komponen Penilaian
+          </label>
+          <select
+            value={selectedComponentForGroup ? JSON.stringify(selectedComponentForGroup) : ''}
+            onChange={(e) => {
+              if (e.target.value) {
+                setSelectedComponentForGroup(JSON.parse(e.target.value));
+              } else {
+                setSelectedComponentForGroup(null);
+              }
+            }}
+            className="w-full md:w-64 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="">-- Pilih Komponen Penilaian --</option>
+            {assessmentComponents.map((component, index) => (
+              <option key={index} value={JSON.stringify(component)}>
+                {component.name} ({component.weight}%)
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {selectedComponentForGroup && selectedGroup.members && selectedGroup.members.length > 0 && (
+          <div className="bg-white p-6 rounded-lg shadow border">
+            <div className="mb-4">
+              <h3 className="text-lg font-semibold mb-2">
+                {selectedComponentForGroup.name}
+              </h3>
+              <p className="text-sm text-gray-600">
+                Bobot: {selectedComponentForGroup.weight}% • 
+                Deadline: {selectedComponentForGroup.deadline 
+                  ? new Date(selectedComponentForGroup.deadline).toLocaleDateString('id-ID') 
+                  : 'Belum diatur'}
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              {selectedGroup.members.map(member => {
+                const memberId = member.id.toString();
+                const gradeData = individualGrades[memberId] || { score: '', feedback: '' };
+                const existingGrade = getStudentGrade(member.id, selectedComponentForGroup.name);
+                
+                return (
+                  <div key={member.id} className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <div className="lg:col-span-1">
+                      <p className="font-medium text-gray-900">{member.name}</p>
+                      <p className="text-sm text-gray-600">{member.npm}</p>
+                      {member.role === 'leader' && (
+                        <span className="inline-block mt-1 px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs rounded">
+                          Ketua
+                        </span>
+                      )}
+                      {existingGrade && (
+                        <p className="text-xs text-green-600 mt-1">Sudah dinilai: {existingGrade.nilai}</p>
+                      )}
+                    </div>
+                    
+                    <div className="lg:col-span-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Nilai (0-100)
+                      </label>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={gradeData.score}
+                        onChange={(e) => handleIndividualGradeChange(memberId, 'score', e.target.value)}
+                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                          validationErrors[memberId] ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                        placeholder="0-100"
+                      />
+                      {validationErrors[memberId] && (
+                        <p className="text-xs text-red-600 mt-1">{validationErrors[memberId]}</p>
+                      )}
+                    </div>
+                    
+                    <div className="lg:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Catatan
+                      </label>
+                      <textarea
+                        value={gradeData.feedback}
+                        onChange={(e) => handleIndividualGradeChange(memberId, 'feedback', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        rows="2"
+                        placeholder="Catatan untuk mahasiswa ini..."
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-6 flex gap-2 justify-end">
+              <button
+                onClick={() => setActiveView('overview')}
+                className="bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleSaveIndividualGrades}
+                disabled={saving}
+                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {saving ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Menyimpan...
+                  </>
+                ) : (
+                  <>
+                    <Save size={20} />
+                    Simpan Nilai
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {selectedComponentForGroup && (!selectedGroup.members || selectedGroup.members.length === 0) && (
+          <div className="bg-white p-6 rounded-lg shadow border text-center">
+            <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500">Kelompok ini belum memiliki anggota</p>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // Group Detail View
   const GroupDetailView = () => {
     if (!selectedGroup || !gradingData) {
@@ -1103,6 +1449,10 @@ const DosenGradingManagement = ({ courseId, courseName, taskId = null, classId =
       return <ComponentsManagement />;
     case 'input-grades':
       return <GradeInput />;
+    case 'input-individual-grades':
+      return <IndividualGradeInput />;
+    case 'input-individual-grades-group':
+      return <IndividualGradeInputForGroup />;
     case 'group-detail':
       return <GroupDetailView />;
     default:
