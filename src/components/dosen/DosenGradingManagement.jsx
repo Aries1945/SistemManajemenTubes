@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Star, Plus, Edit, Trash2, Save, X, Eye,
   FileText, Calendar, Users, TrendingUp,
-  Download, Upload, Settings, AlertCircle,
+  Upload, Settings, AlertCircle,
   CheckCircle, Clock, BarChart3
 } from 'lucide-react';
 
@@ -296,10 +296,6 @@ const DosenGradingManagement = ({ courseId, courseName, taskId = null, classId =
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
               )}
             </div>
-            <button className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2">
-              <Download size={20} />
-              Export Nilai
-            </button>
           </div>
         </div>
 

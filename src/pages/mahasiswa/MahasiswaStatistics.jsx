@@ -191,33 +191,6 @@ const MahasiswaStatistics = () => {
           description="Tugas yang belum selesai"
         />
       </div>
-
-      {/* Progress Chart */}
-      <div className="bg-white rounded-xl shadow-lg p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Progress Tugas</h3>
-        {stats.totalTasks > 0 ? (
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm text-gray-600">Progress Penyelesaian</span>
-              <span className="text-sm font-semibold text-gray-900">
-                {Math.round((stats.completedTasks / stats.totalTasks) * 100)}%
-              </span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-4">
-              <div
-                className="bg-gradient-to-r from-green-500 to-emerald-600 h-4 rounded-full transition-all"
-                style={{ width: `${(stats.completedTasks / stats.totalTasks) * 100}%` }}
-              ></div>
-            </div>
-            <div className="flex justify-between items-center mt-4 text-sm text-gray-600">
-              <span>{stats.completedTasks} dari {stats.totalTasks} tugas selesai</span>
-              <span>{stats.pendingTasks} tugas tersisa</span>
-            </div>
-          </div>
-        ) : (
-          <p className="text-gray-500 text-center py-8">Belum ada tugas untuk ditampilkan</p>
-        )}
-      </div>
     </div>
   );
 };

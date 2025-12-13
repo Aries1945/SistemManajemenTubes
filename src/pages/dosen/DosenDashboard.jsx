@@ -3,7 +3,7 @@ import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-
 import { 
   BookOpen, Users, FileText, Clock, CheckCircle, AlertTriangle, 
   TrendingUp, Calendar, Award, Bell, ChevronRight, Plus, Activity,
-  BarChart3, User, MessageSquare, Filter, Search
+  User, MessageSquare, Filter, Search
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import Layout from '../../components/Layout';
@@ -16,7 +16,6 @@ import CourseDetail from './CourseDetail';
 import DosenSettings from './DosenSettings';
 import DosenAllTasks from './DosenAllTasks';
 import DosenStudents from './DosenStudents';
-import DosenStatistics from './DosenStatistics';
 
 // Component untuk Dashboard Overview (halaman utama)
 const DashboardOverview = ({ 
@@ -476,16 +475,6 @@ const DashboardOverview = ({
                 <span className="text-sm font-semibold text-gray-900">Kelola Mahasiswa</span>
                 <ChevronRight className="h-4 w-4 ml-auto text-gray-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
               </button>
-              <button 
-                onClick={() => navigate('/dosen/dashboard/statistik')}
-                className="w-full text-left p-4 rounded-xl hover:bg-blue-50 transition-all duration-200 flex items-center group hover:shadow-md bg-white/50"
-              >
-                <div className="p-2.5 bg-blue-100 rounded-xl group-hover:bg-blue-200 transition-colors mr-3 shadow-sm">
-                  <BarChart3 className="h-5 w-5 text-blue-600" />
-                </div>
-                <span className="text-sm font-semibold text-gray-900">Lihat Statistik</span>
-                <ChevronRight className="h-4 w-4 ml-auto text-gray-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
-              </button>
             </div>
           </div>
         </div>
@@ -691,9 +680,6 @@ const DosenDashboard = () => {
         
         {/* Students Management Page */}
         <Route path="mahasiswa" element={<DosenStudents />} />
-        
-        {/* Statistics Page */}
-        <Route path="statistik" element={<DosenStatistics />} />
         
         {/* Course Detail Page - dengan courseId */}
         <Route path="courses/:courseId" element={<CourseDetail />} />

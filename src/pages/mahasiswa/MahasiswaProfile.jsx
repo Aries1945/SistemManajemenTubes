@@ -237,6 +237,34 @@ const MahasiswaProfile = () => {
           </div>
         )}
 
+        {/* Profile Summary Card */}
+        <div className="mb-6 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-6">
+          <div className="flex items-center space-x-4">
+            <div className="w-16 h-16 bg-gradient-to-br from-green-600 to-emerald-600 rounded-full flex items-center justify-center text-white font-bold text-2xl shadow-lg">
+              {formData.nama_lengkap ? formData.nama_lengkap.charAt(0).toUpperCase() : 'M'}
+            </div>
+            <div className="flex-1">
+              <h2 className="text-2xl font-bold text-gray-900 mb-1">
+                {formData.nama_lengkap || 'Nama belum diisi'}
+              </h2>
+              <div className="flex items-center space-x-4 text-sm text-gray-600">
+                {formData.nim && (
+                  <div className="flex items-center">
+                    <GraduationCap className="h-4 w-4 mr-2" />
+                    <span>NIM: {formData.nim}</span>
+                  </div>
+                )}
+                {formData.email && (
+                  <div className="flex items-center">
+                    <Mail className="h-4 w-4 mr-2" />
+                    <span>{formData.email}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Profile Form */}
         <div className="bg-white rounded-xl shadow-lg p-6">
           <form onSubmit={handleSubmit}>

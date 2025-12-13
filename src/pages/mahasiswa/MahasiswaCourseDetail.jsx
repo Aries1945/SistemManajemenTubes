@@ -435,7 +435,6 @@ const MahasiswaCourseDetail = () => {
           <div>
             <p className="text-sm text-gray-600 mb-1">Kelas</p>
             <p className="font-medium">{course.class}</p>
-            <p className="text-xs text-gray-500 mt-1">ID Kelas: {course.classId}</p>
           </div>
           <div>
             <p className="text-sm text-gray-600 mb-1">SKS</p>
@@ -526,7 +525,6 @@ const MahasiswaCourseDetail = () => {
               <ul className="text-xs text-gray-500 space-y-1">
                 <li>• Tugas besar ditampilkan khusus untuk <strong>{course.class}</strong></li>
                 <li>• Dosen pengampu: <strong>{course.lecturer}</strong></li>
-                <li>• Class ID: <strong>{course.classId}</strong></li>
                 <li>• Tugas dari kelas lain tidak akan ditampilkan di sini</li>
               </ul>
             </div>
@@ -605,9 +603,6 @@ const MahasiswaCourseDetail = () => {
                   <span className="bg-green-500 text-white px-2 py-1 rounded text-sm font-medium">
                     {course.class}
                   </span>
-                  {course.classId && (
-                    <span className="text-green-200 text-xs">(ID: {course.classId})</span>
-                  )}
                 </div>
               </div>
               <p className="text-green-100 text-sm">{course.semester}</p>
@@ -619,42 +614,6 @@ const MahasiswaCourseDetail = () => {
                 )}
               </div>
             </div>
-          </div>
-          <div className="text-right">
-            <p className="text-green-100 text-sm">Nilai Saya</p>
-            {(() => {
-              const calculatedGrade = course.myGrade || (tugasBesarNilai.length > 0 
-                ? (tugasBesarNilai.reduce((sum, item) => sum + item.nilai, 0) / tugasBesarNilai.length).toFixed(1)
-                : null);
-              const hasGrade = calculatedGrade !== null && calculatedGrade !== undefined && calculatedGrade !== '';
-              
-              return (
-                <>
-                  <span className="text-3xl font-bold">
-                    {hasGrade ? calculatedGrade : 'NA'}
-                  </span>
-                  <div className="flex items-center justify-end mt-1">
-                    <Star className="h-4 w-4 text-yellow-300 mr-1" />
-                    <span className="text-sm text-green-100">
-                      {hasGrade ? (() => {
-                        const nilai = parseFloat(calculatedGrade);
-                        return nilai >= 85 ? 'A' : nilai >= 80 ? 'A-' : nilai >= 75 ? 'B+' : nilai >= 70 ? 'B' : nilai >= 65 ? 'B-' : nilai >= 60 ? 'C+' : nilai >= 55 ? 'C' : nilai >= 50 ? 'C-' : nilai >= 45 ? 'D' : nilai >= 0 ? 'E' : 'NA';
-                      })() : 'NA'}
-                    </span>
-                  </div>
-                  {hasGrade && tugasBesarNilai.length > 0 && (
-                    <p className="text-green-200 text-xs mt-1">
-                      Dari {tugasBesarNilai.length} tugas besar
-                    </p>
-                  )}
-                  {!hasGrade && (
-                    <p className="text-green-200 text-xs mt-1">
-                      Nilai belum tersedia
-                    </p>
-                  )}
-                </>
-              );
-            })()}
           </div>
         </div>
         

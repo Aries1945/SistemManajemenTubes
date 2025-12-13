@@ -4,7 +4,6 @@ import {
   BookOpen, 
   Users, 
   FileText, 
-  BarChart3, 
   Settings, 
   LogOut,
   Menu,
@@ -49,12 +48,6 @@ const Layout = ({ children }) => {
       icon: Users,
       path: '/dosen/dashboard/mahasiswa',
       active: location.pathname.includes('/dosen/dashboard/mahasiswa')
-    },
-    {
-      title: 'Statistik',
-      icon: BarChart3,
-      path: '/dosen/dashboard/statistik',
-      active: location.pathname.includes('/dosen/dashboard/statistik')
     },
   ];
 

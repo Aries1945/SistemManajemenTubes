@@ -204,20 +204,6 @@ const CourseCard = ({ course, onSelect }) => (
         </div>
       </div>
 
-      {/* Progress Section */}
-      <div className="mb-4">
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-white text-sm opacity-90">Progress Tugas</span>
-          <span className="text-white text-sm font-semibold">{course.taskProgress}%</span>
-        </div>
-        <div className="w-full bg-white bg-opacity-20 rounded-full h-2">
-          <div 
-            className="bg-white h-2 rounded-full transition-all" 
-            style={{ width: `${course.taskProgress}%` }}
-          ></div>
-        </div>
-      </div>
-
       {/* Stats Row */}
       <div className="flex items-center justify-between text-white text-opacity-90 text-sm mt-auto">
         <div className="flex items-center space-x-4">
