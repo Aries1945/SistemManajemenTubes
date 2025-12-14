@@ -1078,6 +1078,150 @@ router.post('/tugas-besar/:tugasId/nilai', async (req, res) => {
   }
 });
 
+// Save nilai for an individual student
+router.post('/tugas-besar/:tugasId/nilai-per-mahasiswa', async (req, res) => {
+  try {
+    const { tugasId } = req.params;
+    const dosenId = req.user.id;
+    const { mahasiswa_id, komponen_index, nilai, catatan } = req.body;
+
+    // Validate nilai: must be between 0 and 100
+    if (nilai !== null && nilai !== undefined) {
+      const numNilai = parseFloat(nilai);
+      if (isNaN(numNilai)) {
+        return res.status(400).json({ error: 'Nilai harus berupa angka' });
+      }
+      if (numNilai < 0) {
+        return res.status(400).json({ error: 'Nilai tidak boleh kurang dari 0' });
+      }
+      if (numNilai > 100) {
+        return res.status(400).json({ error: 'Nilai tidak boleh lebih dari 100' });
+      }
+    }
+
+    // Verify ownership
+    const tugasCheck = await pool.query(
+      'SELECT 1 FROM tugas_besar WHERE id = $1 AND dosen_id = $2',
+      [tugasId, dosenId]
+    );
+
+    if (tugasCheck.rows.length === 0) {
+      return res.status(403).json({ error: 'Access denied.' });
+    }
+
+    // Get komponen from tugas_besar
+    const tugasResult = await pool.query(
+      'SELECT komponen FROM tugas_besar WHERE id = $1',
+      [tugasId]
+    );
+
+    if (tugasResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Tugas besar not found' });
+    }
+
+    let komponen = [];
+    if (tugasResult.rows[0].komponen) {
+      try {
+        komponen = typeof tugasResult.rows[0].komponen === 'string'
+          ? JSON.parse(tugasResult.rows[0].komponen)
+          : tugasResult.rows[0].komponen;
+      } catch (e) {
+        komponen = [];
+      }
+    }
+
+    if (komponen_index < 0 || komponen_index >= komponen.length) {
+      return res.status(400).json({ error: 'Invalid komponen index' });
+    }
+
+    // Verify mahasiswa is enrolled in the course
+    const tugasDetail = await pool.query(`
+      SELECT tb.class_id, tb.course_id
+      FROM tugas_besar tb
+      WHERE tb.id = $1
+    `, [tugasId]);
+
+    if (tugasDetail.rows.length === 0) {
+      return res.status(404).json({ error: 'Tugas besar not found' });
+    }
+
+    const classId = tugasDetail.rows[0].class_id;
+    const courseId = tugasDetail.rows[0].course_id;
+
+    if (classId) {
+      const enrollmentCheck = await pool.query(
+        'SELECT 1 FROM class_enrollments WHERE class_id = $1 AND mahasiswa_id = $2',
+        [classId, mahasiswa_id]
+      );
+
+      if (enrollmentCheck.rows.length === 0) {
+        return res.status(404).json({ error: 'Mahasiswa tidak terdaftar di kelas ini' });
+      }
+    }
+
+    // Check if komponen_penilaian exists, if not create it
+    const komponenPenilaianCheck = await pool.query(`
+      SELECT id FROM komponen_penilaian 
+      WHERE tugas_besar_id = $1 AND nama = $2
+    `, [tugasId, komponen[komponen_index].name || komponen[komponen_index].nama]);
+
+    let komponenPenilaianId;
+    if (komponenPenilaianCheck.rows.length > 0) {
+      komponenPenilaianId = komponenPenilaianCheck.rows[0].id;
+    } else {
+      // Create komponen_penilaian
+      const createResult = await pool.query(`
+        INSERT INTO komponen_penilaian (tugas_besar_id, nama, bobot, deskripsi)
+        VALUES ($1, $2, $3, $4)
+        RETURNING id
+      `, [
+        tugasId,
+        komponen[komponen_index].name || komponen[komponen_index].nama,
+        komponen[komponen_index].weight || komponen[komponen_index].bobot || 0,
+        komponen[komponen_index].description || komponen[komponen_index].deskripsi || ''
+      ]);
+      komponenPenilaianId = createResult.rows[0].id;
+    }
+
+    // Check if nilai already exists
+    const existingNilai = await pool.query(`
+      SELECT id FROM nilai 
+      WHERE komponen_id = $1 AND mahasiswa_id = $2
+    `, [komponenPenilaianId, mahasiswa_id]);
+
+    if (existingNilai.rows.length > 0) {
+      // Update existing
+      await pool.query(`
+        UPDATE nilai 
+        SET nilai = $1, catatan = $2
+        WHERE id = $3
+      `, [nilai, catatan || '', existingNilai.rows[0].id]);
+
+      res.json({
+        success: true,
+        message: 'Nilai berhasil diupdate',
+        nilai_id: existingNilai.rows[0].id
+      });
+    } else {
+      // Create new
+      const newNilai = await pool.query(`
+        INSERT INTO nilai (komponen_id, mahasiswa_id, nilai, catatan)
+        VALUES ($1, $2, $3, $4)
+        RETURNING *
+      `, [komponenPenilaianId, mahasiswa_id, nilai, catatan || '']);
+
+      res.json({
+        success: true,
+        message: 'Nilai berhasil disimpan',
+        nilai_id: newNilai.rows[0].id
+      });
+    }
+  } catch (error) {
+    console.error('Error saving nilai per mahasiswa:', error);
+    res.status(500).json({ error: 'Server error: ' + error.message });
+  }
+});
+
 // Update visibility of penilaian (show/hide to students)
 router.put('/tugas-besar/:tugasId/penilaian-visibility', async (req, res) => {
   try {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   BookOpen, 
@@ -17,21 +17,57 @@ import {
   GraduationCap
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { getCurrentUser } from '../utils/api';
 import LogoIF2 from '../assets/LogoIF2.png';
 
 const MahasiswaLayout = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { user, setUser, logout } = useAuth();
   
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  // Fetch user data if nama_lengkap or nim is missing
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (user && (!user.nama_lengkap || !user.nim)) {
+        try {
+          const userResponse = await getCurrentUser();
+          let userData = {};
+          if (userResponse.data) {
+            userData = userResponse.data.user || userResponse.data || {};
+          } else {
+            userData = userResponse.user || userResponse || {};
+          }
+          
+          // Update user context with complete data
+          if (userData.nama_lengkap || userData.nim) {
+            setUser({
+              ...user,
+              nama_lengkap: userData.nama_lengkap || user.nama_lengkap,
+              nim: userData.nim || user.nim
+            });
+          }
+        } catch (error) {
+          console.error('Error fetching user data:', error);
+        }
+      }
+    };
+    
+    fetchUserData();
+  }, [user, setUser]);
+
   // Get user display name
   const getUserDisplayName = () => {
-    if (user?.nama_lengkap) return user.nama_lengkap;
-    if (user?.name) return user.name;
+    if (user?.nama_lengkap && user.nama_lengkap.trim() !== '') {
+      return user.nama_lengkap;
+    }
+    if (user?.name && user.name.trim() !== '') {
+      return user.name;
+    }
+    // If no name, try to get from email
     if (user?.email) {
       const name = user.email.split('@')[0];
       return name.charAt(0).toUpperCase() + name.slice(1);
@@ -42,8 +78,7 @@ const MahasiswaLayout = ({ children }) => {
   // Get user NIM
   const getUserNIM = () => {
     if (user?.nim) return user.nim;
-    if (user?.id) return `ID: ${user.id}`;
-    return 'NIM: -';
+    return null;
   };
 
   // Navigation menu items
@@ -130,7 +165,9 @@ const MahasiswaLayout = ({ children }) => {
                   </div>
                   <div className="hidden md:block text-left">
                     <p className="text-sm font-semibold text-gray-900">{getUserDisplayName()}</p>
-                    <p className="text-xs text-gray-500">{getUserNIM()}</p>
+                    {getUserNIM() && (
+                      <p className="text-xs text-gray-500">{getUserNIM()}</p>
+                    )}
                   </div>
                   <ChevronDown className="h-4 w-4 text-gray-500" />
                 </button>
@@ -150,7 +187,9 @@ const MahasiswaLayout = ({ children }) => {
                           </div>
                           <div>
                             <p className="font-semibold text-gray-900">{getUserDisplayName()}</p>
-                            <p className="text-sm text-gray-600">{getUserNIM()}</p>
+                            {getUserNIM() && (
+                              <p className="text-sm text-gray-600">{getUserNIM()}</p>
+                            )}
                             <p className="text-xs text-gray-500">Mahasiswa</p>
                           </div>
                         </div>
@@ -240,16 +279,7 @@ const MahasiswaLayout = ({ children }) => {
           <div className="mt-6 pt-6 border-t border-gray-200">
             <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 border border-green-100">
               <h3 className="font-semibold text-gray-900 mb-2">Semester Aktif</h3>
-              <p className="text-sm text-gray-600 mb-3">Ganjil 2024/2025</p>
-              <div className="space-y-2">
-                <div className="flex justify-between text-xs">
-                  <span className="text-gray-600 font-medium">Progress</span>
-                  <span className="font-semibold text-green-600">65%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
-                  <div className="bg-gradient-to-r from-green-600 to-emerald-600 h-2.5 rounded-full transition-all duration-500" style={{ width: '65%' }}></div>
-                </div>
-              </div>
+              <p className="text-sm text-gray-600">Ganjil 2024/2025</p>
             </div>
           </div>
         </div>

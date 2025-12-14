@@ -111,6 +111,19 @@ export const saveNilai = async (tugasId, kelompokId, komponenIndex, nilai, catat
   });
 };
 
+// Save/Update nilai for an individual student
+export const saveNilaiPerMahasiswa = async (tugasId, mahasiswaId, komponenIndex, nilai, catatan) => {
+  return makeRequest(`/auth/dosen/tugas-besar/${tugasId}/nilai-per-mahasiswa`, {
+    method: 'POST',
+    body: JSON.stringify({
+      mahasiswa_id: mahasiswaId,
+      komponen_index: komponenIndex,
+      nilai: nilai,
+      catatan: catatan
+    }),
+  });
+};
+
 // Export nilai to CSV
 export const exportNilai = async (tugasId) => {
   const response = await makeRequest(`/auth/dosen/tugas-besar/${tugasId}/export-nilai`);

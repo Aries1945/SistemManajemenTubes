@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Users, FileText, TrendingUp, ChevronRight, User, Calendar, Star, RefreshCw, AlertCircle } from 'lucide-react';
+import { BookOpen, Users, FileText, TrendingUp, ChevronRight, User, Calendar, RefreshCw, AlertCircle } from 'lucide-react';
 import { getMahasiswaCourses } from '../../utils/mahasiswaApi';
 
 const MahasiswaCourses = () => {
@@ -175,17 +175,6 @@ const CourseCard = ({ course, onSelect }) => (
         <div className="inline-block bg-white bg-opacity-20 text-white text-xs px-3 py-1 rounded-full font-medium">
           {course.semester}
         </div>
-        {course.averageGrade && (
-          <div className="text-right">
-            <div className="flex items-center justify-end text-white text-xs mb-1">
-              <span>Nilai Saya</span>
-            </div>
-            <div className="flex items-center justify-end text-white text-lg font-bold">
-              <Star size={14} className="mr-1" />
-              <span>{course.averageGrade}</span>
-            </div>
-          </div>
-        )}
       </div>
       
       {/* Course Title & Code */}
@@ -212,20 +201,6 @@ const CourseCard = ({ course, onSelect }) => (
         <div className="flex items-center text-xs">
           <Calendar size={12} className="mr-2" />
           <span className="truncate">{course.schedule}</span>
-        </div>
-      </div>
-
-      {/* Progress Section */}
-      <div className="mb-4">
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-white text-sm opacity-90">Progress Tugas</span>
-          <span className="text-white text-sm font-semibold">{course.taskProgress}%</span>
-        </div>
-        <div className="w-full bg-white bg-opacity-20 rounded-full h-2">
-          <div 
-            className="bg-white h-2 rounded-full transition-all" 
-            style={{ width: `${course.taskProgress}%` }}
-          ></div>
         </div>
       </div>
 

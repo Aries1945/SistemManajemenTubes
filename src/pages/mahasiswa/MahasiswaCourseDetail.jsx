@@ -435,7 +435,6 @@ const MahasiswaCourseDetail = () => {
           <div>
             <p className="text-sm text-gray-600 mb-1">Kelas</p>
             <p className="font-medium">{course.class}</p>
-            <p className="text-xs text-gray-500 mt-1">ID Kelas: {course.classId}</p>
           </div>
           <div>
             <p className="text-sm text-gray-600 mb-1">SKS</p>
@@ -526,7 +525,6 @@ const MahasiswaCourseDetail = () => {
               <ul className="text-xs text-gray-500 space-y-1">
                 <li>• Tugas besar ditampilkan khusus untuk <strong>{course.class}</strong></li>
                 <li>• Dosen pengampu: <strong>{course.lecturer}</strong></li>
-                <li>• Class ID: <strong>{course.classId}</strong></li>
                 <li>• Tugas dari kelas lain tidak akan ditampilkan di sini</li>
               </ul>
             </div>
@@ -605,9 +603,6 @@ const MahasiswaCourseDetail = () => {
                   <span className="bg-green-500 text-white px-2 py-1 rounded text-sm font-medium">
                     {course.class}
                   </span>
-                  {course.classId && (
-                    <span className="text-green-200 text-xs">(ID: {course.classId})</span>
-                  )}
                 </div>
               </div>
               <p className="text-green-100 text-sm">{course.semester}</p>
@@ -620,32 +615,6 @@ const MahasiswaCourseDetail = () => {
               </div>
             </div>
           </div>
-          {(course.myGrade || tugasBesarNilai.length > 0) && (
-            <div className="text-right">
-              <p className="text-green-100 text-sm">Nilai Saya</p>
-              <span className="text-3xl font-bold">
-                {course.myGrade || (tugasBesarNilai.length > 0 
-                  ? (tugasBesarNilai.reduce((sum, item) => sum + item.nilai, 0) / tugasBesarNilai.length).toFixed(1)
-                  : '-')}
-              </span>
-              <div className="flex items-center justify-end mt-1">
-                <Star className="h-4 w-4 text-yellow-300 mr-1" />
-                <span className="text-sm text-green-100">
-                  {(() => {
-                    const nilai = parseFloat(course.myGrade || (tugasBesarNilai.length > 0 
-                      ? (tugasBesarNilai.reduce((sum, item) => sum + item.nilai, 0) / tugasBesarNilai.length).toFixed(1)
-                      : 0));
-                    return nilai >= 85 ? 'A' : nilai >= 80 ? 'A-' : nilai >= 75 ? 'B+' : nilai >= 70 ? 'B' : nilai >= 65 ? 'B-' : nilai >= 60 ? 'C+' : nilai >= 55 ? 'C' : nilai >= 50 ? 'C-' : nilai >= 45 ? 'D' : nilai >= 0 ? 'E' : '-';
-                  })()}
-                </span>
-              </div>
-              {tugasBesarNilai.length > 0 && (
-                <p className="text-green-200 text-xs mt-1">
-                  Dari {tugasBesarNilai.length} tugas besar
-                </p>
-              )}
-            </div>
-          )}
         </div>
         
         {/* Status Enrollment */}
@@ -688,6 +657,17 @@ const MahasiswaCourseDetail = () => {
             Overview
           </button>
           <button
+            onClick={() => setActiveTab('nilai')}
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'nilai'
+                ? 'border-green-600 text-green-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <Award className="h-4 w-4 inline mr-2" />
+            Nilai Saya
+          </button>
+          <button
             onClick={() => setActiveTab('kelompok')}
             className={`py-4 px-1 border-b-2 font-medium text-sm ${
               activeTab === 'kelompok'
@@ -703,6 +683,7 @@ const MahasiswaCourseDetail = () => {
 
       {/* Tab Content */}
       {activeTab === 'overview' && <CourseOverview />}
+      {activeTab === 'nilai' && <NilaiSaya tugasBesarNilai={tugasBesarNilai} course={course} />}
       {activeTab === 'kelompok' && <KelompokSaya tugasBesar={tugasBesar} course={course} />}
 
       {/* Tugas Besar Detail Modal */}
@@ -1354,11 +1335,228 @@ const GroupSelectionModal = ({ tugas, onClose, courseId }) => {
   );
 };
 
+// Component untuk menampilkan nilai mahasiswa
+const NilaiSaya = ({ tugasBesarNilai, course }) => {
+  // Calculate average grade
+  const calculateAverageGrade = () => {
+    if (tugasBesarNilai.length > 0) {
+      return (tugasBesarNilai.reduce((sum, item) => sum + item.nilai, 0) / tugasBesarNilai.length).toFixed(1);
+    }
+    if (course.myGrade !== null && course.myGrade !== undefined && course.myGrade !== '') {
+      return course.myGrade;
+    }
+    return null;
+  };
+
+  const averageGrade = calculateAverageGrade();
+  const hasGrade = averageGrade !== null && averageGrade !== undefined && averageGrade !== '';
+
+  // Get grade letter
+  const getGradeLetter = (nilai) => {
+    if (!nilai || nilai === null || nilai === undefined || nilai === '') {
+      return { letter: 'NA', color: 'text-gray-600', bgColor: 'bg-gray-100' };
+    }
+    const nilaiNum = parseFloat(nilai);
+    if (isNaN(nilaiNum)) {
+      return { letter: 'NA', color: 'text-gray-600', bgColor: 'bg-gray-100' };
+    }
+    if (nilaiNum >= 85) return { letter: 'A', color: 'text-green-600', bgColor: 'bg-green-100' };
+    if (nilaiNum >= 80) return { letter: 'A-', color: 'text-green-600', bgColor: 'bg-green-100' };
+    if (nilaiNum >= 75) return { letter: 'B+', color: 'text-blue-600', bgColor: 'bg-blue-100' };
+    if (nilaiNum >= 70) return { letter: 'B', color: 'text-blue-600', bgColor: 'bg-blue-100' };
+    if (nilaiNum >= 65) return { letter: 'B-', color: 'text-blue-600', bgColor: 'bg-blue-100' };
+    if (nilaiNum >= 60) return { letter: 'C+', color: 'text-yellow-600', bgColor: 'bg-yellow-100' };
+    if (nilaiNum >= 55) return { letter: 'C', color: 'text-yellow-600', bgColor: 'bg-yellow-100' };
+    if (nilaiNum >= 50) return { letter: 'C-', color: 'text-yellow-600', bgColor: 'bg-yellow-100' };
+    if (nilaiNum >= 45) return { letter: 'D', color: 'text-orange-600', bgColor: 'bg-orange-100' };
+    if (nilaiNum >= 0) return { letter: 'E', color: 'text-red-600', bgColor: 'bg-red-100' };
+    return { letter: 'NA', color: 'text-gray-600', bgColor: 'bg-gray-100' };
+  };
+
+  const gradeInfo = getGradeLetter(averageGrade);
+
+  return (
+    <div className="space-y-6">
+      {/* Overall Grade Card */}
+      <div className="bg-gradient-to-br from-green-600 to-green-700 rounded-lg shadow-lg p-6 text-white">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-medium text-green-100 mb-2">Nilai Akhir</h3>
+            <div className="flex items-baseline gap-4">
+              <span className="text-5xl font-bold">{hasGrade ? averageGrade : 'NA'}</span>
+              <span className={`text-2xl font-bold px-4 py-2 rounded-lg ${gradeInfo.bgColor} ${gradeInfo.color}`}>
+                {gradeInfo.letter}
+              </span>
+            </div>
+            {hasGrade && tugasBesarNilai.length > 0 && (
+              <p className="text-green-100 text-sm mt-3">
+                <Award className="h-4 w-4 inline mr-1" />
+                Rata-rata dari {tugasBesarNilai.length} tugas besar
+              </p>
+            )}
+            {!hasGrade && (
+              <p className="text-green-100 text-sm mt-3">
+                Nilai belum tersedia
+              </p>
+            )}
+          </div>
+          <div className="text-center">
+            <Star className="h-20 w-20 text-yellow-300 mx-auto mb-2" />
+            <p className="text-sm text-green-100">
+              {hasGrade ? (
+                parseFloat(averageGrade) >= 70 ? 'Luar Biasa!' : parseFloat(averageGrade) >= 60 ? 'Bagus!' : 'Tetap Semangat!'
+              ) : 'Nilai akan muncul setelah dosen memberikan penilaian'}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Grade Details */}
+      {tugasBesarNilai.length > 0 ? (
+        <div className="bg-white border border-gray-200 rounded-lg p-6">
+          <h3 className="text-lg font-semibold mb-4 flex items-center">
+            <FileText className="h-5 w-5 mr-2 text-gray-600" />
+            Detail Nilai per Tugas Besar
+          </h3>
+          
+          <div className="space-y-3">
+            {tugasBesarNilai.map((item, idx) => {
+              const itemGrade = getGradeLetter(item.nilai);
+              return (
+                <div 
+                  key={`nilai-${item.tugasId}-${idx}`} 
+                  className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <h4 className="font-medium text-gray-900 mb-1">
+                        {item.tugasTitle}
+                      </h4>
+                      <p className="text-xs text-gray-500">
+                        Tugas Besar #{idx + 1}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <div className="text-2xl font-bold text-gray-900">
+                          {item.nilai.toFixed(1)}
+                        </div>
+                        <div className={`text-xs font-medium px-2 py-1 rounded ${itemGrade.bgColor} ${itemGrade.color} mt-1`}>
+                          Grade {itemGrade.letter}
+                        </div>
+                      </div>
+                      <div className="w-12 h-12 flex items-center justify-center">
+                        {item.nilai >= 70 ? (
+                          <CheckCircle className="h-8 w-8 text-green-500" />
+                        ) : item.nilai >= 50 ? (
+                          <AlertCircle className="h-8 w-8 text-yellow-500" />
+                        ) : (
+                          <XCircle className="h-8 w-8 text-red-500" />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Grade Summary Stats */}
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div className="bg-green-50 rounded-lg p-3">
+                <p className="text-xs text-gray-600 mb-1">Nilai Tertinggi</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {Math.max(...tugasBesarNilai.map(item => item.nilai)).toFixed(1)}
+                </p>
+              </div>
+              <div className="bg-blue-50 rounded-lg p-3">
+                <p className="text-xs text-gray-600 mb-1">Nilai Terendah</p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {Math.min(...tugasBesarNilai.map(item => item.nilai)).toFixed(1)}
+                </p>
+              </div>
+              <div className="bg-purple-50 rounded-lg p-3">
+                <p className="text-xs text-gray-600 mb-1">Rata-rata</p>
+                <p className="text-2xl font-bold text-purple-600">
+                  {hasGrade ? averageGrade : 'NA'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="text-center py-12 bg-white border border-gray-200 rounded-lg">
+          <Award className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Belum Ada Nilai</h3>
+          <p className="text-gray-500">
+            Nilai tugas besar belum tersedia atau belum dipublikasikan oleh dosen.
+          </p>
+        </div>
+      )}
+
+      {/* Grade Scale Reference */}
+      <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
+        <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+          <Info className="h-4 w-4 mr-2" />
+          Skala Penilaian
+        </h3>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
+          <div className="bg-green-100 text-green-700 px-3 py-2 rounded text-center">
+            <div className="font-bold">A</div>
+            <div>85-100</div>
+          </div>
+          <div className="bg-green-100 text-green-700 px-3 py-2 rounded text-center">
+            <div className="font-bold">A-</div>
+            <div>80-84</div>
+          </div>
+          <div className="bg-blue-100 text-blue-700 px-3 py-2 rounded text-center">
+            <div className="font-bold">B+</div>
+            <div>75-79</div>
+          </div>
+          <div className="bg-blue-100 text-blue-700 px-3 py-2 rounded text-center">
+            <div className="font-bold">B</div>
+            <div>70-74</div>
+          </div>
+          <div className="bg-blue-100 text-blue-700 px-3 py-2 rounded text-center">
+            <div className="font-bold">B-</div>
+            <div>65-69</div>
+          </div>
+          <div className="bg-yellow-100 text-yellow-700 px-3 py-2 rounded text-center">
+            <div className="font-bold">C+</div>
+            <div>60-64</div>
+          </div>
+          <div className="bg-yellow-100 text-yellow-700 px-3 py-2 rounded text-center">
+            <div className="font-bold">C</div>
+            <div>55-59</div>
+          </div>
+          <div className="bg-yellow-100 text-yellow-700 px-3 py-2 rounded text-center">
+            <div className="font-bold">C-</div>
+            <div>50-54</div>
+          </div>
+          <div className="bg-orange-100 text-orange-700 px-3 py-2 rounded text-center">
+            <div className="font-bold">D</div>
+            <div>45-49</div>
+          </div>
+          <div className="bg-red-100 text-red-700 px-3 py-2 rounded text-center">
+            <div className="font-bold">E</div>
+            <div>0-44</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Component untuk menampilkan daftar kelompok mahasiswa
 const KelompokSaya = ({ tugasBesar, course }) => {
+  const navigate = useNavigate();
   const [myGroups, setMyGroups] = useState([]);
+  const [tugasWithoutGroups, setTugasWithoutGroups] = useState([]); // Tugas besar yang belum punya kelompok
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showGroupModal, setShowGroupModal] = useState(false);
+  const [selectedTugasForGroup, setSelectedTugasForGroup] = useState(null);
 
   useEffect(() => {
     loadMyGroups();
@@ -1370,6 +1568,7 @@ const KelompokSaya = ({ tugasBesar, course }) => {
       setError('');
       
       const groupsData = [];
+      const tasksWithoutGroupsList = [];
       
       // Load group for each tugas besar
       for (const tugas of tugasBesar) {
@@ -1380,6 +1579,11 @@ const KelompokSaya = ({ tugasBesar, course }) => {
               tugas: tugas,
               kelompok: response.kelompok
             });
+          } else {
+            // Jika belum punya kelompok dan bisa pilih kelompok, tambahkan ke list
+            if (canSelectGroup(tugas)) {
+              tasksWithoutGroupsList.push(tugas);
+            }
           }
         } catch (err) {
           console.error(`Error loading group for tugas ${tugas.id}:`, err);
@@ -1387,12 +1591,41 @@ const KelompokSaya = ({ tugasBesar, course }) => {
       }
       
       setMyGroups(groupsData);
+      setTugasWithoutGroups(tasksWithoutGroupsList);
     } catch (err) {
       console.error('Error loading my groups:', err);
       setError('Gagal memuat data kelompok');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleJoinKelompokFromKelompokSaya = (tugas) => {
+    // Check if task allows student choice and is still active
+    if (!canSelectGroup(tugas)) {
+      alert('Pemilihan kelompok tidak diizinkan untuk tugas ini.');
+      return;
+    }
+
+    // Check if task is still active (not ended)
+    const now = new Date();
+    const endDate = new Date(tugas.end_date || tugas.tanggal_selesai);
+    
+    if (now > endDate) {
+      alert('Tugas sudah berakhir. Tidak dapat memilih kelompok lagi.');
+      return;
+    }
+
+    // Open group selection modal
+    setSelectedTugasForGroup(tugas);
+    setShowGroupModal(true);
+  };
+
+  const closeGroupModalKelompokSaya = () => {
+    setShowGroupModal(false);
+    setSelectedTugasForGroup(null);
+    // Reload groups after modal closes
+    loadMyGroups();
   };
 
   if (loading) {
@@ -1412,22 +1645,48 @@ const KelompokSaya = ({ tugasBesar, course }) => {
     );
   }
 
-  if (myGroups.length === 0) {
-    return (
-      <div className="text-center py-12">
-        <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-        <h3 className="text-lg font-medium text-gray-900 mb-2">Belum Ada Kelompok</h3>
-        <p className="text-gray-500">
-          Anda belum terdaftar di kelompok manapun untuk tugas besar di mata kuliah ini.
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
-      <div className="bg-white border border-gray-200 rounded-lg p-6">
-        <h3 className="text-lg font-semibold mb-4">Daftar Kelompok Saya</h3>
+      {/* Tugas Besar yang Belum Punya Kelompok */}
+      {tugasWithoutGroups.length > 0 && (
+        <div className="bg-white border border-gray-200 rounded-lg p-6">
+          <h3 className="text-lg font-semibold mb-4">Pilih Kelompok untuk Tugas Besar</h3>
+          <p className="text-sm text-gray-600 mb-4">
+            Anda belum memiliki kelompok untuk tugas besar berikut. Silakan pilih kelompok untuk bergabung.
+          </p>
+          <div className="space-y-3">
+            {tugasWithoutGroups.map((tugas, idx) => (
+              <div key={`tugas-no-group-${tugas.id}-${idx}`} className="border border-blue-200 rounded-lg p-4 bg-blue-50">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-gray-900 mb-1">
+                      {tugas.title || tugas.judul}
+                    </h4>
+                    <p className="text-sm text-gray-600 mb-2">
+                      {tugas.description || tugas.deskripsi || 'Tidak ada deskripsi'}
+                    </p>
+                    <div className="flex items-center gap-4 text-xs text-gray-500">
+                      <span>Deadline: {tugas.end_date || tugas.tanggal_selesai ? new Date(tugas.end_date || tugas.tanggal_selesai).toLocaleDateString('id-ID') : 'Tidak ditentukan'}</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleJoinKelompokFromKelompokSaya(tugas)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ml-4"
+                  >
+                    <Users className="h-4 w-4" />
+                    Pilih Kelompok
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Kelompok yang Sudah Dimiliki */}
+      {myGroups.length > 0 ? (
+        <div className="bg-white border border-gray-200 rounded-lg p-6">
+          <h3 className="text-lg font-semibold mb-4">Daftar Kelompok Saya</h3>
         
         <div className="space-y-4">
           {myGroups.map((item, idx) => (
@@ -1488,7 +1747,27 @@ const KelompokSaya = ({ tugasBesar, course }) => {
             </div>
           ))}
         </div>
-      </div>
+        </div>
+      ) : (
+        myGroups.length === 0 && tugasWithoutGroups.length === 0 && (
+          <div className="text-center py-12 bg-white border border-gray-200 rounded-lg">
+            <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Belum Ada Kelompok</h3>
+            <p className="text-gray-500">
+              Anda belum terdaftar di kelompok manapun untuk tugas besar di mata kuliah ini.
+            </p>
+          </div>
+        )
+      )}
+
+      {/* Group Selection Modal */}
+      {showGroupModal && selectedTugasForGroup && (
+        <GroupSelectionModal 
+          tugas={selectedTugasForGroup} 
+          onClose={closeGroupModalKelompokSaya}
+          courseId={course?.id}
+        />
+      )}
     </div>
   );
 };

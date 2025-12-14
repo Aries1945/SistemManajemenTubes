@@ -1233,6 +1233,42 @@ router.delete('/classes/:classId/enrollments/:enrollmentId', async (req, res) =>
   }
 });
 
+// DELETE remove all students from a class
+router.delete('/classes/:classId/enrollments', async (req, res) => {
+  const { classId } = req.params;
+  
+  try {
+    // Check if the class exists
+    const classCheck = await pool.query('SELECT id FROM classes WHERE id = $1', [classId]);
+    
+    if (classCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Kelas tidak ditemukan' });
+    }
+    
+    // Get count before deletion for response
+    const countResult = await pool.query(
+      'SELECT COUNT(*) AS count FROM class_enrollments WHERE class_id = $1',
+      [classId]
+    );
+    const count = parseInt(countResult.rows[0].count);
+    
+    if (count === 0) {
+      return res.status(400).json({ error: 'Tidak ada mahasiswa yang terdaftar di kelas ini' });
+    }
+    
+    // Delete all enrollments for this class
+    await pool.query('DELETE FROM class_enrollments WHERE class_id = $1', [classId]);
+    
+    res.json({
+      message: `Semua ${count} mahasiswa berhasil dihapus dari kelas`,
+      removedCount: count
+    });
+  } catch (error) {
+    console.error('Error removing all enrollments:', error);
+    res.status(500).json({ error: 'Failed to remove all students from class: ' + error.message });
+  }
+});
+
 // GET list of all classes (for dropdown/selection)
 router.get('/classes', async (req, res) => {
   try {

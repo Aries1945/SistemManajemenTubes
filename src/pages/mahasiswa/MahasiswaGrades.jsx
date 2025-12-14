@@ -24,10 +24,8 @@ const MahasiswaGrades = () => {
       const response = await getMahasiswaCourses();
       const coursesData = response?.data?.courses || response?.courses || [];
       
-      // Filter courses that have grades
-      const coursesWithGrades = coursesData.filter(course => course.nilai_akhir !== null);
-      
-      setCourses(coursesWithGrades);
+      // Show all courses, including those without grades
+      setCourses(coursesData);
     } catch (err) {
       console.error('Error loading grades:', err);
       setError('Gagal memuat data nilai: ' + (err.message || 'Unknown error'));
@@ -37,8 +35,9 @@ const MahasiswaGrades = () => {
   };
 
   const getGradeLetter = (score) => {
-    if (!score) return '-';
+    if (!score || score === null || score === undefined) return 'NA';
     const numScore = parseFloat(score);
+    if (isNaN(numScore)) return 'NA';
     if (numScore >= 85) return 'A';
     if (numScore >= 80) return 'A-';
     if (numScore >= 75) return 'B+';
@@ -61,13 +60,15 @@ const MahasiswaGrades = () => {
   };
 
   const calculateGPA = () => {
-    if (courses.length === 0) return '0.00';
-    const totalScore = courses.reduce((sum, course) => {
+    // Only calculate from courses that have grades
+    const coursesWithGrades = courses.filter(course => course.nilai_akhir !== null && course.nilai_akhir !== undefined);
+    if (coursesWithGrades.length === 0) return '0.00';
+    const totalScore = coursesWithGrades.reduce((sum, course) => {
       const score = parseFloat(course.nilai_akhir) || 0;
       const sks = parseInt(course.sks) || 0;
       return sum + (score * sks);
     }, 0);
-    const totalSKS = courses.reduce((sum, course) => sum + (parseInt(course.sks) || 0), 0);
+    const totalSKS = coursesWithGrades.reduce((sum, course) => sum + (parseInt(course.sks) || 0), 0);
     if (totalSKS === 0) return '0.00';
     return (totalScore / totalSKS).toFixed(2);
   };
@@ -122,7 +123,7 @@ const MahasiswaGrades = () => {
             <p className="text-green-100 text-sm mb-1">IPK Sementara</p>
             <p className="text-4xl font-bold">{calculateGPA()}</p>
             <p className="text-green-100 text-sm mt-2">
-              {courses.length} mata kuliah dengan nilai
+              {courses.filter(c => c.nilai_akhir !== null && c.nilai_akhir !== undefined).length} dari {courses.length} mata kuliah memiliki nilai
             </p>
           </div>
           <Award className="h-16 w-16 text-green-200 opacity-50" />
@@ -156,11 +157,14 @@ const MahasiswaGrades = () => {
                 </div>
                 <div className="text-right">
                   <p className={`text-3xl font-bold ${getGradeColor(course.nilai_akhir)}`}>
-                    {course.nilai_akhir || '-'}
+                    {course.nilai_akhir !== null && course.nilai_akhir !== undefined ? course.nilai_akhir : 'NA'}
                   </p>
                   <p className={`text-lg font-semibold ${getGradeColor(course.nilai_akhir)}`}>
                     {getGradeLetter(course.nilai_akhir)}
                   </p>
+                  {(!course.nilai_akhir || course.nilai_akhir === null || course.nilai_akhir === undefined) && (
+                    <p className="text-xs text-gray-500 mt-1">Nilai belum tersedia</p>
+                  )}
                 </div>
               </div>
               
